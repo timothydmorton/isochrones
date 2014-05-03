@@ -150,3 +150,5 @@ def shotgun_isofit(iso,n=100,**kwargs):
     else:
         res = iso(Ms,ages)
     return res
+
+        
