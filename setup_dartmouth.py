@@ -1,10 +1,12 @@
 from __future__ import division,print_function
 
+from scipy.interpolate import LinearNDInterpolator as interpnd
 import numpy as np
 import re,os,os.path
 import pandas as pd
+import pickle
 
-FOLDER = os.path.expanduser('~/.isochrones/dartmouth')
+FOLDER = 'isochrones/data/dartmouth'
 
 def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
         if feh < minfeh:
@@ -69,9 +71,23 @@ def dartmouth_to_df(feh):
                 i+=1
 
     df['age'] = ages
-    
     columns = {darnames_2mass[i]:bands_2mass[i] for i in range(len(bands_2mass))}
     columns.update({'MMo':'M','LogTeff':'logTeff',
                     'LogG':'logg','LogLLo':'logL'})
     df.rename(columns=columns,inplace=True)
     return df
+
+def write_tri(df,outfile='dartmouth.tri'):
+        N = len(df)
+        pts = np.zeros((N,3))
+        pts[:,0] = np.array(df['M'][:N])
+        pts[:,1] = np.array(df['age'][:N])
+        pts[:,2] = np.array(df['feh'][:N])
+        Jmags = np.array(df['J'][:N])
+
+        Jfn = interpnd(pts,Jmags)
+
+        f = open(outfile,'wb')
+        pickle.dump(Jfn.tri,f)
+        f.close()
+        

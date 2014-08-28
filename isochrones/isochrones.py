@@ -152,3 +152,12 @@ def shotgun_isofit(iso,n=100,**kwargs):
     return res
 
         
+def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
+        if feh < minfeh:
+            return '%.1f' % minfeh
+        elif feh > maxfeh:
+            return '%.1f' % maxfeh
+        elif (feh > -0.05 and feh < 0):
+            return '0.0'
+        else:
+            return '%.1f' % feh            
