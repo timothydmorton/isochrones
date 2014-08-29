@@ -21,33 +21,33 @@ class Isochrone(object):
     to generate stellar models for given mass and age.  It is not optimized to fit
     observed Teff, fe/H, logg., because of fixed fe/H.  
     """
-    def __init__(self,age,m_ini,m_act,logL,Teff,logg,mags):
+    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
         """if feh is included, becomes 3d, and unweildy...
         """
-        self.is3d = False #generic 3-d isochrone not implemented
+        #self.is3d = False #generic 3-d isochrone not implemented
 
         self.minage = age.min()
         self.maxage = age.max()
         self.minmass = m_act.min()
         self.maxmass = m_act.max()
         
-        self.bands = []
-        for band in mags:
-            self.bands.append(band)
 
         L = 10**logL
 
-        points = np.zeros((len(m_ini),2))
-        points[:,0] = m_ini
-        points[:,1] = age
-
-        self.M = interpnd(points,m_act)
-
-        self.tri = self.M.tri
+        if tri is None:
+            points = np.zeros((len(m_ini),2))
+            points[:,0] = m_ini
+            points[:,1] = age
+            self.M = interpnd(points,m_act)
+            self.tri = self.M.tri
+        else:
+            self.tri = tri
+            self.M = interpnd(self.tri,m_act)
 
         self.logL = interpnd(self.tri,logL)
         self.logg = interpnd(self.tri,logg)
         self.logTeff = interpnd(self.tri,np.log10(Teff))
+
         def Teff_fn(*pts):
             return 10**self.logTeff(*pts)
 
@@ -56,12 +56,16 @@ class Isochrone(object):
             return np.sqrt(G*self.M(*pts)*MSUN/10**self.logg(*pts))/RSUN
         self.R = R_fn
 
-        self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
-        #for band in self.bands:
-        #    self.mag[band] = interpnd(points,mags[band])
+        self.bands = []
+        for band in mags.keys():
+            self.bands.append(band)
 
+        self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
+
+
+    #This is old. Do I really use this ever?  Decide.  Reimplement?
     def __call__(self,*args):
-        m,age = args #need to change if 3d implemented
+        m,age,feh = args 
         Ms = self.M(*args)
         Rs = self.R(*args)
         logLs = self.logL(*args)
@@ -69,33 +73,34 @@ class Isochrone(object):
         Teffs = self.Teff(*args)
         mags = {band:self.mag[band](*args) for band in self.bands}
         
-        #feh left out of this; need to put back if 3d implemented
-        return {'age':age,'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,'Teff':Teffs,'mag':mags}        
+        return {'age':age,'M':Ms,'R':Rs,'logL':logLs,
+                'logg':loggs,'Teff':Teffs,'mag':mags}        
 
-    def evtrack(self,m,minage=6.7,maxage=10,dage=0.05):
+    
+    def evtrack(self,m,feh=0.0,minage=6.7,maxage=10,dage=0.05):
         ages = np.arange(minage,maxage,dage)
-        Ms = self.M(m,ages)
-        Rs = self.R(m,ages)
-        logLs = self.logL(m,ages)
-        loggs = self.logg(m,ages)
-        Teffs = self.Teff(m,ages)
-        mags = {band:self.mag[band](m,ages) for band in self.bands}
+        Ms = self.M(m,ages,feh)
+        Rs = self.R(m,ages,feh)
+        logLs = self.logL(m,ages,feh)
+        loggs = self.logg(m,ages,feh)
+        Teffs = self.Teff(m,ages,feh)
+        mags = {band:self.mag[band](m,ages,feh) for band in self.bands}
         #for band in self.bands:
         #    mags[band] = self.mag[band](m,ages)
 
         #return array([ages,Ms,Rs,logLs,loggs,Teffs,   #record array?
         return {'age':ages,'M':Ms,'R':Rs,'logL':logLs,'Teff':Teffs,'mag':mags}
             
-    def isochrone(self,age,minm=0.1,maxm=2,dm=0.02):
+    def isochrone(self,age,feh=0.0,minm=0.1,maxm=2,dm=0.02):
         ms = np.arange(minm,maxm,dm)
         ages = np.ones(ms.shape)*age
 
-        Ms = self.M(ms,ages)
-        Rs = self.R(ms,ages)
-        logLs = self.logL(ms,ages)
-        loggs = self.logg(ms,ages)
-        Teffs = self.Teff(ms,ages)
-        mags = {band:self.mag[band](ms,ages) for band in self.bands}
+        Ms = self.M(ms,ages,feh)
+        Rs = self.R(ms,ages,feh)
+        logLs = self.logL(ms,ages,feh)
+        loggs = self.logg(ms,ages,feh)
+        Teffs = self.Teff(ms,ages,feh)
+        mags = {band:self.mag[band](ms,ages,feh) for band in self.bands}
         #for band in self.bands:
         #    mags[band] = self.mag[band](ms,ages)
 
