@@ -14,12 +14,10 @@ RSUN = const.R_sun.cgs.value
 import pandas as pd
 
 class Isochrone(object):
-    """Generic 2d isochrone class. Only valid for single metallicity.
+    """Generic isochrone class. Everything is function of mass, logage, feh.
 
     Main functionality is interpolation functions that return M, R, mags, etc.
-    for given values of mass and age.  Thus, this class is theoretically oriented:
-    to generate stellar models for given mass and age.  It is not optimized to fit
-    observed Teff, fe/H, logg., because of fixed fe/H.  
+    for given values of mass, age, feh.  
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
         """if feh is included, becomes 3d, and unweildy...
@@ -30,6 +28,8 @@ class Isochrone(object):
         self.maxage = age.max()
         self.minmass = m_act.min()
         self.maxmass = m_act.max()
+        self.minfeh = feh.min()
+        self.maxfeh = feh.max()
         
 
         L = 10**logL
@@ -63,7 +63,6 @@ class Isochrone(object):
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
 
-    #This is old. Do I really use this ever?  Decide.  Reimplement?
     def __call__(self,*args):
         m,age,feh = args 
         Ms = self.M(*args)
@@ -77,7 +76,7 @@ class Isochrone(object):
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
 
     
-    def evtrack(self,m,feh=0.0,minage=6.7,maxage=10,dage=0.05):
+    def evtrack(self,m,feh=0.0,minage=6.7,maxage=10.17,dage=0.02):
         ages = np.arange(minage,maxage,dage)
         Ms = self.M(m,ages,feh)
         Rs = self.R(m,ages,feh)
@@ -106,26 +105,31 @@ class Isochrone(object):
 
         return {'M':Ms,'R':Rs,'logL':logLs,'Teff':Teffs,'mag':mags}        
         
-def isofit(iso,p0=None,**kwargs):
-    """Finds best leastsq match to provided (val,err) keyword pairs.
-
-    e.g. isofit(iso,Teff=(5750,50),logg=(4.5,0.1))
-    """
-    def chisqfn(pars):
-        tot = 0
-        for kw in kwargs:
-            val,err = kwargs[kw]
-            fn = getattr(iso,kw)
+    def lhood_fn(self,**kwargs):
+        def chisqfn(pars):
+            tot = 0
+            for kw in kwargs:
+                val,err = kwargs[kw]
+            if kw in self.bands:
+                fn = self.mag[kw]
+            else:
+                fn = getattr(self,kw)
             tot += (val-fn(*pars))**2/err**2
-        return tot
-    if iso.is3d:
+            return tot
+        return chisqfn
+
+    def isofit(self,p0=None,**kwargs):
+        """Finds best leastsq match to provided (val,err) keyword pairs.
+        
+        e.g. isofit(iso,Teff=(5750,50),logg=(4.5,0.1))
+        """
+        chisqfn = self.lhood_fn(**kwargs)
+
         if p0 is None:
-            p0 = ((iso.minm+iso.maxm)/2,(iso.minage + iso.maxage)/2.,(iso.minfeh + iso.maxfeh)/2.)
-    else:
-        if p0 is None:
-            p0 = (1,9.5)
-    pfit = scipy.optimize.fmin(chisqfn,p0,disp=False)
-    return iso(*pfit)
+            p0 = ((self.minmass+self.maxmass)/2,(self.minage + self.maxage)/2.,
+                  (self.minfeh + self.maxfeh)/2.)
+        pfit = scipy.optimize.fmin(chisqfn,p0,disp=False)
+        return self(*pfit)
 
 def shotgun_isofit(iso,n=100,**kwargs):
     """Rudimentarily finds distribution of best-fits by finding leastsq match to MC sample of points

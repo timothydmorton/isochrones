@@ -80,10 +80,10 @@ def dartmouth_to_df(feh):
 def write_tri(df,outfile='dartmouth.tri'):
         N = len(df)
         pts = np.zeros((N,3))
-        pts[:,0] = np.array(df['M'][:N])
-        pts[:,1] = np.array(df['age'][:N])
-        pts[:,2] = np.array(df['feh'][:N])
-        Jmags = np.array(df['J'][:N])
+        pts[:,0] = np.array(df['M'])
+        pts[:,1] = np.log10(np.array(df['age'])*1e9) #logAge
+        pts[:,2] = np.array(df['feh'])
+        Jmags = np.array(df['J'])
 
         Jfn = interpnd(pts,Jmags)
 
