@@ -12,6 +12,22 @@ G = const.G.cgs.value
 MSUN = const.M_sun.cgs.value
 RSUN = const.R_sun.cgs.value
 
+DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+
+EXTINCTIONFILE = '{}/extinction.txt'.format(DATADIR)
+EXTINCTION = dict()
+EXTINCTION5 = dict()
+for line in open(EXTINCTIONFILE,'r'):
+    line = line.split()
+    EXTINCTION[line[0]] = float(line[1])
+    EXTINCTION5[line[0]] = float(line[2])
+
+EXTINCTION['kep'] = 0.85946
+EXTINCTION['V'] = 1.0
+EXTINCTION['Ks'] = EXTINCTION['K']
+EXTINCTION['Kepler'] = EXTINCTION['kep']
+
+
 import pandas as pd
 
 class Isochrone(object):
@@ -133,25 +149,57 @@ class Isochrone(object):
 
 
 class StarModel(object):
-    def __init__(self,ic,**kwargs):
+    def __init__(self,ic,maxAV=1,**kwargs):
         self.ic = ic
         self.properties = kwargs
-
+        self.maxAV = maxAV
         
     def loglike(self,p):
+        #add optional distance,reddening params
+        mass,age,feh,dist,AV = p
+        if mass < self.ic.minmass or mass > self.ic.maxmass \
+           or age < self.ic.minage or age > self.ic.maxage \
+           or feh < self.ic.minfeh or feh > self.ic.maxfeh:
+            return -np.inf
+        if dist < 0 or AV < 0:
+            return -np.inf
+        if AV > self.maxAV:
+            return -np.inf
+
         logl = 0
         for prop in self.properties.keys():
             val,err = self.properties[prop]
             if prop in self.ic.bands:
-                fn = self.ic.mag[prop]
+                mod = self.ic.mag[prop](mass,age,feh) + 5*np.log10(dist) - 5
+                A = AV*EXTINCTION[prop]
+                mod += A
+            elif prop=='feh':
+                mod = feh
             else:
-                fn = getattr(self,prop)
-            mod = fn(*p)
+                mod = getattr(self.ic,prop)(mass,age,feh)
             logl += -(val-mod)**2/err**2
+
+        if np.isnan(logl):
+            logl = -np.inf
         return logl
             
+    def fit_mcmc(self,p0=None,nwalkers=200,nburn=200,niter=1000,threads=1):
+        if p0 is None:
+            p0 = [1,9.3,0.,100,0.4]
+        m0 = p0[0]*(1+rand.normal(size=nwalkers)*0.1)
+        age0 = p0[1]*(1+rand.normal(size=nwalkers)*0.2)
+        feh0 = p0[2] + rand.normal(size=nwalkers)*0.1
+        d0 = p0[3]*(1+rand.normal(size=nwalkers)*0.5)
+        AV0 = p0[4] + rand.normal(size=nwalkers)*0.2
 
+        p0 = np.array([m0,age0,feh0,d0,AV0]).T
+
+        sampler = emcee.EnsembleSampler(nwalkers,5,self.loglike,threads=threads)
+        pos, prob, state = sampler.run_mcmc(p0, nburn)
+        sampler.reset()
+        sampler.run_mcmc(pos, niter, rstate0=state)
         
+        self.sampler = sampler
 
 
 def shotgun_isofit(iso,n=100,**kwargs):
