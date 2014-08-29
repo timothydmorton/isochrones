@@ -4,6 +4,7 @@ import os,sys,re,os.path
 from scipy.interpolate import LinearNDInterpolator as interpnd
 import scipy.optimize
 import numpy.random as rand
+import emcee
 
 from astropy import constants as const
 
@@ -20,9 +21,8 @@ class Isochrone(object):
     for given values of mass, age, feh.  
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
-        """if feh is included, becomes 3d, and unweildy...
+        """Warning: if tri object not provided, this will be very slow to be created.
         """
-        #self.is3d = False #generic 3-d isochrone not implemented
 
         self.minage = age.min()
         self.maxage = age.max()
@@ -130,6 +130,29 @@ class Isochrone(object):
                   (self.minfeh + self.maxfeh)/2.)
         pfit = scipy.optimize.fmin(chisqfn,p0,disp=False)
         return self(*pfit)
+
+
+class StarModel(object):
+    def __init__(self,ic,**kwargs):
+        self.ic = ic
+        self.properties = kwargs
+
+        
+    def loglike(self,p):
+        logl = 0
+        for prop in self.properties.keys():
+            val,err = self.properties[prop]
+            if prop in self.ic.bands:
+                fn = self.ic.mag[prop]
+            else:
+                fn = getattr(self,prop)
+            mod = fn(*p)
+            logl += -(val-mod)**2/err**2
+        return logl
+            
+
+        
+
 
 def shotgun_isofit(iso,n=100,**kwargs):
     """Rudimentarily finds distribution of best-fits by finding leastsq match to MC sample of points
