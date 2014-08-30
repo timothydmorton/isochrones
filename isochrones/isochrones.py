@@ -201,6 +201,9 @@ class StarModel(object):
         
         self.sampler = sampler
 
+    def plot_fit(self,fig=None):
+        pass
+
 
 def shotgun_isofit(iso,n=100,**kwargs):
     """Rudimentarily finds distribution of best-fits by finding leastsq match to MC sample of points
