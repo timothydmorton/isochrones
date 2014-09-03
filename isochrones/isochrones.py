@@ -1,6 +1,12 @@
 from __future__ import division,print_function
 import numpy as np
 import os,sys,re,os.path
+__author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
+"""
+
+
+"""
+
 from scipy.interpolate import LinearNDInterpolator as interpnd
 import scipy.optimize
 import numpy.random as rand
@@ -8,12 +14,14 @@ import emcee
 
 from astropy import constants as const
 
+#Define useful constants
 G = const.G.cgs.value
 MSUN = const.M_sun.cgs.value
 RSUN = const.R_sun.cgs.value
 
 DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
+#Read data defining extinction in different bands (relative to A_V)
 EXTINCTIONFILE = '{}/extinction.txt'.format(DATADIR)
 EXTINCTION = dict()
 EXTINCTION5 = dict()
@@ -28,13 +36,53 @@ EXTINCTION['Ks'] = EXTINCTION['K']
 EXTINCTION['Kepler'] = EXTINCTION['kep']
 
 
-import pandas as pd
 
 class Isochrone(object):
     """Generic isochrone class. Everything is function of mass, logage, feh.
 
-    Main functionality is interpolation functions that return M, R, mags, etc.
-    for given values of mass, age, feh.  
+    Can be instantiated directly, but will typically be used with a pre-defined
+    subclass.  
+
+    The following properties are defined as 3-d interpolation functions, all
+    taking as arguments (mass,age,feh):
+
+    M, logL, logg, logTeff, Teff, R
+
+    Also defined is a dictionary property 'mag' where self.mag[band] is also
+    a similarly-constructed interpolation function.
+    
+    Parameters
+    ----------
+    m_ini : array-like
+        Initial mass [msun]
+
+    age : array-like
+        log_10(age) [yr]
+
+    feh : array-like
+        Metallicity
+
+    m_act : array-like
+        Actual mass; same as m_ini if mass loss not implemented [msun]
+
+    logL : array-like
+        log_10(luminosity) [solar units]
+
+    Teff : array-like
+        Effective temperature [K]
+
+    logg : array-like
+        log_10(surface gravity) [cgs]
+
+    mags : dict
+        dictionary of magnitudes in different bands
+
+    tri : `scipy.spatial.qhull.Delaunay` object, optional
+        This is used to initialize the interpolation functions.
+        If pre-computed triangulation not provided, then the constructor
+        will calculate one.  This might take several minutes, so be patient.
+        Much better to use pre-computed ones.
+        
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
         """Warning: if tri object not provided, this will be very slow to be created.
@@ -182,18 +230,37 @@ class StarModel(object):
         if np.isnan(logl):
             logl = -np.inf
         return logl
+
+    def maxlike(self,nseeds=10):
+        m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nseeds)
+        age0 = rand.uniform(8,10,size=nseeds)
+        feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nseeds)
+        d0 = np.sqrt(rand.uniform(1,1e4**2,size=nseeds))
+        AV0 = rand.uniform(0,self.maxAV,size=nseeds)
+
+        costs = np.zeros(nseeds)
+        pfits = np.zeros((nseeds,5))
+        def fn(p): #fmin is a function *minimizer*
+            return -1*self.loglike(p) 
+        for i,m,age,feh,d,AV in zip(range(nseeds),
+                                    m0,age0,feh0,d0,AV0):
+                pfit = scipy.optimize.fmin(fn,[m,age,feh,d,AV],disp=False)
+                pfits[i,:] = pfit
+                costs[i] = self.loglike(pfit)
+
+        return pfits[np.argmax(costs),:]
+
             
-    def fit_mcmc(self,p0=None,nwalkers=200,nburn=200,niter=1000,threads=1):
+    def fit_mcmc(self,p0=None,nwalkers=200,nburn=100,niter=500,threads=1):
         if p0 is None:
-            p0 = [1,9.3,0.,100,0.4]
-        m0 = p0[0]*(1+rand.normal(size=nwalkers)*0.1)
-        age0 = p0[1]*(1+rand.normal(size=nwalkers)*0.2)
-        feh0 = p0[2] + rand.normal(size=nwalkers)*0.1
-        d0 = p0[3]*(1+rand.normal(size=nwalkers)*0.5)
-        AV0 = p0[4] + rand.normal(size=nwalkers)*0.2
-
-        p0 = np.array([m0,age0,feh0,d0,AV0]).T
-
+            m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nwalkers)
+            age0 = rand.uniform(8,10,size=nwalkers)
+            feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nwalkers)
+            
+            d0 = np.sqrt(rand.uniform(1,1e4**2,size=nwalkers))
+            AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
+            p0 = np.array([m0,age0,feh0,d0,AV0]).T
+                    
         sampler = emcee.EnsembleSampler(nwalkers,5,self.loglike,threads=threads)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
