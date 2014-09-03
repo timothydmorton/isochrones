@@ -237,41 +237,42 @@ class Isochrone(object):
         return {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}        
         
-    def lhood_fn(self,**kwargs):
-        def chisqfn(pars):
-            tot = 0
-            for kw in kwargs:
-                val,err = kwargs[kw]
-            if kw in self.bands:
-                fn = self.mag[kw]
-            else:
-                fn = getattr(self,kw)
-            tot += (val-fn(*pars))**2/err**2
-            return tot
-        return chisqfn
-
-    def isofit(self,p0=None,**kwargs):
-        """Finds best leastsq match to provided (val,err) keyword pairs.
-        
-        e.g. isofit(iso,Teff=(5750,50),logg=(4.5,0.1))
-        """
-        chisqfn = self.lhood_fn(**kwargs)
-
-        if p0 is None:
-            p0 = ((self.minmass+self.maxmass)/2,(self.minage + self.maxage)/2.,
-                  (self.minfeh + self.maxfeh)/2.)
-        pfit = scipy.optimize.fmin(chisqfn,p0,disp=False)
-        return self(*pfit)
 
 
 class StarModel(object):
+    """An object to represent a star, with observed properties, modeled by an Isochrone
+
+    Parameters
+    ----------
+    ic : `Isochrone` object
+        Isochrone object used to model star.
+
+    maxAV : float
+        Maximum allowed extinction (i.e. the extinction @ infinity in direction of star)
+
+    kwargs
+        Keyword arguments must be properties of given isochrone, e.g.,
+        logg, feh, Teff, and/or magnitudes.  The values represent measurements of
+        the star, and must be in (value,error) format.
+    """
     def __init__(self,ic,maxAV=1,**kwargs):
         self.ic = ic
         self.properties = kwargs
         self.maxAV = maxAV
         
     def loglike(self,p):
-        #add optional distance,reddening params
+        """Log-likelihood of model at given parameters
+
+        Parameters
+        ----------
+        p : [float,float,float,float,float]
+            mass, log(age), feh, distance, A_V (extinction)
+
+        Returns
+        -------
+        logl : float
+            log-likelihood.  Will be -np.inf if values out of range.
+        """
         mass,age,feh,dist,AV = p
         if mass < self.ic.minmass or mass > self.ic.maxmass \
            or age < self.ic.minage or age > self.ic.maxage \
@@ -300,6 +301,20 @@ class StarModel(object):
         return logl
 
     def maxlike(self,nseeds=10):
+        """Returns the best-fit parameters, choosing the best of multiple starting guesses
+
+        Parameters
+        ----------
+        nseeds : int
+            Number of starting guesses, uniformly distributed throughout
+            allowed ranges.
+
+        Returns
+        -------
+        pfit : list
+            [m,age,feh,distance,A_V] best-fit parameters.  Note that distance
+            and A_V values will be meaningless unless magnitudes are provided.
+        """
         m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nseeds)
         age0 = rand.uniform(8,10,size=nseeds)
         feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nseeds)
@@ -319,15 +334,24 @@ class StarModel(object):
         return pfits[np.argmax(costs),:]
 
             
-    def fit_mcmc(self,p0=None,nwalkers=200,nburn=100,niter=500,threads=1):
-        if p0 is None:
-            m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nwalkers)
-            age0 = rand.uniform(8,10,size=nwalkers)
-            feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nwalkers)
-            
-            d0 = np.sqrt(rand.uniform(1,1e4**2,size=nwalkers))
-            AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
-            p0 = np.array([m0,age0,feh0,d0,AV0]).T
+    def fit_mcmc(self,nwalkers=200,nburn=100,niter=500,threads=1):
+        """Fits stellar model using MCMC.
+
+        Parameters
+        ----------
+        nwalkers, nburn, niter, threads : int
+            Parameters to pass to emcee sampling.
+
+        Returns
+        -------
+        None, but defines self.sampler that holds the results of fit.
+        """
+        m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nwalkers)
+        age0 = rand.uniform(8,10,size=nwalkers)
+        feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nwalkers)
+        d0 = np.sqrt(rand.uniform(1,1e4**2,size=nwalkers))
+        AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
+        p0 = np.array([m0,age0,feh0,d0,AV0]).T
                     
         sampler = emcee.EnsembleSampler(nwalkers,5,self.loglike,threads=threads)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
@@ -336,35 +360,6 @@ class StarModel(object):
         
         self.sampler = sampler
 
-
-def shotgun_isofit(iso,n=100,**kwargs):
-    """Rudimentarily finds distribution of best-fits by finding leastsq match to MC sample of points
-    """
-    simdata = {}
-    for kw in kwargs:
-        val,err = kwargs[kw]
-        simdata[kw] = rand.normal(size=n)*err + val
-    if iso.is3d:
-        Ms,ages,fehs = (np.zeros(n),np.zeros(n),np.zeros(n))
-    else:
-        Ms,ages = (np.zeros(n),np.zeros(n))
-    for i in np.arange(n):
-        simkwargs = {}
-        for kw in kwargs:
-            val = simdata[kw][i]
-            err = kwargs[kw][1]
-            simkwargs[kw] = (val,err)
-        fit = isofit(iso,**simkwargs)
-        Ms[i] = fit['M']
-        ages[i] = fit['age']
-        if iso.is3d:
-            fehs[i] = fit['feh']
-
-    if iso.is3d:
-        res = iso(Ms,ages,fehs)
-    else:
-        res = iso(Ms,ages)
-    return res
 
         
 def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
