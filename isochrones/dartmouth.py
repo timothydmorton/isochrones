@@ -15,6 +15,8 @@ MASTERDF = pd.read_hdf(MASTERFILE,'all')
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
 class Dartmouth_Isochrone(iso.Isochrone):
+    """Dotter (2008) Stellar Models
+    """
     def __init__(self,bands=['U','B','V','R','I','J','H','K','g','r','i','z','Kepler','D51']):
 
         df = MASTERDF
