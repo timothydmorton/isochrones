@@ -128,6 +128,19 @@ class Isochrone(object):
 
 
     def __call__(self,*args):
+        """returns properties (or arrays of properties) at given mass, age, feh
+
+        Parameters
+        ----------
+        mass, age, feh : float or array-like
+
+        Returns
+        -------
+        values : dictionary
+            Dictionary of floats or arrays, containing 'age', 'M',
+            'R', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
+            a dictionary of magnitudes. 
+        """
         m,age,feh = args 
         Ms = self.M(*args)
         Rs = self.R(*args)
@@ -140,7 +153,35 @@ class Isochrone(object):
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
 
     
-    def evtrack(self,m,feh=0.0,minage=6.7,maxage=10.17,dage=0.02):
+    def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02):
+        """Returns evolution track for a single initial mass and feh
+
+        Parameters
+        ----------
+        m : float
+            initial mass of desired track
+
+        feh : float, optional
+            metallicity of desired track.  Default = 0.0 (solar)
+
+        minage, maxage : float, optional
+            Minimum and maximum log(age) of desired track. Will default
+            to min and max age of model isochrones. 
+
+        dage : float, optional
+            Spacing in log(age) at which to evaluate models.  Default = 0.02
+
+        Returns
+        -------
+        values : dictionary
+            Dictionary of arrays representing evolution track, containing 'age',
+            'M', 'R', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
+            a dictionary of magnitudes.
+        """
+        if minage is None:
+            minage = self.minage
+        if maxage is None:
+            maxage = self.maxage
         ages = np.arange(minage,maxage,dage)
         Ms = self.M(m,ages,feh)
         Rs = self.R(m,ages,feh)
@@ -148,13 +189,39 @@ class Isochrone(object):
         loggs = self.logg(m,ages,feh)
         Teffs = self.Teff(m,ages,feh)
         mags = {band:self.mag[band](m,ages,feh) for band in self.bands}
-        #for band in self.bands:
-        #    mags[band] = self.mag[band](m,ages)
 
-        #return array([ages,Ms,Rs,logLs,loggs,Teffs,   #record array?
-        return {'age':ages,'M':Ms,'R':Rs,'logL':logLs,'Teff':Teffs,'mag':mags}
+        return {'age':ages,'M':Ms,'R':Rs,'logL':logLs,
+                'logg':loggs, 'Teff':Teffs, 'mag':mags}
             
-    def isochrone(self,age,feh=0.0,minm=0.1,maxm=2,dm=0.02):
+    def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02):
+        """Returns stellar models evaluated at a constant age and feh, for a range of masses
+
+        Parameters
+        ----------
+        age : float
+            log(age) of desired isochrone.
+
+        feh : float
+            Metallicity of desired isochrone (default = 0.0)
+
+        minm, maxm : float
+            Mass range of desired isochrone (will default to max and min available)
+
+        dm : float
+            Spacing in mass of desired isochrone
+
+        Returns
+        -------
+        values : dictionary
+            Dictionary of arrays representing evolution track, containing
+            'M', 'R', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
+            a dictionary of magnitudes.
+
+        """
+        if minm is None:
+            minm = self.minmass
+        if maxm is None:
+            maxm = self.maxmass
         ms = np.arange(minm,maxm,dm)
         ages = np.ones(ms.shape)*age
 
@@ -167,7 +234,8 @@ class Isochrone(object):
         #for band in self.bands:
         #    mags[band] = self.mag[band](ms,ages)
 
-        return {'M':Ms,'R':Rs,'logL':logLs,'Teff':Teffs,'mag':mags}        
+        return {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
+                'Teff':Teffs,'mag':mags}        
         
     def lhood_fn(self,**kwargs):
         def chisqfn(pars):
