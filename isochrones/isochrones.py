@@ -360,3 +360,49 @@ class StarModel(object):
         
         self.sampler = sampler
 
+<<<<<<< HEAD
+=======
+    def plot_fit(self,fig=None):
+        pass
+
+
+def shotgun_isofit(iso,n=100,**kwargs):
+    """Rudimentarily finds distribution of best-fits by finding leastsq match to MC sample of points
+    """
+    simdata = {}
+    for kw in kwargs:
+        val,err = kwargs[kw]
+        simdata[kw] = rand.normal(size=n)*err + val
+    if iso.is3d:
+        Ms,ages,fehs = (np.zeros(n),np.zeros(n),np.zeros(n))
+    else:
+        Ms,ages = (np.zeros(n),np.zeros(n))
+    for i in np.arange(n):
+        simkwargs = {}
+        for kw in kwargs:
+            val = simdata[kw][i]
+            err = kwargs[kw][1]
+            simkwargs[kw] = (val,err)
+        fit = isofit(iso,**simkwargs)
+        Ms[i] = fit['M']
+        ages[i] = fit['age']
+        if iso.is3d:
+            fehs[i] = fit['feh']
+
+    if iso.is3d:
+        res = iso(Ms,ages,fehs)
+    else:
+        res = iso(Ms,ages)
+    return res
+
+        
+def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
+        if feh < minfeh:
+            return '%.1f' % minfeh
+        elif feh > maxfeh:
+            return '%.1f' % maxfeh
+        elif (feh > -0.05 and feh < 0):
+            return '0.0'
+        else:
+            return '%.1f' % feh            
+>>>>>>> 87c336e32be68832935cb397e0f5994b70ad5e45
