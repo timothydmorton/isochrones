@@ -340,7 +340,7 @@ class StarModel(object):
         Parameters
         ----------
         nwalkers, nburn, niter, threads : int
-            Parameters to pass to emcee sampling.
+            Parameters to pass to emcee sampling for MCMC.
 
         Returns
         -------
