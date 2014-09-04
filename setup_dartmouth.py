@@ -7,6 +7,7 @@ import pandas as pd
 import pickle
 
 FOLDER = 'isochrones/data/dartmouth'
+DF = pd.read_hdf('isochrones/data/dartmouth.h5','all')
 
 def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
         if feh < minfeh:
@@ -77,11 +78,11 @@ def dartmouth_to_df(feh):
     df.rename(columns=columns,inplace=True)
     return df
 
-def write_tri(df,outfile='dartmouth.tri'):
+def write_tri(df=DF,outfile='dartmouth.tri'):
         N = len(df)
         pts = np.zeros((N,3))
         pts[:,0] = np.array(df['M'])
-        pts[:,1] = np.log10(np.array(df['age'])*1e9) #logAge
+        pts[:,1] = np.log10(np.array(df['age'])*1e9)
         pts[:,2] = np.array(df['feh'])
         Jmags = np.array(df['J'])
 

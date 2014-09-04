@@ -45,7 +45,7 @@ class Isochrone(object):
     Can be instantiated directly, but will typically be used with a pre-defined
     subclass.  
 
-    The following properties are defined as 3-d interpolation functions, all
+    The following methods are implemented as 3-d interpolation functions, all
     taking as arguments (mass,age,feh):
 
     M, logL, logg, logTeff, Teff, R
@@ -116,8 +116,8 @@ class Isochrone(object):
 
         def Teff_fn(*pts):
             return 10**self.logTeff(*pts)
-
         self.Teff = Teff_fn
+        
         def R_fn(*pts):
             return np.sqrt(G*self.M(*pts)*MSUN/10**self.logg(*pts))/RSUN
         self.R = R_fn
@@ -126,9 +126,8 @@ class Isochrone(object):
         for band in mags.keys():
             self.bands.append(band)
 
-        self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
-
-
+        self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
+        
     def __call__(self,*args):
         """returns properties (or arrays of properties) at given mass, age, feh
 
@@ -154,7 +153,7 @@ class Isochrone(object):
         return {'age':age,'M':Ms,'R':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
 
-    
+
     def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02):
         """Returns evolution track for a single initial mass and feh
 
@@ -260,35 +259,53 @@ class StarModel(object):
     def __init__(self,ic,maxAV=1,**kwargs):
         self.ic = ic
         self.properties = kwargs
+
         self.maxAV = maxAV
-        
+
+    def fit_for_distance(self):
+        for prop in self.properties.keys():
+            if prop in self.ic.bands:
+                return True
+        return False
+            
+    
     def loglike(self,p):
         """Log-likelihood of model at given parameters
 
         Parameters
         ----------
-        p : [float,float,float,float,float]
-            mass, log(age), feh, distance, A_V (extinction)
+        p : [float,float,float,float,float] or [float,float,float]
+            mass, log(age), feh, [distance, A_V (extinction)]
+            
 
         Returns
         -------
         logl : float
             log-likelihood.  Will be -np.inf if values out of range.
         """
-        mass,age,feh,dist,AV = p
+        if len(p)==5:
+            fit_for_distance = True
+            mass,age,feh,dist,AV = p
+        elif len(p)==3:
+            fit_for_distance = False
+            mass,age,feh = p
+                        
         if mass < self.ic.minmass or mass > self.ic.maxmass \
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
-        if dist < 0 or AV < 0:
-            return -np.inf
-        if AV > self.maxAV:
-            return -np.inf
+        if fit_for_distance:
+            if dist < 0 or AV < 0:
+                return -np.inf
+            if AV > self.maxAV:
+                return -np.inf
 
         logl = 0
         for prop in self.properties.keys():
             val,err = self.properties[prop]
             if prop in self.ic.bands:
+                if not fit_for_distance:
+                    raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
                 mod = self.ic.mag[prop](mass,age,feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mod += A
@@ -300,6 +317,8 @@ class StarModel(object):
 
         if np.isnan(logl):
             logl = -np.inf
+
+        #print('{:.2f} {:.2f} {:.2f}: {:.4g}'.format(mass,age,feh,logl))
         return logl
 
     def maxlike(self,nseeds=10):
@@ -314,7 +333,7 @@ class StarModel(object):
         Returns
         -------
         pfit : list
-            [m,age,feh,distance,A_V] best-fit parameters.  Note that distance
+            [m,age,feh,[distance,A_V]] best-fit parameters.  Note that distance
             and A_V values will be meaningless unless magnitudes are provided.
         """
         m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nseeds)
@@ -324,19 +343,29 @@ class StarModel(object):
         AV0 = rand.uniform(0,self.maxAV,size=nseeds)
 
         costs = np.zeros(nseeds)
-        pfits = np.zeros((nseeds,5))
+        fit_for_distance = self.fit_for_distance()
+
+        if fit_for_distance:
+            pfits = np.zeros((nseeds,5))
+        else:
+            pfits = np.zeros((nseeds,3))
+            
         def fn(p): #fmin is a function *minimizer*
-            return -1*self.loglike(p) 
+            return -1*self.loglike(p)
+        
         for i,m,age,feh,d,AV in zip(range(nseeds),
                                     m0,age0,feh0,d0,AV0):
-                pfit = scipy.optimize.fmin(fn,[m,age,feh,d,AV],disp=False)
+                if fit_for_distance:
+                    pfit = scipy.optimize.fmin(fn,[m,age,feh,d,AV],disp=False)
+                else:
+                    pfit = scipy.optimize.fmin(fn,[m,age,feh],disp=False)
                 pfits[i,:] = pfit
                 costs[i] = self.loglike(pfit)
 
         return pfits[np.argmax(costs),:]
 
             
-    def fit_mcmc(self,nwalkers=200,nburn=100,niter=500,threads=1):
+    def fit_mcmc(self,nwalkers=200,nburn=300,niter=300,threads=1):
         """Fits stellar model using MCMC.
 
         Parameters
@@ -353,9 +382,16 @@ class StarModel(object):
         feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nwalkers)
         d0 = np.sqrt(rand.uniform(1,1e4**2,size=nwalkers))
         AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
-        p0 = np.array([m0,age0,feh0,d0,AV0]).T
-                    
-        sampler = emcee.EnsembleSampler(nwalkers,5,self.loglike,threads=threads)
+
+        fit_for_distance = self.fit_for_distance()
+        if fit_for_distance:
+            npars = 5
+            p0 = np.array([m0,age0,feh0,d0,AV0]).T
+        else:
+            npars = 3
+            p0 = np.array([m0,age0,feh0]).T            
+
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
