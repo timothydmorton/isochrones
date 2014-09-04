@@ -1,10 +1,11 @@
+from __future__ import division,print_function
+
 __author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
 """
 
 
 """
 
-from __future__ import division,print_function
 import numpy as np
 import os,sys,re,os.path
 
