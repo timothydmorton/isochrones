@@ -104,11 +104,11 @@ class Isochrone(object):
             points = np.zeros((len(m_ini),2))
             points[:,0] = m_ini
             points[:,1] = age
-            self.M = interpnd(points,m_act)
-            self.tri = self.M.tri
+            self.mass = interpnd(points,m_act)
+            self.tri = self.mass.tri
         else:
             self.tri = tri
-            self.M = interpnd(self.tri,m_act)
+            self.mass = interpnd(self.tri,m_act)
 
         self.logL = interpnd(self.tri,logL)
         self.logg = interpnd(self.tri,logg)
@@ -119,8 +119,8 @@ class Isochrone(object):
         self.Teff = Teff_fn
         
         def R_fn(*pts):
-            return np.sqrt(G*self.M(*pts)*MSUN/10**self.logg(*pts))/RSUN
-        self.R = R_fn
+            return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
+        self.radius = R_fn
 
         self.bands = []
         for band in mags.keys():
@@ -143,8 +143,8 @@ class Isochrone(object):
             a dictionary of magnitudes. 
         """
         m,age,feh = args 
-        Ms = self.M(*args)
-        Rs = self.R(*args)
+        Ms = self.mass(*args)
+        Rs = self.radius(*args)
         logLs = self.logL(*args)
         loggs = self.logg(*args)
         Teffs = self.Teff(*args)
@@ -184,8 +184,8 @@ class Isochrone(object):
         if maxage is None:
             maxage = self.maxage
         ages = np.arange(minage,maxage,dage)
-        Ms = self.M(m,ages,feh)
-        Rs = self.R(m,ages,feh)
+        Ms = self.mass(m,ages,feh)
+        Rs = self.radius(m,ages,feh)
         logLs = self.logL(m,ages,feh)
         loggs = self.logg(m,ages,feh)
         Teffs = self.Teff(m,ages,feh)
@@ -226,8 +226,8 @@ class Isochrone(object):
         ms = np.arange(minm,maxm,dm)
         ages = np.ones(ms.shape)*age
 
-        Ms = self.M(ms,ages,feh)
-        Rs = self.R(ms,ages,feh)
+        Ms = self.mass(ms,ages,feh)
+        Rs = self.radius(ms,ages,feh)
         logLs = self.logL(ms,ages,feh)
         loggs = self.logg(ms,ages,feh)
         Teffs = self.Teff(ms,ages,feh)
@@ -365,7 +365,7 @@ class StarModel(object):
         return pfits[np.argmax(costs),:]
 
             
-    def fit_mcmc(self,nwalkers=200,nburn=300,niter=300,threads=1):
+    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,threads=1):
         """Fits stellar model using MCMC.
 
         Parameters
@@ -377,20 +377,16 @@ class StarModel(object):
         -------
         None, but defines self.sampler that holds the results of fit.
         """
-        m0 = rand.uniform(self.ic.minmass,self.ic.maxmass,size=nwalkers)
-        age0 = rand.uniform(8,10,size=nwalkers)
-        feh0 = rand.uniform(self.ic.minfeh,self.ic.maxfeh,size=nwalkers)
-        d0 = np.sqrt(rand.uniform(1,1e4**2,size=nwalkers))
-        AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
-
         fit_for_distance = self.fit_for_distance()
         if fit_for_distance:
             npars = 5
-            p0 = np.array([m0,age0,feh0,d0,AV0]).T
         else:
             npars = 3
-            p0 = np.array([m0,age0,feh0]).T            
 
+        # use ball around maxlike params to initialize walkers
+        p0 = self.maxlike()
+        p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
+        
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
@@ -398,3 +394,13 @@ class StarModel(object):
         
         self.sampler = sampler
 
+    def prop_samples(self,prop):
+        if not hasattr(self,'sampler'):
+            self.fit_mcmc()
+
+        if prop in self.ic.bands:
+            fn = self.ic.mag[prop]
+        else:
+            fn = getattr(self.ic,prop)
+        
+        return fn(self.sampler.flatchain[:,:3]) #excluding dist,A_V if present
