@@ -20,6 +20,6 @@ setup(name = "isochrones",
       'Programming Language :: Python',
       'Topic :: Scientific/Engineering :: Astronomy'
       ],
-    install_requires=['plotutils','pandas','astropy','emcee'],
+    install_requires=['plotutils','pandas>=0.14','astropy>=0.3','emcee>=2.0'],
     zip_safe=False
 ) 

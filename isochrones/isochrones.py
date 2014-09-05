@@ -16,6 +16,9 @@ import emcee
 
 from astropy import constants as const
 
+import matplotlib.pyplot as plt
+from plotutils.plotutils import setfig
+
 #Define useful constants
 G = const.G.cgs.value
 MSUN = const.M_sun.cgs.value
@@ -321,7 +324,7 @@ class StarModel(object):
         #print('{:.2f} {:.2f} {:.2f}: {:.4g}'.format(mass,age,feh,logl))
         return logl
 
-    def maxlike(self,nseeds=10):
+    def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
 
         Parameters
@@ -365,13 +368,21 @@ class StarModel(object):
         return pfits[np.argmax(costs),:]
 
             
-    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,threads=1):
+    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,threads=1,
+                 p0=None,maxlike_nseeds=50):
         """Fits stellar model using MCMC.
 
         Parameters
         ----------
         nwalkers, nburn, niter, threads : int
             Parameters to pass to emcee sampling for MCMC.
+
+        p0 : array-like
+            Initial parameters for emcee.  If not provided, `self.maxlike`
+            will be called to initialize parameter ball.
+
+        maxlike_nseeds : int
+            Number of seeds for `maxlike` call.  Default=50.
 
         Returns
         -------
@@ -383,9 +394,10 @@ class StarModel(object):
         else:
             npars = 3
 
-        # use ball around maxlike params to initialize walkers
-        p0 = self.maxlike()
-        p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
+        if p0 is None:
+            # use ball around maxlike params to initialize walkers
+            p0 = self.maxlike(maxlike_nseeds)
+        p0 = rand.normal(size=(nwalkers,npars))*0.1 + p0.T[None,:]
         
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
@@ -394,13 +406,82 @@ class StarModel(object):
         
         self.sampler = sampler
 
-    def prop_samples(self,prop):
+    def prop_samples(self,prop,return_values=True,conf=0.683):
+        """Returns samples of given property, based on MCMC sampling
+
+        Parameters
+        ----------
+        prop : str
+            Desired property. Options are 'mass', 'radius', 'age',
+            'logg', 'logL', 'Teff', 'feh', 'distance', 'AV',
+            or any valid passband name for `self.ic` (`Isochrone` object).
+            If MCMC hasn't been run, a call to this function will run MCMC.
+            'distance' and 'AV' will only work if magnitudes are provided
+            as properties.
+
+        Returns
+        -------
+        chain : array
+            Posterior sampling of given property.
+        """
         if not hasattr(self,'sampler'):
             self.fit_mcmc()
 
-        if prop in self.ic.bands:
-            fn = self.ic.mag[prop]
-        else:
-            fn = getattr(self.ic,prop)
+        if prop=='age':
+            samples = self.sampler.flatchain[:,1]
+        elif prop=='feh':
+            samples = self.sampler.flatchain[:,2]
+        elif prop=='distance':
+            samples = self.sampler.flatchain[:,3]
+        elif prop=='AV':
+            samples = self.sampler.flatchain[:,4]
+        else:           
+            if prop in self.ic.bands:
+                fn = self.ic.mag[prop]
+            else:
+                fn = getattr(self.ic,prop)
+
+            samples = fn(self.sampler.flatchain[:,:3]) #excluding dist,A_V if present
         
-        return fn(self.sampler.flatchain[:,:3]) #excluding dist,A_V if present
+        if return_values:
+            sorted = np.sort(samples)
+            med = np.median(samples)
+            n = len(samples)
+            lo_ind = int(n*(0.5 - conf/2))
+            hi_ind = int(n*(0.5 + conf/2))
+            lo = med - sorted[lo_ind]
+            hi = sorted[hi_ind] - med
+            return samples, (med,lo,hi)
+        else:
+            return samples 
+
+    def plot_samples(self,prop,fig=None,label=True,
+                     histtype='step',bins=50,lw=3,
+                     **kwargs):
+        """Plots histogram of samples of desired property.
+
+        Parameters
+        ----------
+        prop : str
+           Desired property.  See `prop_samples` for appropriate names.
+
+        fig : None, or int
+           Argument for `plotutils.setfig`.
+
+        histtype,bins,lw : various
+            Arguments passed to `plt.hist`
+
+        kwargs
+            Keyword arguments passed to `plt.hist`
+        """
+        setfig(fig)
+        samples,stats = self.prop_samples(prop)
+        plt.hist(samples,bins=bins,normed=True,
+                 histtype=histtype,lw=lw,**kwargs)
+        plt.xlabel(prop)
+        plt.ylabel('Normalized count')
+        
+        if label:
+            med,lo,hi = stats
+            plt.annotate('$%.2f^{+%.2f}_{-%.2f}$' % (med,hi,lo),
+                         xy=(0.7,0.8),xycoords='axes fraction',fontsize=20)
