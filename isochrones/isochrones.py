@@ -225,5 +225,37 @@ class Isochrone(object):
         return {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}        
         
+    def random_points(self,n,minmass=None,maxmass=None,
+                      minage=None,maxage=None,
+                      minfeh=None,maxfeh=None):
+        """Returns n random mass, age, feh points, none of which are out
+                      of range of isochrone. 
+        """
+        if minmass is None:
+            minmass = self.minmass
+        if maxmass is None:
+            maxmass = self.maxmass
+        if minage is None:
+            minage = self.minage
+        if maxage is None:
+            maxage = self.maxage
+        if minfeh is None:
+            minfeh = self.minfeh
+        if maxfeh is None:
+            maxfeh = self.maxfeh
 
+        ms = rand.uniform(minmass,maxmass,size=n)
+        ages = rand.uniform(minage,maxage,size=n)
+        fehs = rand.uniform(minage,maxage,size=n)
 
+        Rs = self.radius(ms,ages,fehs)
+        bad = np.isnan(Rs)
+        nbad = bad.sum()
+        while nbad > 0:
+            ms[bad] = rand.uniform(minmass,maxmass,size=nbad)
+            ages[bad] = rand.uniform(minage,maxage,size=nbad)
+            fehs[bad] = rand.uniform(minfeh,maxfeh,size=nbad)
+            Rs = self.radius(ms,ages,fehs)
+            bad = np.isnan(Rs)
+            nbad = bad.sum()
+        return ms,ages,fehs
