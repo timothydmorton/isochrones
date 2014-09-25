@@ -11,7 +11,7 @@ from . import isochrones as iso
 DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
 MASTERFILE = '{}/dartmouth.h5'.format(DATADIR)
-MASTERDF = pd.read_hdf(MASTERFILE,'all')
+MASTERDF = pd.read_hdf(MASTERFILE,'df')
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
 class Dartmouth_Isochrone(iso.Isochrone):
