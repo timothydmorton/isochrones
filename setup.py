@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name = "isochrones",
-    version = "0.1.1-1",
+    version = "0.1.2",
     description = "Defines objects for interpolating stellar model grids.",
     long_description = readme(),
     author = "Timothy D. Morton",
