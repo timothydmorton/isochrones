@@ -37,7 +37,8 @@ class Dartmouth_Isochrone(iso.Isochrone):
         tri = pickle.load(f)
         f.close()
         
-        iso.Isochrone.__init__(self,df['M'],np.log10(df['age']*1e9),df['feh'],df['M'],df['logL'],
+        iso.Isochrone.__init__(self,df['M'],np.log10(df['age']*1e9),
+                               df['feh'],df['M'],df['logL'],
                                10**df['logTeff'],df['logg'],mags,tri=tri)
 
     

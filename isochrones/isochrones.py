@@ -7,12 +7,11 @@ __author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
 """
 
 import numpy as np
+import pandas as pd
 import os,sys,re,os.path
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
-import scipy.optimize
 import numpy.random as rand
-import emcee
 
 from astropy import constants as const
 
@@ -115,7 +114,7 @@ class Isochrone(object):
 
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
         
-    def __call__(self,*args):
+    def __call__(self,mass,age,feh,return_df=False):
         """returns properties (or arrays of properties) at given mass, age, feh
 
         Parameters
@@ -129,7 +128,7 @@ class Isochrone(object):
             'radius', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
             a dictionary of magnitudes. 
         """
-        m,age,feh = args 
+        args = (mass, age, feh)
         Ms = self.mass(*args)
         Rs = self.radius(*args)
         logLs = self.logL(*args)
@@ -137,9 +136,20 @@ class Isochrone(object):
         Teffs = self.Teff(*args)
         mags = {band:self.mag[band](*args) for band in self.bands}
         
-        return {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
+        props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
-
+        if not return_df:
+            return props
+        else:
+            d = {}
+            for key in props.keys():
+                if key=='mag':
+                    for m in props['mag'].keys():
+                        d['{}_mag'.format(m)] = props['mag'][m]
+                else:
+                    d[key] = props[key]
+            df = pd.DataFrame(d)
+            return df
 
     def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02):
         """Returns evolution track for a single initial mass and feh
