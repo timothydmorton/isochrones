@@ -71,6 +71,10 @@ class Dartmouth_Isochrone(Isochrone):
                            10**df['logTeff'],df['logg'],mags,tri=tri)
 
 
+############ utility functions used to set up data sets from original isochrone data files ########
+
+DARTMOUTH_DATAFOLDER = ''  #this would be location of raw data files.
+
 def write_tri(df=MASTERDF, outfile=TRI_FILE):
     """Writes the Delanuay triangulation of the models to file.  Takes a few minutes, so beware.
 
@@ -90,10 +94,6 @@ def write_tri(df=MASTERDF, outfile=TRI_FILE):
     f.close()
 
     
-############ utility functions used to set up data sets from original isochrone data files ########
-
-DARTMOUTH_DATAFOLDER = ''  #this would be location of raw data files.
-
 def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
         if feh < minfeh:
             return '%.1f' % minfeh
