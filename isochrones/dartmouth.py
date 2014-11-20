@@ -3,6 +3,7 @@ import os,os.path
 import numpy as np
 import pkg_resources
 
+from scipy.interpolate import LinearNDInterpolator as interpnd
 import pandas as pd
 import pickle
 
@@ -17,22 +18,22 @@ MASTERFILE = '{}/dartmouth.h5'.format(DATADIR)
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
 def _download_h5():
-    url = 'www.figshare.com/s/095e235e70ca11e4b89506ec4b8d1f61'
-    import urllib2
+    #url = 'http://files.figshare.com/1801331/dartmouth.h5'
+    url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
+    import urllib
     print('Downloading Dartmouth stellar model data (should happen only once)...')
-    u = urllib2.urlopen(url)
-    f = open(MASTERFILE,'wb')
-    f.write(u.read())
-    f.close()
+    if os.path.exists(MASTERFILE):
+        os.remove(MASTERFILE)
+    urllib.urlretrieve(url,MASTERFILE)
 
 def _download_tri():
-    url = 'www.figshare.com/s/f840a5f670c911e49c8c06ec4b8d1f61'
-    import urllib2
-    print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...')
-    u = urllib2.urlopen(url)
-    f = open(TRI_FILE,'wb')
-    f.write(u.read())
-    f.close()
+    url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
+    #url = 'http://files.figshare.com/1801343/dartmouth.tri'
+    import urllib
+    print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...)')
+    if os.path.exists(TRI_FILE):
+        os.remove(TRI_FILE)
+    urllib.urlretrieve(url,TRI_FILE)
 
 if not os.path.exists(MASTERFILE):
     _download_h5()
@@ -70,3 +71,94 @@ class Dartmouth_Isochrone(Isochrone):
                            10**df['logTeff'],df['logg'],mags,tri=tri)
 
 
+def write_tri(df=MASTERDF, outfile=TRI_FILE):
+    """Writes the Delanuay triangulation of the models to file.  Takes a few minutes, so beware.
+
+    Typically no need to do this unless you can't download the .tri file for some reason...
+    """
+    N = len(df)
+    pts = np.zeros((N,3))
+    pts[:,0] = np.array(df['M'])
+    pts[:,1] = np.log10(np.array(df['age'])*1e9)
+    pts[:,2] = np.array(df['feh'])
+    Jmags = np.array(df['J'])
+
+    Jfn = interpnd(pts,Jmags)
+
+    f = open(outfile,'wb')
+    pickle.dump(Jfn.tri,f)
+    f.close()
+
+    
+############ utility functions used to set up data sets from original isochrone data files ########
+
+DARTMOUTH_DATAFOLDER = ''  #this would be location of raw data files.
+
+def fehstr(feh,minfeh=-1.0,maxfeh=0.5):
+        if feh < minfeh:
+            return '%.1f' % minfeh
+        elif feh > maxfeh:
+            return '%.1f' % maxfeh
+        elif (feh > -0.05 and feh < 0):
+            return '0.0'
+        else:
+            return '%.1f' % feh            
+
+def writeall_h5(fehs=np.arange(-1,0.51,0.1)):
+    store = pd.HDFStore('%s/dartmouth.h5' % DARTMOUTH_DATAFOLDER)
+    for feh in fehs:
+        name = fehstr(feh)
+        print(name)
+        store[name] = dartmouth_to_df(feh)
+    store.close()
+
+def dartmouth_all_df(fehs=np.arange(-1,0.51,0.1),savefile=None):
+    store = pd.HDFStore('%s/dartmouth.h5' % DARTMOUTH_DATAFOLDER)
+    df = pd.DataFrame()
+    for feh in fehs:
+        newdf = store[fehstr(feh)].copy()
+        newdf['feh'] = np.ones(len(newdf))*feh
+        df = df.append(newdf)
+    store.close()
+    if savefile is not None:
+        df.to_hdf(savefile)
+    return df
+
+def dartmouth_to_df(feh):
+    filename_2mass = '%s/dartmouth_%s_2massKp.iso' % (DARTMOUTH_DATAFOLDER,fehstr(feh,-1.0,0.5))
+    filename_ugriz = '%s/dartmouth_%s_ugriz.iso' % (DARTMOUTH_DATAFOLDER,fehstr(feh,-1.0,0.5))    
+
+    bands_ugriz = ['u','g','r','i','z']
+    darnames_ugriz = ['sdss_u','sdss_g','sdss_r','sdss_i','sdss_z']
+
+    bands_2mass = ['U','B','V','R','I','J','H','Ks','Kp','D51']
+    darnames_2mass = bands_2mass
+
+    rec = np.recfromtxt(filename_2mass,skiprows=8,names=True)
+    rec2 = np.recfromtxt(filename_ugriz,skiprows=8,names=True,usecols=(5,6,7,8,9))
+    df = pd.DataFrame(rec)
+    df2 = pd.DataFrame(rec2)
+    for b,d in zip(bands_ugriz,darnames_ugriz):
+        df[b] = df2[d]
+
+    n = len(df)
+    ages = np.zeros(n)
+    curage = 0
+    i=0
+    for line in open(filename_2mass):
+        m = re.match('#',line)
+        if m:
+            m = re.match('#AGE=\s*(\d+\.\d+)\s+',line)
+            if m:
+                curage=float(m.group(1))
+        else:
+            if re.search('\d',line):
+                ages[i]=curage
+                i+=1
+
+    df['age'] = ages
+    columns = {darnames_2mass[i]:bands_2mass[i] for i in range(len(bands_2mass))}
+    columns.update({'MMo':'M','LogTeff':'logTeff',
+                    'LogG':'logg','LogLLo':'logL'})
+    df.rename(columns=columns,inplace=True)
+    return df
