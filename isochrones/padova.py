@@ -110,7 +110,7 @@ def padova_to_df(save=True,savefile='isochrones/data/padova.h5'):
         
     return alldf
 
-def write_tri(df=MASTER,outfile=TRI_FILE):
+def write_tri(df=MASTERDF,outfile=TRI_FILE):
         N = len(df)
         pts = np.zeros((N,3))
         pts[:,0] = np.array(df['M_ini'])
