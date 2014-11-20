@@ -4,8 +4,19 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
+# Hackishly inject a constant into builtins to enable importing of the
+# package before the library is built.
+import sys
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
+builtins.__ISOCHRONES_SETUP__ = True
+import isochrones
+
+
 setup(name = "isochrones",
-    version = "0.2.1",
+    version = isochrones.__version__,
     description = "Defines objects for interpolating stellar model grids.",
     long_description = readme(),
     author = "Timothy D. Morton",
