@@ -114,7 +114,7 @@ class Isochrone(object):
 
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
         
-    def __call__(self,mass,age,feh,return_df=False):
+    def __call__(self,mass,age,feh,return_df=True):
         """returns properties (or arrays of properties) at given mass, age, feh
 
         Parameters
