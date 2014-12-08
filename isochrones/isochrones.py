@@ -148,7 +148,10 @@ class Isochrone(object):
                         d['{}_mag'.format(m)] = props['mag'][m]
                 else:
                     d[key] = props[key]
-            df = pd.DataFrame(d)
+            try:
+                df = pd.DataFrame(d)
+            except ValueError:
+                df = pd.DataFrame(d, index=[0])
             return df
 
     def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02):
