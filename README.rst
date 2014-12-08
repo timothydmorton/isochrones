@@ -10,7 +10,7 @@ Basic usage::
     >>> dar.radius(1.0,9.6,0.0) #mass [solar], log(age), Fe/H
     0.9886235
     
-or, more generally::
+or, more generally (results returned in ``pandas`` ``DataFrame`` object)::
 
     >>> dar(1.0,9.6,0.0)
           B_mag   D51_mag     H_mag     I_mag     J_mag     K_mag  Kepler_mag  \
