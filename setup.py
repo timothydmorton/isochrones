@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import os,sys
 
 def readme():
     with open('README.rst') as f:
