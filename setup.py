@@ -13,10 +13,21 @@ else:
     import builtins
 builtins.__ISOCHRONES_SETUP__ = True
 import isochrones
+version = isochrones.__version__
 
+# Publish the library to PyPI.
+if "publish" in sys.argv[-1]:
+    os.system("python setup.py sdist upload")
+    sys.exit()
+
+# Push a new tag to GitHub.
+if "tag" in sys.argv:
+    os.system("git tag -a {0} -m 'version {0}'".format(version))
+    os.system("git push --tags")
+    sys.exit()
 
 setup(name = "isochrones",
-    version = isochrones.__version__,
+    version = version,
     description = "Defines objects for interpolating stellar model grids.",
     long_description = readme(),
     author = "Timothy D. Morton",
