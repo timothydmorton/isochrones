@@ -254,8 +254,11 @@ class StarModel(object):
             age = self.sampler.flatchain[:,1]
             feh = self.sampler.flatchain[:,2]
             
-            return self.ic(mass, age, feh)
-        
+            df = self.ic(mass, age, feh)
+            df['age'] = age
+            df['feh'] = feh
+            return df
+
     def random_samples(self, n):
         samples = self.samples
         inds = rand.randint(len(samples),size=n)
