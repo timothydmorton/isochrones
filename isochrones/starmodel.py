@@ -1,5 +1,7 @@
+from __future__ import print_function, division
 import os,os.path
 import numpy as np
+import pandas as pd
 import numpy.random as rand
 import emcee
 import scipy.optimize
@@ -56,6 +58,7 @@ class StarModel(object):
             if arg in self.properties:
                 del self.properties[arg]
     
+    @property
     def fit_for_distance(self):
         for prop in self.properties.keys():
             if prop in self.ic.bands:
@@ -88,7 +91,7 @@ class StarModel(object):
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
-        if fit_for_distance:
+        if self.fit_for_distance:
             if dist < 0 or AV < 0:
                 return -np.inf
             if AV > self.maxAV:
@@ -114,7 +117,6 @@ class StarModel(object):
 
         logl += np.log(salpeter_prior(mass)) #IMF prior
         
-        #print('{:.2f} {:.2f} {:.2f}: {:.4g}'.format(mass,age,feh,logl))
 
         return logl
 
@@ -140,9 +142,8 @@ class StarModel(object):
         
 
         costs = np.zeros(nseeds)
-        fit_for_distance = self.fit_for_distance()
 
-        if fit_for_distance:
+        if self.fit_for_distance:
             pfits = np.zeros((nseeds,5))
         else:
             pfits = np.zeros((nseeds,3))
@@ -152,7 +153,7 @@ class StarModel(object):
         
         for i,m,age,feh,d,AV in zip(range(nseeds),
                                     m0,age0,feh0,d0,AV0):
-                if fit_for_distance:
+                if self.fit_for_distance:
                     pfit = scipy.optimize.fmin(fn,[m,age,feh,d,AV],disp=False)
                 else:
                     pfit = scipy.optimize.fmin(fn,[m,age,feh],disp=False)
@@ -192,8 +193,8 @@ class StarModel(object):
         -------
         None, but defines self.sampler that holds the results of fit.
         """
-        fit_for_distance = self.fit_for_distance()
-        if fit_for_distance:
+
+        if self.fit_for_distance:
             npars = 5
             if initial_burn is None:
                 initial_burn = True
@@ -206,7 +207,7 @@ class StarModel(object):
             m0,age0,feh0 = self.ic.random_points(nwalkers)
             d0 = np.sqrt(rand.uniform(1,1e6,size=nwalkers))
             AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
-            if fit_for_distance:
+            if self.fit_for_distance:
                 p0 = np.array([m0,age0,feh0,d0,AV0]).T
             else:
                 p0 = np.array([m0,age0,feh0]).T
@@ -221,7 +222,7 @@ class StarModel(object):
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
-            if fit_for_distance:
+            if self.fit_for_distance:
                 p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
         
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
@@ -229,7 +230,36 @@ class StarModel(object):
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
         
-        self.sampler = sampler
+        self._sampler = sampler
+
+    @property
+    def sampler(self):
+        if hasattr(self,'_sampler'):
+            return self._sampler
+        else:
+            return AttributeError('MCMC must be run to access sampler')
+
+    @property
+    def samples(self):
+        """Dataframe with samples drawn from isochrone according to posterior
+        """
+        if not hasattr(self,'sampler'):
+            raise AttributeError('Must run MCMC before accessing samples')
+        
+        mass = self.sampler.flatchain[:,0]
+        age = self.sampler.flatchain[:,1]
+        feh = self.sampler.flatchain[:,2]
+
+        return self.ic(mass, age, feh)
+        
+    def random_samples(self, n):
+        samples = self.samples
+        inds = rand.randint(len(samples),size=n)
+
+        newsamples = samples.iloc[inds]
+        newsamples.reset_index(inplace=True)
+        return newsamples
+
 
     def prop_samples(self,prop,return_values=True,conf=0.683):
         """Returns samples of given property, based on MCMC sampling

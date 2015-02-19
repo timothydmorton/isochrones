@@ -1,4 +1,4 @@
-__version__ = '0.4-beta'
+__version__ = '0.5-beta'
 
 try:
     __ISOCHRONES_SETUP__
