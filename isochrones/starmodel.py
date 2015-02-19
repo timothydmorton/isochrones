@@ -243,14 +243,18 @@ class StarModel(object):
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
         """
-        if not hasattr(self,'sampler'):
-            raise AttributeError('Must run MCMC before accessing samples')
+        if not hasattr(self,'sampler') and not hasattr(self, '_samples'):
+            raise AttributeError('Must run MCMC (or load from file) before accessing samples')
         
-        mass = self.sampler.flatchain[:,0]
-        age = self.sampler.flatchain[:,1]
-        feh = self.sampler.flatchain[:,2]
+        try:
+            return self._samples
 
-        return self.ic(mass, age, feh)
+        except AttributeError:
+            mass = self.sampler.flatchain[:,0]
+            age = self.sampler.flatchain[:,1]
+            feh = self.sampler.flatchain[:,2]
+            
+            return self.ic(mass, age, feh)
         
     def random_samples(self, n):
         samples = self.samples
@@ -267,9 +271,7 @@ class StarModel(object):
         Parameters
         ----------
         prop : str
-            Desired property. Options are 'mass', 'radius', 'age',
-            'logg', 'logL', 'Teff', 'feh', 'distance', 'AV',
-            or any valid passband name for `self.ic` (`Isochrone` object).
+            Desired property. Options are any valid property of `self.ic`.
             If MCMC hasn't been run, a call to this function will run MCMC.
             'distance' and 'AV' will only work if magnitudes are provided
             as properties.
@@ -279,24 +281,7 @@ class StarModel(object):
         chain : array
             Posterior sampling of given property.
         """
-        if not hasattr(self,'sampler'):
-            self.fit_mcmc()
-
-        if prop=='age':
-            samples = self.sampler.flatchain[:,1]
-        elif prop=='feh':
-            samples = self.sampler.flatchain[:,2]
-        elif prop=='distance':
-            samples = self.sampler.flatchain[:,3]
-        elif prop=='AV':
-            samples = self.sampler.flatchain[:,4]
-        else:           
-            if prop in self.ic.bands:
-                fn = self.ic.mag[prop]
-            else:
-                fn = getattr(self.ic,prop)
-
-            samples = fn(self.sampler.flatchain[:,:3]) #excluding dist,A_V if present
+        samples = self.samples[prop]
         
         if return_values:
             sorted = np.sort(samples)
@@ -340,6 +325,47 @@ class StarModel(object):
             med,lo,hi = stats
             plt.annotate('$%.2f^{+%.2f}_{-%.2f}$' % (med,hi,lo),
                          xy=(0.7,0.8),xycoords='axes fraction',fontsize=20)
+
+    def save_hdf(self, filename, path='', overwrite=False, append=False):
+        """Saves object data to HDF file (only works if MCMC is run)
+        """
+        
+        if os.path.exists(filename):
+            store = pd.HDFStore(filename)
+            if path in store:
+                store.close()
+                if overwrite:
+                    os.remove(filename)
+                elif not append:
+                    raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
+            else:
+                store.close()
+
+        self.samples.to_hdf(filename, '{}/samples'.format(path))
+
+        store = pd.HDFStore(filename)
+        attrs = store.get_storer('{}/samples'.format(path)).attrs
+        attrs.properties = self.properties
+        attrs.ic_type = type(self.ic)
+        attrs.maxAV = self.maxAV
+        store.close()
+
+    @classmethod
+    def load_hdf(cls, filename, path=''):
+
+        store = pd.HDFStore(filename)
+        samples = store['{}/samples'.format(path)]
+        attrs = store.get_storer('{}/samples'.format(path)).attrs        
+        properties = attrs.properties
+        maxAV = attrs.maxAV
+        ic_type = attrs.ic_type
+        store.close()
+
+        ic = ic_type()
+        mod = cls(ic, maxAV=maxAV, **properties)
+        mod._samples = samples
+        return mod
+
 
 def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     C = (1+alpha)/(maxmass**(1+alpha)-minmass**(1+alpha))
