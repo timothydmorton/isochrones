@@ -1,5 +1,7 @@
+from __future__ import print_function, division
 import os,os.path
 import numpy as np
+import pandas as pd
 import numpy.random as rand
 import emcee
 import scipy.optimize
@@ -56,6 +58,7 @@ class StarModel(object):
             if arg in self.properties:
                 del self.properties[arg]
     
+    @property
     def fit_for_distance(self):
         for prop in self.properties.keys():
             if prop in self.ic.bands:
@@ -88,7 +91,7 @@ class StarModel(object):
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
-        if fit_for_distance:
+        if self.fit_for_distance:
             if dist < 0 or AV < 0:
                 return -np.inf
             if AV > self.maxAV:
@@ -114,7 +117,6 @@ class StarModel(object):
 
         logl += np.log(salpeter_prior(mass)) #IMF prior
         
-        #print('{:.2f} {:.2f} {:.2f}: {:.4g}'.format(mass,age,feh,logl))
 
         return logl
 
@@ -140,9 +142,8 @@ class StarModel(object):
         
 
         costs = np.zeros(nseeds)
-        fit_for_distance = self.fit_for_distance()
 
-        if fit_for_distance:
+        if self.fit_for_distance:
             pfits = np.zeros((nseeds,5))
         else:
             pfits = np.zeros((nseeds,3))
@@ -152,7 +153,7 @@ class StarModel(object):
         
         for i,m,age,feh,d,AV in zip(range(nseeds),
                                     m0,age0,feh0,d0,AV0):
-                if fit_for_distance:
+                if self.fit_for_distance:
                     pfit = scipy.optimize.fmin(fn,[m,age,feh,d,AV],disp=False)
                 else:
                     pfit = scipy.optimize.fmin(fn,[m,age,feh],disp=False)
@@ -192,8 +193,8 @@ class StarModel(object):
         -------
         None, but defines self.sampler that holds the results of fit.
         """
-        fit_for_distance = self.fit_for_distance()
-        if fit_for_distance:
+
+        if self.fit_for_distance:
             npars = 5
             if initial_burn is None:
                 initial_burn = True
@@ -206,7 +207,7 @@ class StarModel(object):
             m0,age0,feh0 = self.ic.random_points(nwalkers)
             d0 = np.sqrt(rand.uniform(1,1e6,size=nwalkers))
             AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
-            if fit_for_distance:
+            if self.fit_for_distance:
                 p0 = np.array([m0,age0,feh0,d0,AV0]).T
             else:
                 p0 = np.array([m0,age0,feh0]).T
@@ -221,7 +222,7 @@ class StarModel(object):
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
-            if fit_for_distance:
+            if self.fit_for_distance:
                 p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
         
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
@@ -229,7 +230,53 @@ class StarModel(object):
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
         
-        self.sampler = sampler
+        self._sampler = sampler
+
+    @property
+    def sampler(self):
+        if hasattr(self,'_sampler'):
+            return self._sampler
+        else:
+            return AttributeError('MCMC must be run to access sampler')
+
+    @property
+    def samples(self):
+        """Dataframe with samples drawn from isochrone according to posterior
+        """
+        if not hasattr(self,'sampler') and not hasattr(self, '_samples'):
+            raise AttributeError('Must run MCMC (or load from file) before accessing samples')
+        
+        try:
+            return self._samples
+
+        except AttributeError:
+            mass = self.sampler.flatchain[:,0]
+            age = self.sampler.flatchain[:,1]
+            feh = self.sampler.flatchain[:,2]
+            
+            if self.fit_for_distance:
+                distance = self.sampler.flatchain[:,3]
+                AV = self.sampler.flatchain[:,4]
+            
+            df = self.ic(mass, age, feh)
+            df['age'] = age
+            df['feh'] = feh
+            
+            if self.fit_for_distance:
+                df['distance'] = distance
+                df['AV'] = AV
+                
+            self._samples = df
+            return df
+
+    def random_samples(self, n):
+        samples = self.samples
+        inds = rand.randint(len(samples),size=n)
+
+        newsamples = samples.iloc[inds]
+        newsamples.reset_index(inplace=True)
+        return newsamples
+
 
     def prop_samples(self,prop,return_values=True,conf=0.683):
         """Returns samples of given property, based on MCMC sampling
@@ -237,9 +284,7 @@ class StarModel(object):
         Parameters
         ----------
         prop : str
-            Desired property. Options are 'mass', 'radius', 'age',
-            'logg', 'logL', 'Teff', 'feh', 'distance', 'AV',
-            or any valid passband name for `self.ic` (`Isochrone` object).
+            Desired property. Options are any valid property of `self.ic`.
             If MCMC hasn't been run, a call to this function will run MCMC.
             'distance' and 'AV' will only work if magnitudes are provided
             as properties.
@@ -249,24 +294,7 @@ class StarModel(object):
         chain : array
             Posterior sampling of given property.
         """
-        if not hasattr(self,'sampler'):
-            self.fit_mcmc()
-
-        if prop=='age':
-            samples = self.sampler.flatchain[:,1]
-        elif prop=='feh':
-            samples = self.sampler.flatchain[:,2]
-        elif prop=='distance':
-            samples = self.sampler.flatchain[:,3]
-        elif prop=='AV':
-            samples = self.sampler.flatchain[:,4]
-        else:           
-            if prop in self.ic.bands:
-                fn = self.ic.mag[prop]
-            else:
-                fn = getattr(self.ic,prop)
-
-            samples = fn(self.sampler.flatchain[:,:3]) #excluding dist,A_V if present
+        samples = self.samples[prop]
         
         if return_values:
             sorted = np.sort(samples)
@@ -310,6 +338,47 @@ class StarModel(object):
             med,lo,hi = stats
             plt.annotate('$%.2f^{+%.2f}_{-%.2f}$' % (med,hi,lo),
                          xy=(0.7,0.8),xycoords='axes fraction',fontsize=20)
+
+    def save_hdf(self, filename, path='', overwrite=False, append=False):
+        """Saves object data to HDF file (only works if MCMC is run)
+        """
+        
+        if os.path.exists(filename):
+            store = pd.HDFStore(filename)
+            if path in store:
+                store.close()
+                if overwrite:
+                    os.remove(filename)
+                elif not append:
+                    raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
+            else:
+                store.close()
+
+        self.samples.to_hdf(filename, '{}/samples'.format(path))
+
+        store = pd.HDFStore(filename)
+        attrs = store.get_storer('{}/samples'.format(path)).attrs
+        attrs.properties = self.properties
+        attrs.ic_type = type(self.ic)
+        attrs.maxAV = self.maxAV
+        store.close()
+
+    @classmethod
+    def load_hdf(cls, filename, path=''):
+
+        store = pd.HDFStore(filename)
+        samples = store['{}/samples'.format(path)]
+        attrs = store.get_storer('{}/samples'.format(path)).attrs        
+        properties = attrs.properties
+        maxAV = attrs.maxAV
+        ic_type = attrs.ic_type
+        store.close()
+
+        ic = ic_type()
+        mod = cls(ic, maxAV=maxAV, **properties)
+        mod._samples = samples
+        return mod
+
 
 def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     C = (1+alpha)/(maxmass**(1+alpha)-minmass**(1+alpha))

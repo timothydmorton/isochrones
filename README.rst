@@ -1,6 +1,5 @@
 isochrones
 ==========
-
 Provides simple interface for interacting with stellar model grids.  The guts of this code is a 3-d linear interpolation in mass, age, Fe/H space.  That is, the model predicts the various properties as functions of these inputs.
 
 Basic usage::

@@ -114,7 +114,8 @@ class Isochrone(object):
 
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
         
-    def __call__(self,mass,age,feh,return_df=True, bands=None):
+    def __call__(self, mass, age, feh, 
+                 return_df=True, bands=None):
         """returns properties (or arrays of properties) at given mass, age, feh
 
         Parameters
@@ -156,7 +157,8 @@ class Isochrone(object):
                 df = pd.DataFrame(d, index=[0])
             return df
 
-    def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02):
+    def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02,
+                return_df=True):
         """Returns evolution track for a single initial mass and feh
 
         Parameters
@@ -193,10 +195,28 @@ class Isochrone(object):
         Teffs = self.Teff(m,ages,feh)
         mags = {band:self.mag[band](m,ages,feh) for band in self.bands}
 
-        return {'age':ages,'mass':Ms,'radius':Rs,'logL':logLs,
+        props = {'age':ages,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs, 'Teff':Teffs, 'mag':mags}
+
+        if not return_df:
+            return props
+        else:
+            d = {}
+            for key in props.keys():
+                if key=='mag':
+                    for m in props['mag'].keys():
+                        d['{}_mag'.format(m)] = props['mag'][m]
+                else:
+                    d[key] = props[key]
+            try:
+                df = pd.DataFrame(d)
+            except ValueError:
+                df = pd.DataFrame(d, index=[0])
+            return df
+
             
-    def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02):
+    def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
+                  return_df=True):
         """Returns stellar models evaluated at a constant age and feh, for a range of masses
 
         Parameters
@@ -237,9 +257,26 @@ class Isochrone(object):
         #for band in self.bands:
         #    mags[band] = self.mag[band](ms,ages)
 
-        return {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
+        props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}        
         
+        if not return_df:
+            return props
+        else:
+            d = {}
+            for key in props.keys():
+                if key=='mag':
+                    for m in props['mag'].keys():
+                        d['{}_mag'.format(m)] = props['mag'][m]
+                else:
+                    d[key] = props[key]
+            try:
+                df = pd.DataFrame(d)
+            except ValueError:
+                df = pd.DataFrame(d, index=[0])
+            return df
+       
+
     def random_points(self,n,minmass=None,maxmass=None,
                       minage=None,maxage=None,
                       minfeh=None,maxfeh=None):
