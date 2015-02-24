@@ -254,9 +254,19 @@ class StarModel(object):
             age = self.sampler.flatchain[:,1]
             feh = self.sampler.flatchain[:,2]
             
+            if self.fit_for_distance:
+                distance = self.sampler.flatchain[:,3]
+                AV = self.sampler.flatchain[:,4]
+            
             df = self.ic(mass, age, feh)
             df['age'] = age
             df['feh'] = feh
+            
+            if self.fit_for_distance:
+                df['distance'] = distance
+                df['AV'] = AV
+                
+            self._samples = df
             return df
 
     def random_samples(self, n):
