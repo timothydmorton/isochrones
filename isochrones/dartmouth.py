@@ -1,5 +1,5 @@
 from __future__ import division,print_function
-import os,os.path,re
+import os,os.path
 import numpy as np
 import pkg_resources
 
@@ -44,20 +44,15 @@ MASTERDF = pd.read_hdf(MASTERFILE,'df')
 class Dartmouth_Isochrone(Isochrone):
     """Dotter (2008) Stellar Models
     """
-    def __init__(self,bands=['U','B','V','R','I','J','H',
-                             'K','g','r','i','z','Kepler','D51',
-                             'W1','W2','W3','W4']):
+    def __init__(self,bands=['U','B','V','R','I','J','H','K','g','r','i','z','Kepler','D51']):
 
         df = MASTERDF
 
         mags = {}
         for band in bands:
             try:
-                if band in ['g','r','i','z']:
-                    mags[band] = df['sdss_{}'.format(band)]                
-                else:
-                    mags[band] = df[band]
-            except KeyError:
+                mags[band] = df[band]
+            except:
                 if band == 'kep' or band == 'Kepler':
                     mags[band] = df['Kp']
                 elif band == 'K':
@@ -69,9 +64,9 @@ class Dartmouth_Isochrone(Isochrone):
         tri = pickle.load(f)
         f.close()
         
-        Isochrone.__init__(self,df['M/Mo'],np.log10(df['age']*1e9),
-                           df['feh'],df['M/Mo'],df['LogL/Lo'],
-                           10**df['LogTeff'],df['LogG'],mags,tri=tri)
+        Isochrone.__init__(self,df['M'],np.log10(df['age']*1e9),
+                           df['feh'],df['M'],df['logL'],
+                           10**df['logTeff'],df['logg'],mags,tri=tri)
 
 
 ############ utility functions used to set up data sets from original isochrone data files ########
@@ -85,7 +80,7 @@ def write_tri(df=MASTERDF, outfile=TRI_FILE):
     """
     N = len(df)
     pts = np.zeros((N,3))
-    pts[:,0] = np.array(df['M/Mo']) #changed
+    pts[:,0] = np.array(df['M'])
     pts[:,1] = np.log10(np.array(df['age'])*1e9)
     pts[:,2] = np.array(df['feh'])
     Jmags = np.array(df['J'])
