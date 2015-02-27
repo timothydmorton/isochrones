@@ -117,6 +117,12 @@ class StarModel(object):
 
         logl += np.log(salpeter_prior(mass)) #IMF prior
         
+        #prior to sample ages with linear prior
+        a0 = 10**self.ic.minage
+        a1 = 10**self.ic.maxage
+        da = a1-a0
+        a = 10**age
+        logl += np.log(a/(a1-a0))
 
         return logl
 
