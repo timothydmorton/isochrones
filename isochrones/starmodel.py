@@ -243,7 +243,7 @@ class StarModel(object):
         if hasattr(self,'_sampler'):
             return self._sampler
         else:
-            return AttributeError('MCMC must be run to access sampler')
+            raise AttributeError('MCMC must be run to access sampler')
 
     @property
     def samples(self):
