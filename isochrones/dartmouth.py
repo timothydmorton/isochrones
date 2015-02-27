@@ -10,7 +10,8 @@ import pickle
 from .isochrones import Isochrone
 
 #DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-DATADIR = os.path.expanduser('~/.isochrones')
+DATADIR = os.getenv('ISOCHRONES',
+                    os.path.expanduser(os.path.join('~','.isochrones')))
 if not os.path.exists(DATADIR):
     os.mkdir(DATADIR)
 
