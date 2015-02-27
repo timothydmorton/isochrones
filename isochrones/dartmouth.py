@@ -44,14 +44,19 @@ MASTERDF = pd.read_hdf(MASTERFILE,'df')
 class Dartmouth_Isochrone(Isochrone):
     """Dotter (2008) Stellar Models
     """
-    def __init__(self,bands=['U','B','V','R','I','J','H','K','g','r','i','z','Kepler','D51']):
+    def __init__(self,bands=['U','B','V','R','I','J','H',
+                             'K','g','r','i','z','Kepler','D51',
+                             'W1','W2','W3','W4']):
 
         df = MASTERDF
 
         mags = {}
         for band in bands:
             try:
-                mags[band] = df[band]
+                if band in ['g','r','i','z']:
+                    mags[band] = df['sdss_{}'.format(band)]
+                else:
+                    mags[band] = df[band]
             except:
                 if band == 'kep' or band == 'Kepler':
                     mags[band] = df['Kp']
@@ -64,9 +69,9 @@ class Dartmouth_Isochrone(Isochrone):
         tri = pickle.load(f)
         f.close()
         
-        Isochrone.__init__(self,df['M'],np.log10(df['age']*1e9),
-                           df['feh'],df['M'],df['logL'],
-                           10**df['logTeff'],df['logg'],mags,tri=tri)
+        Isochrone.__init__(self,df['M/Mo'],np.log10(df['age']*1e9),
+                           df['feh'],df['M/Mo'],df['LogL/Lo'],
+                           10**df['LogTeff'],df['LogG'],mags,tri=tri)
 
 
 ############ utility functions used to set up data sets from original isochrone data files ########
