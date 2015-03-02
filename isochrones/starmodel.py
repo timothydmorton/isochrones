@@ -223,6 +223,10 @@ class StarModel(object):
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
                 wokinds = np.where(sampler.naccepted/ninitial > 0.15)[0]
+                i=1
+                while len(wokinds)==0:
+                    thresh = 0.15 - i*0.02
+                    wokinds = np.where(sampler.naccepted/ninitial > thresh)[0]
                 inds = rand.randint(len(wokinds),size=nwalkers)
                 p0 = sampler.chain[wokinds[inds],:,:].mean(axis=1) #reset p0
         else:
