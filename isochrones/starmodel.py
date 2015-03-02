@@ -226,7 +226,10 @@ class StarModel(object):
                 i=1
                 while len(wokinds)==0:
                     thresh = 0.15 - i*0.02
+                    if thresh < 0:
+                        raise RuntimeError('Initial burn has no acceptance?')
                     wokinds = np.where(sampler.naccepted/ninitial > thresh)[0]
+                    i += 1
                 inds = rand.randint(len(wokinds),size=nwalkers)
                 p0 = sampler.chain[wokinds[inds],:,:].mean(axis=1) #reset p0
         else:
@@ -396,3 +399,4 @@ def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
         return 0
     else:
         return C*m**(alpha)
+
