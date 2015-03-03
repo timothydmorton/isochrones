@@ -44,15 +44,18 @@ class StarModel(object):
     maxAV : float
         Maximum allowed extinction (i.e. the extinction @ infinity in direction of star)
 
+    max_distance : float
+        Maximum allowed distance (pc).
+
     kwargs
         Keyword arguments must be properties of given isochrone, e.g.,
         logg, feh, Teff, and/or magnitudes.  The values represent measurements of
         the star, and must be in (value,error) format.
     """
-    def __init__(self,ic,maxAV=1,**kwargs):
+    def __init__(self,ic,maxAV=1,max_distance=1000,**kwargs):
         self.ic = ic
         self.properties = kwargs
-
+        self.max_distance = max_distance
         self.maxAV = maxAV
 
     def add_props(self,**kwargs):
@@ -98,7 +101,7 @@ class StarModel(object):
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
         if self.fit_for_distance:
-            if dist < 0 or AV < 0:
+            if dist < 0 or AV < 0 or dist > self.max_distance:
                 return -np.inf
             if AV > self.maxAV:
                 return -np.inf
@@ -121,8 +124,12 @@ class StarModel(object):
         if np.isnan(logl):
             logl = -np.inf
 
-        logl += np.log(salpeter_prior(mass)) #IMF prior
+        #IMF prior
+        logl += np.log(salpeter_prior(mass))
         
+        #distance prior?
+        
+
         ##prior to sample ages with linear prior
         #a0 = 10**self.ic.minage
         #a1 = 10**self.ic.maxage
@@ -203,7 +210,7 @@ class StarModel(object):
 
         Returns
         -------
-        None, but defines self.sampler that holds the results of fit.
+        sampler 
         """
 
         if self.fit_for_distance:
@@ -217,7 +224,8 @@ class StarModel(object):
 
         if p0 is None:
             m0,age0,feh0 = self.ic.random_points(nwalkers)
-            d0 = np.sqrt(rand.uniform(1,1e6,size=nwalkers))
+            #d0 = np.sqrt(rand.uniform(1,self.max_distance**2,size=nwalkers))
+            d0 = rand.uniform(1,self.max_distance,size=nwalkers)
             AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
             if self.fit_for_distance:
                 p0 = np.array([m0,age0,feh0,d0,AV0]).T
@@ -228,16 +236,19 @@ class StarModel(object):
                                                 threads=threads)
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
-                wokinds = np.where(sampler.naccepted/ninitial > 0.15)[0]
+                wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
+                                   (sampler.naccepted/ninitial < 0.4))[0]
                 i=1
                 while len(wokinds)==0:
                     thresh = 0.15 - i*0.02
                     if thresh < 0:
                         raise RuntimeError('Initial burn has no acceptance?')
-                    wokinds = np.where(sampler.naccepted/ninitial > thresh)[0]
+                    wokinds = np.where((sampler.naccepted/ninitial > thresh) &
+                                       (sampler.naccepted/ninitial < 0.4))[0]
                     i += 1
                 inds = rand.randint(len(wokinds),size=nwalkers)
                 p0 = sampler.chain[wokinds[inds],:,:].mean(axis=1) #reset p0
+                p0 *= (1 + rand.normal(size=p0.shape)*0.01)
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
@@ -250,8 +261,10 @@ class StarModel(object):
         sampler.run_mcmc(pos, niter, rstate0=state)
         
         self._sampler = sampler
+        return sampler
 
-    def triangle(self, params=None, **kwargs):
+    def triangle(self, params=None, query=None,
+                 **kwargs):
         if triangle is None:
             raise ImportError('please run "pip install triangle_plot".')
         
@@ -262,6 +275,8 @@ class StarModel(object):
                 params = ['mass', 'age', 'feh']
 
         df = self.samples
+        if query is not None:
+            df = df.query(query)
         triangle.corner(df[params], labels=params, **kwargs)
 
 
@@ -394,21 +409,28 @@ class StarModel(object):
         attrs.properties = self.properties
         attrs.ic_type = type(self.ic)
         attrs.maxAV = self.maxAV
+        attrs.max_distance = self.max_distance
         store.close()
 
     @classmethod
     def load_hdf(cls, filename, path=''):
 
         store = pd.HDFStore(filename)
-        samples = store['{}/samples'.format(path)]
-        attrs = store.get_storer('{}/samples'.format(path)).attrs        
+        try:
+            samples = store['{}/samples'.format(path)]
+            attrs = store.get_storer('{}/samples'.format(path)).attrs        
+        except:
+            store.close()
+            raise
         properties = attrs.properties
         maxAV = attrs.maxAV
+        max_distance = attrs.max_distance
         ic_type = attrs.ic_type
         store.close()
 
         ic = ic_type()
-        mod = cls(ic, maxAV=maxAV, **properties)
+        mod = cls(ic, maxAV=maxAV, max_distance=max_distance,
+                  **properties)
         mod._samples = samples
         return mod
 
