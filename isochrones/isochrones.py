@@ -157,6 +157,12 @@ class Isochrone(object):
                 df = pd.DataFrame(d, index=[0])
             return df
 
+    def agerange(self, m, feh=0.0):
+        ages = np.arange(self.minage, self.maxage, 0.01)
+        rs = self.radius(m, ages, feh)
+        w = np.where(np.isfinite(rs))[0]
+        return ages[w[0]],ages[w[-1]]
+
     def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02,
                 return_df=True):
         """Returns evolution track for a single initial mass and feh
@@ -276,7 +282,6 @@ class Isochrone(object):
                 df = pd.DataFrame(d, index=[0])
             return df
        
-
     def random_points(self,n,minmass=None,maxmass=None,
                       minage=None,maxage=None,
                       minfeh=None,maxfeh=None):

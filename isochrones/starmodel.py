@@ -9,6 +9,12 @@ import scipy.optimize
 from plotutils.plotutils import setfig
 import matplotlib.pyplot as plt
 
+try:
+    import triangle
+except ImportError:
+    triangle = None
+
+
 DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
 #Read data defining extinction in different bands (relative to A_V)
@@ -244,6 +250,20 @@ class StarModel(object):
         sampler.run_mcmc(pos, niter, rstate0=state)
         
         self._sampler = sampler
+
+    def triangle(self, params=None, **kwargs):
+        if triangle is None:
+            raise ImportError('please run "pip install triangle_plot".')
+        
+        if params is None:
+            if self.fit_for_distance:
+                params = ['mass', 'age', 'feh', 'distance', 'AV']
+            else:
+                params = ['mass', 'age', 'feh']
+
+        df = self.samples
+        triangle.corner(df[params], labels=params, **kwargs)
+
 
     @property
     def sampler(self):
