@@ -277,8 +277,14 @@ class StarModel(object):
         df = self.samples
         if query is not None:
             df = df.query(query)
-        triangle.corner(df[params], labels=params, **kwargs)
+        return triangle.corner(df[params], labels=params, **kwargs)
 
+
+    def prop_triangle(self, **kwargs):
+        truths = [self.properties[p][0] for prop in self.properties]
+        params = [p for p in self.properties]
+        return self.triangle(params, truths=truths, **kwargs)
+        
 
     @property
     def sampler(self):
