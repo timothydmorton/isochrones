@@ -263,7 +263,19 @@ class StarModel(object):
         self._sampler = sampler
         return sampler
 
-    def triangle(self, params=None, query=None,
+    def triangle_plots(self, basename=None, **kwargs):
+        fig1 = self.triangle(plot_datapoints=False,
+                            params=['Teff','feh','mass','radius'])
+        if basename is not None:
+            plt.savefig('{}_physical.png'.format(basename))
+            plt.close()
+        fig2 = self.prop_triangle()
+        if basename is not None:
+            plt.savefig('{}_observed.png'.format(basename))
+            plt.close()
+        return fig1, fig2
+
+    def triangle(self, params=None, query=None, extent=0.99,
                  **kwargs):
         if triangle is None:
             raise ImportError('please run "pip install triangle_plot".')
@@ -277,12 +289,22 @@ class StarModel(object):
         df = self.samples
         if query is not None:
             df = df.query(query)
-        return triangle.corner(df[params], labels=params, **kwargs)
+
+        extents = [extent for foo in params]
+
+        return triangle.corner(df[params], labels=params, 
+                               extents=extents, **kwargs)
 
 
     def prop_triangle(self, **kwargs):
-        truths = [self.properties[p][0] for prop in self.properties]
-        params = [p for p in self.properties]
+        truths = []
+        params = []
+        for p in self.properties:
+            if p in self.ic.bands:
+                params.append('{}_mag'.format(p))
+            else:
+                params.append(p)
+            truths.append(self.properties[p][0])
         return self.triangle(params, truths=truths, **kwargs)
         
 
@@ -301,7 +323,7 @@ class StarModel(object):
             raise AttributeError('Must run MCMC (or load from file) before accessing samples')
         
         try:
-            return self._samples
+            df = self._samples.copy()
 
         except AttributeError:
             mass = self.sampler.flatchain[:,0]
@@ -320,8 +342,14 @@ class StarModel(object):
                 df['distance'] = distance
                 df['AV'] = AV
                 
-            self._samples = df
-            return df
+            self._samples = df.copy()
+
+        if self.fit_for_distance:
+            dm = 5*np.log10(df['distance']) - 5
+            for b in self.ic.bands:
+                df['{}_mag'.format(b)] += dm
+
+        return df
 
     def random_samples(self, n):
         samples = self.samples
