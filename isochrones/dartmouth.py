@@ -19,7 +19,8 @@ MASTERFILE = '{}/dartmouth.h5'.format(DATADIR)
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
 def _download_h5():
-    url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
+    #url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
+    url = 'http://zenodo.org/record/15843/files/dartmouth.h5'
     import urllib
     print('Downloading Dartmouth stellar model data (should happen only once)...')
     if os.path.exists(MASTERFILE):
@@ -27,7 +28,8 @@ def _download_h5():
     urllib.urlretrieve(url,MASTERFILE)
 
 def _download_tri():
-    url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
+    #url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
+    url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
     import urllib
     print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...)')
     if os.path.exists(TRI_FILE):
