@@ -7,3 +7,5 @@ except NameError:
 
 if not __ISOCHRONES_SETUP__:
     __all__ = ['dartmouth','basti','padova']
+    from .starmodel import StarModel
+     
