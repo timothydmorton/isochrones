@@ -75,5 +75,4 @@ errors) may also be included among the keyword arguments.
 If apparent magnitudes are included among the properties, then a call
 to :func:`StarModel.fit_mcmc` will fit for distance and extinction as
 well as mass, age, and [Fe/H].  In this case, it is encouraged to set
-the ``maxAV`` and ``max_distance`` arguments to something appropriate,
-which will set the maximum allowed values for those parameters.
+the ``maxAV`` and ``max_distance`` arguments to appropriate values.
