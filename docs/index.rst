@@ -5,7 +5,7 @@ isochrones
 often done with stellar model grids, such as simulating synthetic
 stellar populations or estimating the physical properties of a star
 given photometric or spectroscopic observations.  The guts of this
-code is a 3-d linear interpolation in mass, age, Fe/H space. That is,
+code is a 3-d linear interpolation in mass--age--[Fe/H] space. That is,
 the model predicts the various properties as functions of these
 inputs.
 
@@ -60,12 +60,20 @@ object---or more specifically, it contains both the samples generated
 directly from the chain and the corresponding values of all the model
 properties (e.g. radius, synthetic photometry, etc.) evaluated at each
 chain link.  If you have installed the handy `triangle
-<https://github.com/dfm/triangle.py>`_ module installed, you can also
+<https://github.com/dfm/triangle.py>`_ module, you can also
 visualize the results:
 
 .. code-block:: python
 
    model.triangle()
 
+Note that a :class:`StarModel` can be initialized with any arguments
+that correspond to properties predicted by the model grids---that is,
+in addition to spectroscopic properties, apparent magnitudes (and
+errors) may also be included among the keyword arguments.
 
-    
+If apparent magnitudes are included among the properties, then a call
+to :func:`StarModel.fit_mcmc` will fit for distance and extinction as
+well as mass, age, and [Fe/H].  In this case, it is encouraged to set
+the ``maxAV`` and ``max_distance`` arguments to something appropriate,
+which will set the maximum allowed values for those parameters.
