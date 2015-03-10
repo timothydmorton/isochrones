@@ -4,10 +4,15 @@ isochrones
 ``isochrones`` is a package built to simplify common tasks that are
 often done with stellar model grids, such as simulating synthetic
 stellar populations or estimating the physical properties of a star
-given photometric or spectroscopic observations.  While it comes
-packaged with three different model grids (Padova, BASTI, and
-Dartmouth), it can be easily extended to a user-defined grid.  It uses
-`emcee <http://dan.iel.fm/emcee/current/>`_ for MCMC sampling.
+given photometric or spectroscopic observations.  The guts of this
+code is a 3-d linear interpolation in mass, age, Fe/H space. That is,
+the model predicts the various properties as functions of these
+inputs.
+
+While ``isochrones`` comes packaged with three different model grids
+(Padova, BASTI, and Dartmouth), it can be easily extended to a
+user-defined grid.  It uses `emcee
+<http://dan.iel.fm/emcee/current/>`_ for MCMC sampling.
 
 Note that the first time you import any of the pre-packaged model
 grids, it will download the required data to a ``~/.isochrones``
