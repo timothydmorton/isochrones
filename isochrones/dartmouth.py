@@ -4,7 +4,12 @@ import numpy as np
 import pkg_resources
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    logging.warning('pandas not imported')
+    pd = None
+    
 import pickle
 
 from .isochrone import Isochrone
@@ -48,8 +53,11 @@ if not os.path.exists(MASTERFILE):
 if not os.path.exists(TRI_FILE):
     _download_tri()
 
-MASTERDF = pd.read_hdf(MASTERFILE,'df')
-
+if pd is not None:
+    MASTERDF = pd.read_hdf(MASTERFILE,'df')
+else:
+    MASTERDF = None
+    
 class Dartmouth_Isochrone(Isochrone):
     """Dotter (2008) Stellar Models, at solar a/Fe and He abundances.
 
