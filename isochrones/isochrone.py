@@ -7,21 +7,34 @@ __author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
 """
 
 import numpy as np
-import pandas as pd
 import os,sys,re,os.path
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
 import numpy.random as rand
 
-from astropy import constants as const
+try:
+    from astropy import constants as const
 
+    #Define useful constants
+    G = const.G.cgs.value
+    MSUN = const.M_sun.cgs.value
+    RSUN = const.R_sun.cgs.value
+except ImportError:
+    G = 6.67e-11
+    MSUN = 1.99e33
+    RSUN = 6.96e10
+    
 import matplotlib.pyplot as plt
-from plotutils.plotutils import setfig
 
-#Define useful constants
-G = const.G.cgs.value
-MSUN = const.M_sun.cgs.value
-RSUN = const.R_sun.cgs.value
+try:
+    from plotutils.plotutils import setfig
+except ImportError:
+    setfig = None
 
 
 
