@@ -7,7 +7,7 @@ from scipy.interpolate import LinearNDInterpolator as interpnd
 import pandas as pd
 import pickle
 
-from .isochrones import Isochrone
+from .isochrone import Isochrone
 
 #DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 DATADIR = os.path.expanduser('~/.isochrones')
