@@ -91,13 +91,14 @@ class StarModel(object):
         """Log-likelihood of model at given parameters
 
         
-        :param p : 
+        :param p: 
             mass, log10(age), feh, [distance, A_V (extinction)].
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
 
-        Returns log-likelihood.  Will be -np.inf if values out of range.
+        :return:
+           log-likelihood.  Will be -np.inf if values out of range.
         
         """
         if len(p)==5:
@@ -157,9 +158,10 @@ class StarModel(object):
             Number of starting guesses, uniformly distributed throughout
             allowed ranges.  Default=50.
 
-        Returns list of best-fit parameters: [m,age,feh,[distance,A_V]].
-        Note that distance and A_V values will be meaningless unless
-        magnitudes are present in ``self.properties``.
+        :return:
+            list of best-fit parameters: ``[m,age,feh,[distance,A_V]]``.
+            Note that distance and A_V values will be meaningless unless
+            magnitudes are present in ``self.properties``.
         
         """
         m0,age0,feh0 = self.ic.random_points(nseeds)
@@ -190,35 +192,41 @@ class StarModel(object):
         return pfits[np.argmax(costs),:]
 
             
-    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,threads=1,
+    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
-                 ninitial=300):
+                 ninitial=100, **kwargs):
         """Fits stellar model using MCMC.
 
-        Parameters
-        ----------
-        nwalkers, nburn, niter, threads : int
-            Parameters to pass to emcee sampling for MCMC.
+        :param nwalkers: (optional)
+            Number of walkers to pass to :class:`emcee.EnsembleSampler`.
+            Default is 200.
 
-        p0 : array-like
+        :param nburn: (optional)
+            Number of iterations for "burn-in."  Default is 100.
+
+        :param niter: (optional)
+            Number of for-keeps iterations for MCMC chain.
+            Default is 200.
+
+        :param p0: (optional)
             Initial parameters for emcee.  If not provided, then chains
             will behave according to whether inital_burn is set.
 
-        initial_burn : bool or None, optional
+        :param initial_burn: (optional)
             If `True`, then initialize walkers first with a random initialization,
             then cull the walkers, keeping only those with > 15% acceptance
             rate, then reinitialize sampling.  If `False`, then just do
             normal burn-in.  Default is `None`, which will be set to `True` if
             fitting for distance (i.e., if there are apparent magnitudes as
             properties of the model), and `False` if not.
-
-        ninitial : int
+            
+        :param ninitial: (optional)
             Number of iterations to test walkers for acceptance rate before
             re-initializing.
-
-        Returns
-        -------
-        sampler 
+        
+        :return:
+            :class:`emcee.EnsembleSampler` object.
+            
         """
 
         if self.fit_for_distance:
@@ -232,7 +240,6 @@ class StarModel(object):
 
         if p0 is None:
             m0,age0,feh0 = self.ic.random_points(nwalkers)
-            #d0 = np.sqrt(rand.uniform(1,self.max_distance**2,size=nwalkers))
             d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nwalkers))
             AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
             if self.fit_for_distance:
@@ -241,7 +248,7 @@ class StarModel(object):
                 p0 = np.array([m0,age0,feh0]).T
             if initial_burn:
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,
-                                                threads=threads)
+                                                **kwargs)
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
                 wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
@@ -271,20 +278,62 @@ class StarModel(object):
         self._sampler = sampler
         return sampler
 
-    def triangle_plots(self, basename=None, **kwargs):
+    def triangle_plots(self, basename=None, format='png',
+                       **kwargs):
+        """Returns two triangle plots, one with physical params, one observational
+
+        :param basename:
+            If basename is provided, then plots will be saved as
+            "[basename]_physical.[format]" and "[basename]_observed.[format]"
+
+        :param format:
+            Format in which to save figures (e.g., 'png' or 'pdf')
+
+        :param **kwargs:
+            Additional keyword arguments passed to :func:`StarModel.triangle`
+            and :func:`StarModel.prop_triangle`
+
+        :return:
+             Returns two figure objects with the triangle plots: (physical, observed)
+        """
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass','radius','Teff','feh','age'])
+                            params=['mass','radius','Teff','feh','age'],
+                            **kwargs)
         if basename is not None:
-            plt.savefig('{}_physical.png'.format(basename))
+            plt.savefig('{}_physical.{}'.format(basename,format))
             plt.close()
-        fig2 = self.prop_triangle()
+        fig2 = self.prop_triangle(**kwargs)
         if basename is not None:
-            plt.savefig('{}_observed.png'.format(basename))
+            plt.savefig('{}_observed.{}'.format(basename,format))
             plt.close()
         return fig1, fig2
 
-    def triangle(self, params=None, query=None, extent=0.99,
+    def triangle(self, params=None, query=None, extent=0.999,
                  **kwargs):
+        """
+        Makes a nifty corner plot.
+
+        Uses :func:`triangle.corner`.
+
+        :param params: (optional)
+            Names of columns (from :attr:`StarModel.samples`)
+            to plot.  If ``None``, then it will plot samples
+            of the parameters used in the MCMC fit-- that is,
+            mass, age, [Fe/H], and optionally distance and A_V.
+
+        :param query: (optional)
+            Optional query on samples.
+
+        :param extent: (optional)
+            Will be appropriately passed to :func:`triangle.corner`.
+
+        :param **kwargs:
+            Additional keyword arguments passed to :func:`triangle.corner`.
+
+        :return:
+            Figure oject containing corner plot.
+            
+        """
         if triangle is None:
             raise ImportError('please run "pip install triangle_plot".')
         
@@ -305,6 +354,21 @@ class StarModel(object):
 
 
     def prop_triangle(self, **kwargs):
+        """
+        Makes corner plot of only observable properties.
+
+        The idea here is to compare the predictions of the samples
+        with the actual observed data---this can be a quick way to check
+        if there are outlier properties that aren't predicted well
+        by the model.
+
+        :param **kwargs:
+            Keyword arguments passed to :func:`StarModel.triangle`.
+
+        :return:
+            Figure object containing corner plot.
+         
+        """
         truths = []
         params = []
         for p in self.properties:
@@ -318,6 +382,9 @@ class StarModel(object):
 
     @property
     def sampler(self):
+        """
+        Sampler object from MCMC run.
+        """
         if hasattr(self,'_sampler'):
             return self._sampler
         else:
@@ -327,17 +394,24 @@ class StarModel(object):
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
 
-        Culls samples to have lnlike within 10 of max lnlike (hard-coded)
+        Culls samples to have lnlike within 20 of max lnlike (hard-coded).
+
+        Columns include both the sampling parameters from the MCMC
+        fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
+        of the :class:`Isochrone` at each of these sample points---this
+        is how chains of physical/observable parameters get produced.
+        
         """
         if not hasattr(self,'sampler') and not hasattr(self, '_samples'):
-            raise AttributeError('Must run MCMC (or load from file) before accessing samples')
+            raise AttributeError('Must run MCMC (or load from file) '+
+                                 'before accessing samples')
         
         try:
             df = self._samples.copy()
 
         except AttributeError:
             max_lnlike = self.sampler.flatlnprobability.max()
-            ok = self.sampler.flatlnprobability > (max_lnlike - 10)
+            ok = self.sampler.flatlnprobability > (max_lnlike - 20)
             
             mass = self.sampler.flatchain[:,0][ok]
             age = self.sampler.flatchain[:,1][ok]
@@ -365,6 +439,15 @@ class StarModel(object):
         return df
 
     def random_samples(self, n):
+        """
+        Returns a random sampling of given size from the existing samples.
+
+        :param n:
+            Number of samples
+
+        :return:
+            :class:`pandas.DataFrame` of length ``n`` with random samples.
+        """
         samples = self.samples
         inds = rand.randint(len(samples),size=n)
 
@@ -376,20 +459,25 @@ class StarModel(object):
     def prop_samples(self,prop,return_values=True,conf=0.683):
         """Returns samples of given property, based on MCMC sampling
 
-        Parameters
-        ----------
-        prop : str
-            Desired property. Options are any valid property of `self.ic`.
-            If MCMC hasn't been run, a call to this function will run MCMC.
-            'distance' and 'AV' will only work if magnitudes are provided
-            as properties.
+        :param prop:
+            Name of desired property.  Must be column of ``self.samples``.
 
-        Returns
-        -------
-        chain : array
-            Posterior sampling of given property.
+        :param return_values: (optional)
+            If ``True`` (default), then also return (median, lo_err, hi_err)
+            corresponding to desired credible interval.
+
+        :param conf: (optional)
+            Desired quantile for credible interval.  Default = 0.683.
+
+        :return:
+            :class:`np.ndarray` of desired samples
+
+        :return: 
+            Optionally also return summary statistics (median, lo_err, hi_err),
+            if ``returns_values == True`` (this is default behavior)
+        
         """
-        samples = self.samples[prop]
+        samples = self.samples[prop].values
         
         if return_values:
             sorted = np.sort(samples)
@@ -399,32 +487,33 @@ class StarModel(object):
             hi_ind = int(n*(0.5 + conf/2))
             lo = med - sorted[lo_ind]
             hi = sorted[hi_ind] - med
-            return samples, (med,lo,hi)
+            return samples.values, (med,lo,hi)
         else:
-            return samples 
+            return samples.values
 
     def plot_samples(self,prop,fig=None,label=True,
                      histtype='step',bins=50,lw=3,
                      **kwargs):
         """Plots histogram of samples of desired property.
 
-        Parameters
-        ----------
-        prop : str
-           Desired property.  See `prop_samples` for appropriate names.
+        :param prop:
+            Desired property (must be legit column of samples)
+            
+        :param fig:
+              Argument for :func:`plotutils.setfig` (``None`` or int).
 
-        fig : None, or int
-           Argument for `plotutils.setfig`.
+        :param histtype, bins, lw:
+             Passed to :func:`plt.hist`.
 
-        histtype,bins,lw : various
-            Arguments passed to `plt.hist`
+        :param **kwargs:
+            Additional keyword arguments passed to `plt.hist`
 
-        kwargs
-            Keyword arguments passed to `plt.hist`
+        :return:
+            Figure object.
         """
         setfig(fig)
         samples,stats = self.prop_samples(prop)
-        plt.hist(samples,bins=bins,normed=True,
+        fig = plt.hist(samples,bins=bins,normed=True,
                  histtype=histtype,lw=lw,**kwargs)
         plt.xlabel(prop)
         plt.ylabel('Normalized count')
@@ -434,8 +523,28 @@ class StarModel(object):
             plt.annotate('$%.2f^{+%.2f}_{-%.2f}$' % (med,hi,lo),
                          xy=(0.7,0.8),xycoords='axes fraction',fontsize=20)
 
+        return fig
+            
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
+
+        Samples are saved to /samples location under given path,
+        and object properties are also attached, so suitable for
+        re-loading via :func:`StarModel.load_hdf`.
+        
+        :param filename:
+            Name of file to save to.  Should be .h5 file.
+
+        :param path: (optional)
+            Path within HDF file structure to save to.
+
+        :param overwrite: (optional)
+            If ``True``, delete any existing file by the same name
+            before writing.
+
+        :param append: (optional)
+            If ``True``, then if a file exists, then just the path
+            within the file will be updated.
         """
         
         if os.path.exists(filename):
@@ -461,7 +570,20 @@ class StarModel(object):
 
     @classmethod
     def load_hdf(cls, filename, path=''):
+        """
+        A class method to load a saved StarModel from an HDF5 file.
 
+        File must have been created by a call to :func:`StarModel.save_hdf`.
+
+        :param filename:
+            H5 file to load.
+
+        :param path: (optional)
+            Path within HDF file.
+
+        :return:
+            :class:`StarModel` object.
+        """
         store = pd.HDFStore(filename)
         try:
             samples = store['{}/samples'.format(path)]

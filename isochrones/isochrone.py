@@ -30,7 +30,9 @@ class Isochrone(object):
     Generic isochrone class. Everything is a function of mass, log(age), Fe/H.
 
     Can be instantiated directly, but will typically be used with a pre-defined
-    subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  
+    subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  All parameters
+    must be array-like objects of the same length, with the exception of ``mags``,
+    which is a dictionary of such array-like objects.
 
     :param m_ini: 
         Array of initial mass values [msun].
@@ -302,7 +304,8 @@ class Isochrone(object):
             Desired allowed range.  Default is feh range of ``self``.
                         
         Returns arrays of randomly selected mass, log10(age), and feh values
-        within allowed ranges.
+        within allowed ranges.  Used to initialize random walkers for
+        :class:`StarModel` fits.
         """
         if minmass is None:
             minmass = self.minmass
