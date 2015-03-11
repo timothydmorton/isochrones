@@ -6,7 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
-GH_PAGES_SOURCES = . Makefile
+#GH_PAGES_SOURCES = . Makefile
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -179,10 +179,12 @@ pseudoxml:
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
 
 gh-pages:
+	cd ..
 	git checkout gh-pages
-	rm -rf _build _sources _static
-	git checkout master $(GH_PAGES_SOURCES)
+	#rm -rf _build _sources _static
+	git checkout master docs
 	git reset HEAD
+	cd docs
 	make html
 	mv -fv _build/html/* ./
 	#rm -rf $(GH_PAGES_SOURCES) _build
