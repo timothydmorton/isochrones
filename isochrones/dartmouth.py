@@ -2,12 +2,12 @@ from __future__ import division,print_function
 import os,os.path
 import numpy as np
 import pkg_resources
+import logging
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
 try:
     import pandas as pd
 except ImportError:
-    logging.warning('pandas not imported')
     pd = None
     
 import pickle

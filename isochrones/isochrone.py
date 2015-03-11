@@ -8,6 +8,7 @@ __author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
 
 import numpy as np
 import os,sys,re,os.path
+import logging
 
 try:
     import pandas as pd

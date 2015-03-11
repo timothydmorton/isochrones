@@ -6,7 +6,6 @@ import logging
 try:
     import pandas as pd
 except ImportError:
-    logging.warning('Pandas not imported.')
     pd = None
     
 import numpy.random as rand
@@ -15,20 +14,18 @@ import scipy.optimize
 try:
     import emcee
 except ImportError:
-    logging.warning('emcee not imported.')
     emcee = None
 
 try:
     from plotutils.plotutils import setfig
 except ImportError:
-    logging.warning('setfig not imported from plotutils.')
+    setfig = None
     
 import matplotlib.pyplot as plt
 
 try:
     import triangle
 except ImportError:
-    logging.warning('triangle not imported.')
     triangle = None
 
 
