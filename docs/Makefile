@@ -181,7 +181,6 @@ pseudoxml:
 gh-pages:
 	cd ..
 	git checkout gh-pages
-	#rm -rf docs/_build docs/_sources docs/_static
 	git checkout master docs
 	git reset HEAD
 	cd docs
@@ -189,6 +188,6 @@ gh-pages:
 	cd ..
 	mv -fv docs/_build/html/* ./
 	rm -rf docs
-	git add -A
+	git add _sources _static *.html *.js *.inv
 
-	git ci -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
+	git commit -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
