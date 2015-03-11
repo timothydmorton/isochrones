@@ -273,7 +273,7 @@ class StarModel(object):
 
     def triangle_plots(self, basename=None, **kwargs):
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['Teff','feh','mass','radius'])
+                            params=['mass','radius','Teff','feh','age'])
         if basename is not None:
             plt.savefig('{}_physical.png'.format(basename))
             plt.close()
@@ -326,6 +326,8 @@ class StarModel(object):
     @property
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
+
+        Culls samples to have lnlike within 10 of max lnlike (hard-coded)
         """
         if not hasattr(self,'sampler') and not hasattr(self, '_samples'):
             raise AttributeError('Must run MCMC (or load from file) before accessing samples')
@@ -334,13 +336,16 @@ class StarModel(object):
             df = self._samples.copy()
 
         except AttributeError:
-            mass = self.sampler.flatchain[:,0]
-            age = self.sampler.flatchain[:,1]
-            feh = self.sampler.flatchain[:,2]
+            max_lnlike = self.sampler.flatlnprobability.max()
+            ok = self.sampler.flatlnprobability > (max_lnlike - 10)
+            
+            mass = self.sampler.flatchain[:,0][ok]
+            age = self.sampler.flatchain[:,1][ok]
+            feh = self.sampler.flatchain[:,2][ok]
             
             if self.fit_for_distance:
-                distance = self.sampler.flatchain[:,3]
-                AV = self.sampler.flatchain[:,4]
+                distance = self.sampler.flatchain[:,3][ok]
+                AV = self.sampler.flatchain[:,4][ok]
             
             df = self.ic(mass, age, feh)
             df['age'] = age
