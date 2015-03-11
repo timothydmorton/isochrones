@@ -15,9 +15,9 @@ observational data.
 Isochrone
 --------
 
-Any usage of ``isochrones`` will involve instantiating an
-:class:`Isochrone`, though usually through a subclass such as
-:class:`dartmouth.Dartmouth_Isochrone` object.
+Any usage of ``isochrones`` involves instantiating an
+:class:`Isochrone`, though usually through a specific subclass such as
+:class:`dartmouth.Dartmouth_Isochrone`.
 
 .. autoclass:: isochrones.Isochrone
    :members:
@@ -37,7 +37,7 @@ StarModel
 ---------
 
 Estimating a star's physical properties based on a set of observed
-properties will involve instantiating a :class:`StarModel`.
+properties involves instantiating a :class:`StarModel`.
 
 .. autoclass:: isochrones.StarModel
     :members:

@@ -36,21 +36,21 @@ EXTINCTION['Kepler'] = EXTINCTION['kep']
 class StarModel(object):
     """An object to represent a star, with observed properties, modeled by an Isochrone
 
-    Parameters
-    ----------
-    ic : `Isochrone` object
-        Isochrone object used to model star.
+    :param ic: 
+        :class:`Isochrone` object used to model star.
 
-    maxAV : float
-        Maximum allowed extinction (i.e. the extinction @ infinity in direction of star)
+    :param maxAV: (optional)
+        Maximum allowed extinction (i.e. the extinction @ infinity in direction of star).  Default is 1.
 
-    max_distance : float
-        Maximum allowed distance (pc).
-
-    kwargs
-        Keyword arguments must be properties of given isochrone, e.g.,
-        logg, feh, Teff, and/or magnitudes.  The values represent measurements of
-        the star, and must be in (value,error) format.
+    :param max_distance: (optional)
+        Maximum allowed distance (pc).  Default is 1000.
+    
+    :param **kwargs:
+        Keyword arguments must be properties of given isochrone, e.g., logg,
+        feh, Teff, and/or magnitudes.  The values represent measurements of
+        the star, and must be in (value,error) format. All such keyword
+        arguments will be held in ``self.properties``.
+        
     """
     def __init__(self,ic,maxAV=1,max_distance=1000,**kwargs):
         self.ic = ic
@@ -59,16 +59,28 @@ class StarModel(object):
         self.maxAV = maxAV
 
     def add_props(self,**kwargs):
+        """
+        Adds observable properties to ``self.properties``.
+        
+        """
         for kw,val in kwargs.iteritems():
             self.properties[kw] = val
 
     def remove_props(self,*args):
+        """
+        Removes desired properties from ``self.properties``.
+        
+        """
         for arg in args:
             if arg in self.properties:
                 del self.properties[arg]
     
     @property
     def fit_for_distance(self):
+        """
+        Returns ``True`` if any of the properties are apparent magnitudes.
+        
+        """
         for prop in self.properties.keys():
             if prop in self.ic.bands:
                 return True
@@ -78,16 +90,15 @@ class StarModel(object):
     def loglike(self,p):
         """Log-likelihood of model at given parameters
 
-        Parameters
-        ----------
-        p : [float,float,float,float,float] or [float,float,float]
-            mass, log(age), feh, [distance, A_V (extinction)]
+        
+        :param p : 
+            mass, log10(age), feh, [distance, A_V (extinction)].
+            Final two should only be provided if ``self.fit_for_distance``
+            is ``True``; that is, apparent magnitudes are provided.
             
 
-        Returns
-        -------
-        logl : float
-            log-likelihood.  Will be -np.inf if values out of range.
+        Returns log-likelihood.  Will be -np.inf if values out of range.
+        
         """
         if len(p)==5:
             fit_for_distance = True
@@ -142,20 +153,17 @@ class StarModel(object):
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
 
-        Parameters
-        ----------
-        nseeds : int
+        :param nseeds: (optional)
             Number of starting guesses, uniformly distributed throughout
-            allowed ranges.
+            allowed ranges.  Default=50.
 
-        Returns
-        -------
-        pfit : list
-            [m,age,feh,[distance,A_V]] best-fit parameters.  Note that distance
-            and A_V values will be meaningless unless magnitudes are provided.
+        Returns list of best-fit parameters: [m,age,feh,[distance,A_V]].
+        Note that distance and A_V values will be meaningless unless
+        magnitudes are present in ``self.properties``.
+        
         """
         m0,age0,feh0 = self.ic.random_points(nseeds)
-        d0 = np.sqrt(rand.uniform(1,1e6,size=nseeds))
+        d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nseeds))
         AV0 = rand.uniform(0,self.maxAV,size=nseeds)
 
         
@@ -225,7 +233,7 @@ class StarModel(object):
         if p0 is None:
             m0,age0,feh0 = self.ic.random_points(nwalkers)
             #d0 = np.sqrt(rand.uniform(1,self.max_distance**2,size=nwalkers))
-            d0 = rand.uniform(1,self.max_distance,size=nwalkers)
+            d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nwalkers))
             AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
             if self.fit_for_distance:
                 p0 = np.array([m0,age0,feh0,d0,AV0]).T

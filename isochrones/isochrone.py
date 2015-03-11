@@ -125,7 +125,7 @@ class Isochrone(object):
             Must be subset of ``self.bands``.  If not set, then will
             default to returning all available bands. 
 
-        Returns either a :class:``pandas.DataFrame`` or a dictionary containing
+        Returns either a :class:`pandas.DataFrame` or a dictionary containing
         model values evaluated at input points.
         """
         args = (mass, age, feh)
@@ -187,8 +187,10 @@ class Isochrone(object):
             Whether to return a ``DataFrame`` or dicionary.  Default is ``True``.
             
 
-        Returns either a ``DataFrame`` or dictionary representing the evolution
+        Returns either a :class:`pandas.DataFrame` or dictionary
+        representing the evolution
         track---fixed mass, sampled at chosen range of ages.
+        
         """
         if minage is None:
             minage = self.minage
@@ -242,7 +244,8 @@ class Isochrone(object):
         :param return_df: (optional)
             Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
         
-        Returns :class:``pandas.DataFrame`` or dictionary containing results.
+        Returns :class:`pandas.DataFrame` or dictionary containing results.
+        
         """
         if minm is None:
             minm = self.minmass
