@@ -181,8 +181,8 @@ pseudoxml:
 gh-pages:
 	cd ..
 	git checkout gh-pages
-	#rm -rf _build _sources _static
-	git checkout master docs
+	rm -rf _build _sources _static
+	git checkout master $(GH_PAGES_SOURCES)
 	git reset HEAD
 	cd docs
 	make html
