@@ -2,3 +2,4 @@ plotutils
 pandas>=0.14
 astropy>=0.3
 emcee>=2.0
+numpy
