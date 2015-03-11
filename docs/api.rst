@@ -14,7 +14,7 @@ Isochrone
 Any usage of ``isochrones`` will involve instantiating an :class:`Isochrone`, usually through a subclass such as :class:`dartmouth.Dartmouth_Isochrone` object.
 
 .. autoclass:: isochrones.Isochrone
-   :inherited-members:
+   :members:
 
 StarModel
 ---------
@@ -22,4 +22,6 @@ StarModel
 Estimating a star's physical properties based on a set of observed properties will involve instantiating a :class:`StarModel`.
 
 .. autoclass:: isochrones.StarModel
+    :members:
+
 

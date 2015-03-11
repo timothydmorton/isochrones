@@ -29,47 +29,39 @@ class Isochrone(object):
     """Generic isochrone class. Everything is function of mass, logage, feh.
 
     Can be instantiated directly, but will typically be used with a pre-defined
-    subclass.  
+    subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  
 
-    The following methods are implemented as 3-d interpolation functions, all
-    taking as arguments (mass,age,feh):
+    :param m_ini: 
+        Array of initial mass values [msun].
 
-    M, logL, logg, logTeff, Teff, R
+    :param age: 
+        log10(age) [yr]
 
-    Also defined is a dictionary property 'mag' where self.mag[band] is also
-    a similarly-constructed interpolation function.
-    
-    Parameters
-    ----------
-    m_ini : array-like
-        Initial mass [msun]
-
-    age : array-like
-        log_10(age) [yr]
-
-    feh : array-like
+    :param feh:
         Metallicity
 
-    m_act : array-like
+    :param m_act: 
         Actual mass; same as m_ini if mass loss not implemented [msun]
 
-    logL : array-like
-        log_10(luminosity) [solar units]
+    :param logL:
+        log10(luminosity) [solar units]
 
-    Teff : array-like
+    :param Teff:
         Effective temperature [K]
 
-    logg : array-like
-        log_10(surface gravity) [cgs]
+    :param logg:
+        log10(surface gravity) [cgs]
 
-    mags : dict
-        dictionary of magnitudes in different bands
+    :param mags: 
+        Dictionary of magnitudes in different bands
 
-    tri : `scipy.spatial.qhull.Delaunay` object, optional
-        This is used to initialize the interpolation functions.
+    :param tri: (optional)
+        :class:`scipy.spatial.qhull.Delaunay` object, used
+        to initialize the interpolation functions.
         If pre-computed triangulation not provided, then the constructor
         will calculate one.  This might take several minutes, so be patient.
-        Much better to use pre-computed ones.
+        Much better to use pre-computed ones, as provided in, e.g.,
+        :class:`dartmouth.Dartmouth_Isochrone`.
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
