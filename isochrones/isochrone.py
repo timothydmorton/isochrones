@@ -127,8 +127,9 @@ class Isochrone(object):
             Must be subset of ``self.bands``.  If not set, then will
             default to returning all available bands. 
 
-        Returns either a :class:`pandas.DataFrame` or a dictionary containing
-        model values evaluated at input points.
+        :return:
+            Either a :class:`pandas.DataFrame` or a dictionary containing
+            model values evaluated at input points.
         """
         args = (mass, age, feh)
         Ms = self.mass(*args)
@@ -189,9 +190,10 @@ class Isochrone(object):
             Whether to return a ``DataFrame`` or dicionary.  Default is ``True``.
             
 
-        Returns either a :class:`pandas.DataFrame` or dictionary
-        representing the evolution
-        track---fixed mass, sampled at chosen range of ages.
+        :return:
+            Either a :class:`pandas.DataFrame` or dictionary
+            representing the evolution
+            track---fixed mass, sampled at chosen range of ages.
         
         """
         if minage is None:
@@ -246,7 +248,8 @@ class Isochrone(object):
         :param return_df: (optional)
             Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
         
-        Returns :class:`pandas.DataFrame` or dictionary containing results.
+        :return:
+            :class:`pandas.DataFrame` or dictionary containing results.
         
         """
         if minm is None:
@@ -303,9 +306,11 @@ class Isochrone(object):
         :param minfehs, maxfeh: (optional)
             Desired allowed range.  Default is feh range of ``self``.
                         
-        Returns arrays of randomly selected mass, log10(age), and feh values
-        within allowed ranges.  Used to initialize random walkers for
-        :class:`StarModel` fits.
+        :return:
+            :class:`np.ndarray` arrays of randomly selected mass, log10(age),
+            and feh values
+            within allowed ranges.  Used, e.g., to initialize random walkers for
+            :class:`StarModel` fits.
         """
         if minmass is None:
             minmass = self.minmass
