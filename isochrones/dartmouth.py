@@ -19,6 +19,9 @@ MASTERFILE = '{}/dartmouth.h5'.format(DATADIR)
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
 def _download_h5():
+    """
+    Downloads HDF5 file containing Dartmouth grids from Zenodo.
+    """
     #url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
     url = 'http://zenodo.org/record/15843/files/dartmouth.h5'
     import urllib
@@ -28,6 +31,9 @@ def _download_h5():
     urllib.urlretrieve(url,MASTERFILE)
 
 def _download_tri():
+    """
+    Downloads pre-computed triangulation for Dartmouth grids from Zenodo.
+    """
     #url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
     url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
     import urllib
@@ -45,7 +51,14 @@ if not os.path.exists(TRI_FILE):
 MASTERDF = pd.read_hdf(MASTERFILE,'df')
 
 class Dartmouth_Isochrone(Isochrone):
-    """Dotter (2008) Stellar Models
+    """Dotter (2008) Stellar Models, at solar a/Fe and He abundances.
+
+    :param bands: (optional)
+        List of desired photometric bands.  Must be a subset of
+        ``['U','B','V','R','I','J','H','K','g','r','i','z','Kepler','D51',
+        'W1','W2','W3','W4']``, which is the default (all available).
+
+
     """
     def __init__(self,bands=['U','B','V','R','I','J','H',
                              'K','g','r','i','z','Kepler','D51',
@@ -77,7 +90,7 @@ class Dartmouth_Isochrone(Isochrone):
                            10**df['LogTeff'],df['LogG'],mags,tri=tri)
 
 
-############ utility functions used to set up data sets from original isochrone data files ########
+############ utility functions used to set up data sets from original isochrone data files----these are obselete, I believe, now! ########
 
 DARTMOUTH_DATAFOLDER = ''  #this would be location of raw data files.
 
