@@ -78,7 +78,7 @@ class StarModel(object):
     @property
     def fit_for_distance(self):
         """
-        Returns ``True`` if any of the properties are apparent magnitudes.
+        ``True`` if any of the properties are apparent magnitudes.
         
         """
         for prop in self.properties.keys():
@@ -294,7 +294,9 @@ class StarModel(object):
             and :func:`StarModel.prop_triangle`
 
         :return:
-             Returns two figure objects with the triangle plots: (physical, observed)
+             * Physical parameters triangle plot (mass, radius, Teff, feh, age)
+             * Observed properties triangle plot.
+             
         """
         fig1 = self.triangle(plot_datapoints=False,
                             params=['mass','radius','Teff','feh','age'],
