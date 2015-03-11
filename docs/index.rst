@@ -76,3 +76,11 @@ If apparent magnitudes are included among the properties, then a call
 to :func:`StarModel.fit_mcmc` will fit for distance and extinction as
 well as mass, age, and [Fe/H].  In this case, it is encouraged to set
 the ``maxAV`` and ``max_distance`` arguments to appropriate values.
+
+API Documentation
+-----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   api
