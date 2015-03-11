@@ -26,7 +26,8 @@ RSUN = const.R_sun.cgs.value
 
 
 class Isochrone(object):
-    """Generic isochrone class. Everything is function of mass, logage, feh.
+    """
+    Generic isochrone class. Everything is a function of mass, log(age), Fe/H.
 
     Can be instantiated directly, but will typically be used with a pre-defined
     subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  
@@ -38,7 +39,7 @@ class Isochrone(object):
         log10(age) [yr]
 
     :param feh:
-        Metallicity
+        Metallicity [dex]
 
     :param m_act: 
         Actual mass; same as m_ini if mass loss not implemented [msun]
@@ -53,7 +54,7 @@ class Isochrone(object):
         log10(surface gravity) [cgs]
 
     :param mags: 
-        Dictionary of magnitudes in different bands
+        Dictionary of absolute magnitudes in different bands
 
     :param tri: (optional)
         :class:`scipy.spatial.qhull.Delaunay` object, used
@@ -108,18 +109,24 @@ class Isochrone(object):
         
     def __call__(self, mass, age, feh, 
                  return_df=True, bands=None):
-        """returns properties (or arrays of properties) at given mass, age, feh
+        """
+        Returns all properties (or arrays of properties) at given mass, age, feh
 
-        Parameters
-        ----------
-        mass, age, feh : float or array-like
+        :param mass, age, feh:
+            Mass, log(age), metallicity.  Can be float or array_like.
 
-        Returns
-        -------
-        values : dictionary
-            Dictionary of floats or arrays, containing 'age', 'mass',
-            'radius', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
-            a dictionary of magnitudes. 
+        :param return_df: (optional)
+            If ``True``, return :class:``pandas.DataFrame`` containing all model
+            parameters at each input value; if ``False``, return dictionary
+            of the same.
+
+        :param bands: (optional)
+            List of photometric bands in which to return magnitudes.
+            Must be subset of ``self.bands``.  If not set, then will
+            default to returning all available bands. 
+
+        Returns either a :class:``pandas.DataFrame`` or a dictionary containing
+        model values evaluated at input points.
         """
         args = (mass, age, feh)
         Ms = self.mass(*args)
@@ -150,6 +157,9 @@ class Isochrone(object):
             return df
 
     def agerange(self, m, feh=0.0):
+        """
+        For a given mass and feh, returns the min and max allowed ages.
+        """
         ages = np.arange(self.minage, self.maxage, 0.01)
         rs = self.radius(m, ages, feh)
         w = np.where(np.isfinite(rs))[0]
@@ -157,29 +167,28 @@ class Isochrone(object):
 
     def evtrack(self,m,feh=0.0,minage=None,maxage=None,dage=0.02,
                 return_df=True):
-        """Returns evolution track for a single initial mass and feh
+        """
+        Returns evolution track for a single initial mass and feh.
 
-        Parameters
-        ----------
-        m : float
-            initial mass of desired track
+        :param m: 
+            Initial mass of desired evolution track.
 
-        feh : float, optional
-            metallicity of desired track.  Default = 0.0 (solar)
+        :param feh: (optional) 
+            Metallicity of desired track.  Default = 0.0 (solar)
 
-        minage, maxage : float, optional
+        :param minage, maxage: (optional)
             Minimum and maximum log(age) of desired track. Will default
             to min and max age of model isochrones. 
 
-        dage : float, optional
+        :param dage: (optional)
             Spacing in log(age) at which to evaluate models.  Default = 0.02
 
-        Returns
-        -------
-        values : dictionary
-            Dictionary of arrays representing evolution track, containing 'age',
-            'mass', 'radius', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
-            a dictionary of magnitudes.
+        :param return_df: (optional)
+            Whether to return a ``DataFrame`` or dicionary.  Default is ``True``.
+            
+
+        Returns either a ``DataFrame`` or dictionary representing the evolution
+        track---fixed mass, sampled at chosen range of ages.
         """
         if minage is None:
             minage = self.minage
@@ -215,29 +224,25 @@ class Isochrone(object):
             
     def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
                   return_df=True):
-        """Returns stellar models evaluated at a constant age and feh, for a range of masses
+        """
+        Returns stellar models at constant age and feh, for a range of masses
 
-        Parameters
-        ----------
-        age : float
-            log(age) of desired isochrone.
+        :param age: 
+            log10(age) of desired isochrone.
 
-        feh : float
+        :param feh: (optional)
             Metallicity of desired isochrone (default = 0.0)
 
-        minm, maxm : float
+        :param minm, maxm: (optional)
             Mass range of desired isochrone (will default to max and min available)
 
-        dm : float
-            Spacing in mass of desired isochrone
+        :param dm: (optional)
+            Spacing in mass of desired isochrone.  Default = 0.02 Msun.
 
-        Returns
-        -------
-        values : dictionary
-            Dictionary of arrays representing evolution track, containing
-            'M', 'R', 'logL', 'logg', 'Teff', 'mag', where 'mag' is itself
-            a dictionary of magnitudes.
-
+        :param return_df: (optional)
+            Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
+        
+        Returns :class:``pandas.DataFrame`` or dictionary containing results.
         """
         if minm is None:
             minm = self.minmass
@@ -277,8 +282,24 @@ class Isochrone(object):
     def random_points(self,n,minmass=None,maxmass=None,
                       minage=None,maxage=None,
                       minfeh=None,maxfeh=None):
-        """Returns n random mass, age, feh points, none of which are out
-                      of range of isochrone. 
+        """
+        Returns n random mass, age, feh points, none of which are out of range.
+
+        :param n:
+            Number of desired points.
+
+        :param minmass, maxmass: (optional)
+            Desired allowed range.  Default is mass range of ``self``.
+
+        :param minage, maxage: (optional)
+            Desired allowed range.  Default is log10(age) range of
+            ``self``.
+
+        :param minfehs, maxfeh: (optional)
+            Desired allowed range.  Default is feh range of ``self``.
+                        
+        Returns arrays of randomly selected mass, log10(age), and feh values
+        within allowed ranges.
         """
         if minmass is None:
             minmass = self.minmass
