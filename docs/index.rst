@@ -55,6 +55,9 @@ you can pass array-like values, rather than single values::
     >>> dar.radius([0.8, 1.0, 1.2], 9.7, 0.0)
         array([ 0.75105438,  1.0160124 ,  1.77470954])
 
+Fitting Stellar Properties
+------------------------
+
 If you want to estimate physical parameters for a star for which you
 have measured spectroscopic properties, you would do something like
 the following:
@@ -96,6 +99,15 @@ If apparent magnitudes are included among the properties, then a call
 to :func:`isochrones.StarModel.fit_mcmc` will fit for distance and extinction as
 well as mass, age, and [Fe/H].  In this case, it is encouraged to set
 the ``maxAV`` and ``max_distance`` arguments to appropriate values.
+
+After running the MCMC chain, you can save the results::
+
+    model.save_hdf('starmodel.h5')
+
+Which you can then read back in later as::
+
+    model = StarModel.load_hdf('starmodel.h5')
+
 
 API Documentation
 -----------------
