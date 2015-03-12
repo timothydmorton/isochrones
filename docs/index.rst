@@ -23,6 +23,21 @@ I welcome community feedback to help improve this tool.  The code is
 hosted at `GitHub <http://github.com/timothydmorton/isochrones>`_,
 please feel free to contribute. 
 
+Installation
+------------
+
+To install, you can get the most recently released version from PyPI::
+
+    pip install isochrones
+
+Or you can clone from github::
+
+    git clone https://github.com/timothydmorton/isochrones.git
+    cd isochrones
+    python setup.py install
+
+The last command may require ``--user`` if you don't have root privileges.
+
 Basic Usage
 ---------
 
