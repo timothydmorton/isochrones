@@ -436,8 +436,12 @@ class StarModel(object):
             if self.fit_for_distance:
                 distance = self.sampler.flatchain[:,3][ok]
                 AV = self.sampler.flatchain[:,4][ok]
-            
-            df = self.ic(mass, age, feh)
+            else
+                distance = None
+                AV = 0
+
+            df = self.ic(mass, age, feh, 
+                         distance=distance, AV=AV)
             df['age'] = age
             df['feh'] = feh
             
@@ -446,11 +450,6 @@ class StarModel(object):
                 df['AV'] = AV
                 
             self._samples = df.copy()
-
-        if self.fit_for_distance:
-            dm = 5*np.log10(df['distance']) - 5
-            for b in self.ic.bands:
-                df['{}_mag'.format(b)] += dm
 
         return df
 

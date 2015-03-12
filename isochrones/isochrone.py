@@ -124,12 +124,20 @@ class Isochrone(object):
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
         
     def __call__(self, mass, age, feh, 
+                 distance=None, AV=0.0,
                  return_df=True, bands=None):
         """
         Returns all properties (or arrays of properties) at given mass, age, feh
 
         :param mass, age, feh:
             Mass, log(age), metallicity.  Can be float or array_like.
+
+        :param distance:
+            Distance in pc.  If passed, then mags will be converted to
+            apparent mags based on distance (and ``AV``).
+
+        :param AV:
+            V-band extinction (magnitudes).
 
         :param return_df: (optional)
             If ``True``, return :class:``pandas.DataFrame`` containing all model
@@ -164,7 +172,12 @@ class Isochrone(object):
             for key in props.keys():
                 if key=='mag':
                     for m in props['mag'].keys():
-                        d['{}_mag'.format(m)] = props['mag'][m]
+                        mag = props['mag'][m]
+                        if distance is not None:
+                            dm = 5*np.log10(distance) - 5
+                            A = AV*EXTINCTION[m]
+                            mag = mag + dm + A
+                        d['{}_mag'.format(m)] = mag
                 else:
                     d[key] = props[key]
             try:
