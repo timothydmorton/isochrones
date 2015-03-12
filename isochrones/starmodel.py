@@ -29,23 +29,7 @@ except ImportError:
     triangle = None
 
 
-DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-
-#Read data defining extinction in different bands (relative to A_V)
-EXTINCTIONFILE = '{}/extinction.txt'.format(DATADIR)
-EXTINCTION = dict()
-EXTINCTION5 = dict()
-for line in open(EXTINCTIONFILE,'r'):
-    line = line.split()
-    EXTINCTION[line[0]] = float(line[1])
-    EXTINCTION5[line[0]] = float(line[2])
-
-EXTINCTION['kep'] = 0.85946
-EXTINCTION['V'] = 1.0
-EXTINCTION['Ks'] = EXTINCTION['K']
-EXTINCTION['Kepler'] = EXTINCTION['kep']
-
-
+from .extinction import EXTINCTION
 
 class StarModel(object):
     """An object to represent a star, with observed properties, modeled by an Isochrone
@@ -243,6 +227,11 @@ class StarModel(object):
             
         """
 
+        #clear any saved _samples
+        if self._samples is not None:
+            self._samples = None
+            
+
         if self.fit_for_distance:
             npars = 5
             if initial_burn is None:
@@ -436,7 +425,7 @@ class StarModel(object):
             if self.fit_for_distance:
                 distance = self.sampler.flatchain[:,3][ok]
                 AV = self.sampler.flatchain[:,4][ok]
-            else
+            else:
                 distance = None
                 AV = 0
 

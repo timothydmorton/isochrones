@@ -37,7 +37,7 @@ try:
 except ImportError:
     setfig = None
 
-
+from .extinction import EXTINCTION
 
 class Isochrone(object):
     """
