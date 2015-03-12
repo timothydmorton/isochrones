@@ -20,7 +20,7 @@ grids, it will download the required data to a ``~/.isochrones``
 folder.
 
 I welcome community feedback to help improve this tool.  The code is
-hosted at `GitHub <http://github.com/timothydmorton/isochrones>`_,
+hosted at `GitHub <http://github.com/timothydmorton/isochrones>`_;
 please feel free to contribute. 
 
 Installation
