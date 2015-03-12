@@ -55,6 +55,7 @@ class StarModel(object):
         self.properties = kwargs
         self.max_distance = max_distance
         self.maxAV = maxAV
+        self._samples = None
 
     def add_props(self,**kwargs):
         """
@@ -407,14 +408,13 @@ class StarModel(object):
         is how chains of physical/observable parameters get produced.
         
         """
-        if not hasattr(self,'sampler') and not hasattr(self, '_samples'):
+        if not hasattr(self,'sampler') and self._samples is None:
             raise AttributeError('Must run MCMC (or load from file) '+
                                  'before accessing samples')
         
-        try:
-            df = self._samples.copy()
-
-        except AttributeError:
+        if self._samples is not None:
+            df = self._samples
+        else:
             max_lnlike = self.sampler.flatlnprobability.max()
             ok = self.sampler.flatlnprobability > (max_lnlike - 20)
             
