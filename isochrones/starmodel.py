@@ -284,7 +284,7 @@ class StarModel(object):
             if self.fit_for_distance:
                 p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
         
-        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,threads=threads)
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
