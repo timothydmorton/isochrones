@@ -1,5 +1,6 @@
 isochrones
 ==========
+[![DOI](https://zenodo.org/badge/6253/timothydmorton/isochrones.svg)](http://dx.doi.org/10.5281/zenodo.15995)
 
 Provides simple interface for interacting with stellar model grids.
 
