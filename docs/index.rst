@@ -1,7 +1,7 @@
 isochrones
 =======
 
-``isochrones`` is a package built to simplify common tasks that are
+``isochrones`` is a Python package built to simplify common tasks that are
 often done with stellar model grids, such as simulating synthetic
 stellar populations, plotting evolution tracks or isochrones,
 or estimating the physical properties of a star
