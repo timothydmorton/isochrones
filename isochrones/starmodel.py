@@ -86,7 +86,7 @@ class StarModel(object):
         return False
             
     
-    def loglike(self,p):
+    def loglike(self,p, use_local_fehprior=True):
         """Log-likelihood of model at given parameters
 
         
@@ -95,6 +95,9 @@ class StarModel(object):
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
+        :param use_local_fehprior:
+            Whether to use the Casagrande et al. (2011) prior via
+            :func:`localfehdist`.
 
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
@@ -111,7 +114,7 @@ class StarModel(object):
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
-        if self.fit_for_distance:
+        if fit_for_distance:
             if dist < 0 or AV < 0 or dist > self.max_distance:
                 return -np.inf
             if AV > self.maxAV:
@@ -138,8 +141,12 @@ class StarModel(object):
         #IMF prior
         logl += np.log(salpeter_prior(mass))
         
-        #distance prior?
-        
+        #distance prior ~d^2 out to d_max
+        if fit_for_distance:
+            logl += np.log(3/self.max_distance**3 * dist**2)
+
+        if use_local_fehprior:
+            logl += np.log(localfehdist(feh))
 
         ##prior to sample ages with linear prior
         #a0 = 10**self.ic.minage
@@ -193,7 +200,8 @@ class StarModel(object):
             
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
-                 ninitial=100, **kwargs):
+                 ninitial=100, loglike_kwargs=None,
+                 **kwargs):
         """Fits stellar model using MCMC.
 
         :param nwalkers: (optional)
@@ -222,6 +230,10 @@ class StarModel(object):
         :param ninitial: (optional)
             Number of iterations to test walkers for acceptance rate before
             re-initializing.
+
+        :param loglike_args:
+            Any arguments to pass to :func:`StarModel.loglike`, such 
+            as what priors to use.
         
         :return:
             :class:`emcee.EnsembleSampler` object.
@@ -615,3 +627,12 @@ def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     else:
         return C*m**(alpha)
 
+def localfehdist(feh):
+    """From 2 Gaussian XD fit to Casagrande et al. (2011)
+
+    From Jo Bovy:
+    https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
+    """
+    fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+        +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+    return fehdist
