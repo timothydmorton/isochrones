@@ -298,12 +298,12 @@ class StarModel(object):
             and :func:`StarModel.prop_triangle`
 
         :return:
-             * Physical parameters triangle plot (mass, radius, Teff, feh, age)
+             * Physical parameters triangle plot (mass, radius, Teff, feh, age, distance)
              * Observed properties triangle plot.
              
         """
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass','radius','Teff','feh','age'],
+                            params=['mass','radius','Teff','feh','age','distance'],
                             **kwargs)
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
