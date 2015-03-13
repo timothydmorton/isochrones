@@ -34,6 +34,13 @@ from .extinction import EXTINCTION
 class StarModel(object):
     """An object to represent a star, with observed properties, modeled by an Isochrone
 
+    This is used to fit a physical stellar model to observed
+    quantities, e.g. spectroscopic or photometric, based on
+    an :class:`Isochrone`.
+
+    Note that by default a local metallicity prior, based on SDSS data,
+    will be used when :func:`StarModel.fit_mcmc` is called.
+
     :param ic: 
         :class:`Isochrone` object used to model star.
 
