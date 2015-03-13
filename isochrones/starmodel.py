@@ -97,7 +97,7 @@ class StarModel(object):
             
         :param use_local_fehprior:
             Whether to use the Casagrande et al. (2011) prior via
-            :func:`localfehdist`.
+            :func:`localfehdist`.  Default is ``True``.
 
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
