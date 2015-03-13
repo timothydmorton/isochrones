@@ -146,7 +146,13 @@ class StarModel(object):
             logl += np.log(3/self.max_distance**3 * dist**2)
 
         if use_local_fehprior:
-            logl += np.log(localfehdist(feh))
+            #From Jo Bovy:
+            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
+            #2D gaussian fit based on Casagrande (2011)
+
+            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+            logl += np.log(fehdist)
 
         ##prior to sample ages with linear prior
         #a0 = 10**self.ic.minage
@@ -627,12 +633,3 @@ def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     else:
         return C*m**(alpha)
 
-def localfehdist(feh):
-    """From 2 Gaussian XD fit to Casagrande et al. (2011)
-
-    From Jo Bovy:
-    https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
-    """
-    fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
-        +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
-    return fehdist
