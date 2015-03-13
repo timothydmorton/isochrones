@@ -64,13 +64,14 @@ class Dartmouth_Isochrone(Isochrone):
     :param bands: (optional)
         List of desired photometric bands.  Must be a subset of
         ``['U','B','V','R','I','J','H','K','g','r','i','z','Kepler','D51',
-        'W1','W2','W3','W4']``, which is the default (all available).
+        'W1','W2','W3']``, which is the default.  W4 is not included
+        because it does not have a well-measured A(lambda)/A(V).
 
 
     """
     def __init__(self,bands=['U','B','V','R','I','J','H',
                              'K','g','r','i','z','Kepler','D51',
-                             'W1','W2','W3','W4']):
+                             'W1','W2','W3']):
 
         df = MASTERDF
 
