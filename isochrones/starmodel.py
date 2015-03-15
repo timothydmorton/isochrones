@@ -34,6 +34,13 @@ from .extinction import EXTINCTION
 class StarModel(object):
     """An object to represent a star, with observed properties, modeled by an Isochrone
 
+    This is used to fit a physical stellar model to observed
+    quantities, e.g. spectroscopic or photometric, based on
+    an :class:`Isochrone`.
+
+    Note that by default a local metallicity prior, based on SDSS data,
+    will be used when :func:`StarModel.fit_mcmc` is called.
+
     :param ic: 
         :class:`Isochrone` object used to model star.
 
@@ -86,7 +93,7 @@ class StarModel(object):
         return False
             
     
-    def loglike(self,p):
+    def loglike(self,p, use_local_fehprior=True):
         """Log-likelihood of model at given parameters
 
         
@@ -95,6 +102,9 @@ class StarModel(object):
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
+        :param use_local_fehprior:
+            Whether to use the Casagrande et al. (2011) prior via
+            :func:`localfehdist`.  Default is ``True``.
 
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
@@ -111,7 +121,7 @@ class StarModel(object):
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
-        if self.fit_for_distance:
+        if fit_for_distance:
             if dist < 0 or AV < 0 or dist > self.max_distance:
                 return -np.inf
             if AV > self.maxAV:
@@ -138,8 +148,18 @@ class StarModel(object):
         #IMF prior
         logl += np.log(salpeter_prior(mass))
         
-        #distance prior?
-        
+        #distance prior ~d^2 out to d_max
+        if fit_for_distance:
+            logl += np.log(3/self.max_distance**3 * dist**2)
+
+        if use_local_fehprior:
+            #From Jo Bovy:
+            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
+            #2D gaussian fit based on Casagrande (2011)
+
+            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+            logl += np.log(fehdist)
 
         ##prior to sample ages with linear prior
         #a0 = 10**self.ic.minage
@@ -193,7 +213,8 @@ class StarModel(object):
             
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
-                 ninitial=100, **kwargs):
+                 ninitial=100, loglike_kwargs=None,
+                 **kwargs):
         """Fits stellar model using MCMC.
 
         :param nwalkers: (optional)
@@ -222,6 +243,10 @@ class StarModel(object):
         :param ninitial: (optional)
             Number of iterations to test walkers for acceptance rate before
             re-initializing.
+
+        :param loglike_args:
+            Any arguments to pass to :func:`StarModel.loglike`, such 
+            as what priors to use.
         
         :return:
             :class:`emcee.EnsembleSampler` object.
@@ -298,12 +323,12 @@ class StarModel(object):
             and :func:`StarModel.prop_triangle`
 
         :return:
-             * Physical parameters triangle plot (mass, radius, Teff, feh, age)
+             * Physical parameters triangle plot (mass, radius, Teff, feh, age, distance)
              * Observed properties triangle plot.
              
         """
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass','radius','Teff','feh','age'],
+                            params=['mass','radius','Teff','feh','age','distance'],
                             **kwargs)
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
