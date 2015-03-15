@@ -48,8 +48,9 @@ class Isochrone(object):
     must be array-like objects of the same length, with the exception of ``mags``,
     which is a dictionary of such array-like objects.
 
-    :param m_ini: 
+    :param m_ini:
         Array of initial mass values [msun].
+    :type m_ini: array-like
 
     :param age: 
         log10(age) [yr]
@@ -71,14 +72,16 @@ class Isochrone(object):
 
     :param mags: 
         Dictionary of absolute magnitudes in different bands
-
-    :param tri: (optional)
-        :class:`scipy.spatial.qhull.Delaunay` object, used
+    :type mags: ``dict``
+        
+    :param tri:
+        Triangulation object used
         to initialize the interpolation functions.
         If pre-computed triangulation not provided, then the constructor
         will calculate one.  This might take several minutes, so be patient.
         Much better to use pre-computed ones, as provided in, e.g.,
         :class:`dartmouth.Dartmouth_Isochrone`.
+    :type tri: :class:`scipy.spatial.qhull.Delaunay`, optional
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
