@@ -260,7 +260,7 @@ class Isochrone(object):
 
             
     def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
-                  return_df=True):
+                  return_df=True,distance=None):
         """
         Returns stellar models at constant age and feh, for a range of masses
 
@@ -298,6 +298,11 @@ class Isochrone(object):
         mags = {band:self.mag[band](ms,ages,feh) for band in self.bands}
         #for band in self.bands:
         #    mags[band] = self.mag[band](ms,ages)
+        if distance is not None:
+            dm = 5*np.log10(distance) - 5
+            for band in mags:
+                A = AV*EXTINCTION[band]
+                mags[band] = mags[band] + dm + A
 
         props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}        
