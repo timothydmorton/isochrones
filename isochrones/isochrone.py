@@ -165,9 +165,15 @@ class Isochrone(object):
         if bands is None:
             bands = self.bands
         mags = {band:self.mag[band](*args) for band in bands}
+        if distance is not None:
+            dm = 5*np.log10(distance) - 5
+            for band in mags:
+                A = AV*EXTINCTION[band]
+                mags[band] = mags[band] + dm + A
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
+                
         if not return_df:
             return props
         else:
@@ -175,12 +181,7 @@ class Isochrone(object):
             for key in props.keys():
                 if key=='mag':
                     for m in props['mag'].keys():
-                        mag = props['mag'][m]
-                        if distance is not None:
-                            dm = 5*np.log10(distance) - 5
-                            A = AV*EXTINCTION[m]
-                            mag = mag + dm + A
-                        d['{}_mag'.format(m)] = mag
+                        d['{}_mag'.format(m)] = props['mag'][m]
                 else:
                     d[key] = props[key]
             try:
@@ -259,7 +260,7 @@ class Isochrone(object):
 
             
     def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
-                  return_df=True):
+                  return_df=True,distance=None,AV=0.0):
         """
         Returns stellar models at constant age and feh, for a range of masses
 
@@ -277,6 +278,13 @@ class Isochrone(object):
 
         :param return_df: (optional)
             Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
+        
+        :param distance:
+            Distance in pc.  If passed, then mags will be converted to
+            apparent mags based on distance (and ``AV``).
+
+        :param AV:
+            V-band extinction (magnitudes).            
         
         :return:
             :class:`pandas.DataFrame` or dictionary containing results.
@@ -297,6 +305,11 @@ class Isochrone(object):
         mags = {band:self.mag[band](ms,ages,feh) for band in self.bands}
         #for band in self.bands:
         #    mags[band] = self.mag[band](ms,ages)
+        if distance is not None:
+            dm = 5*np.log10(distance) - 5
+            for band in mags:
+                A = AV*EXTINCTION[band]
+                mags[band] = mags[band] + dm + A
 
         props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}        
