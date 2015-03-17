@@ -279,6 +279,13 @@ class Isochrone(object):
         :param return_df: (optional)
             Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
         
+        :param distance:
+            Distance in pc.  If passed, then mags will be converted to
+            apparent mags based on distance (and ``AV``).
+
+        :param AV:
+            V-band extinction (magnitudes).            
+        
         :return:
             :class:`pandas.DataFrame` or dictionary containing results.
         
