@@ -166,8 +166,8 @@ class Isochrone(object):
             bands = self.bands
         mags = {band:self.mag[band](*args) for band in bands}
         if distance is not None:
+            dm = 5*np.log10(distance) - 5
             for band in mags:
-                dm = 5*np.log10(distance) - 5
                 A = AV*EXTINCTION[band]
                 mags[band] = mags[band] + dm + A
         
