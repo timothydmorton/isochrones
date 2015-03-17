@@ -260,7 +260,7 @@ class Isochrone(object):
 
             
     def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
-                  return_df=True,distance=None):
+                  return_df=True,distance=None,AV=0.0):
         """
         Returns stellar models at constant age and feh, for a range of masses
 
