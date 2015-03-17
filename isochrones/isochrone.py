@@ -165,9 +165,15 @@ class Isochrone(object):
         if bands is None:
             bands = self.bands
         mags = {band:self.mag[band](*args) for band in bands}
+        if distance is not None:
+            for band in mags:
+                dm = 5*np.log10(distance) - 5
+                A = AV*EXTINCTION[band]
+                mags[band] = mags[band] + dm + A
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
+                
         if not return_df:
             return props
         else:
@@ -175,12 +181,7 @@ class Isochrone(object):
             for key in props.keys():
                 if key=='mag':
                     for m in props['mag'].keys():
-                        mag = props['mag'][m]
-                        if distance is not None:
-                            dm = 5*np.log10(distance) - 5
-                            A = AV*EXTINCTION[m]
-                            mag = mag + dm + A
-                        d['{}_mag'.format(m)] = mag
+                        d['{}_mag'.format(m)] = props['mag'][m]
                 else:
                     d[key] = props[key]
             try:
