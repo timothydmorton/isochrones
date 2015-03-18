@@ -6,7 +6,7 @@ API
 .. module:: isochrones
 
 This page details the methods and classes provided by the
-``isochrones`` module.  The main workhorse for the stellar grid
+``isochrones`` package.  The main workhorse for the stellar grid
 interpolation is the :class:`Isochrone` object, and the
 :class:`StarModel` object is used to fit the stellar models to
 observational data.
