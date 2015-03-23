@@ -633,6 +633,7 @@ class StarModel(object):
         return mod
 
 
+
 def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     C = (1+alpha)/(maxmass**(1+alpha)-minmass**(1+alpha))
     if m < minmass or m > maxmass:
