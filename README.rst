@@ -1,8 +1,8 @@
 isochrones
 ==========
 .. image:: https://zenodo.org/badge/6253/timothydmorton/isochrones.svg   
-    :target: http://dx.doi.org/10.5281/zenodo.15995
-    
+    :target: http://dx.doi.org/10.5281/zenodo.16304
+
 Provides simple interface for interacting with stellar model grids.
 
 Installation
