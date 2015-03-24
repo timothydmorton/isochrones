@@ -49,7 +49,7 @@ class StarModel(object):
         Maximum allowed extinction (i.e. the extinction @ infinity in direction of star).  Default is 1.
 
     :param max_distance: (optional)
-        Maximum allowed distance (pc).  Default is 1000.
+        Maximum allowed distance (pc).  Default is 3000.
     
     :param **kwargs:
         Keyword arguments must be properties of given isochrone, e.g., logg,
@@ -58,7 +58,7 @@ class StarModel(object):
         arguments will be held in ``self.properties``.
         
     """
-    def __init__(self,ic,maxAV=1,max_distance=1000,**kwargs):
+    def __init__(self,ic,maxAV=1,max_distance=3000,**kwargs):
         self.ic = ic
         self.properties = kwargs
         self.max_distance = max_distance
@@ -379,7 +379,20 @@ class StarModel(object):
         if query is not None:
             df = df.query(query)
 
-        extents = [extent for foo in params]
+        #convert extent to ranges, but making sure
+        # that truths are in range.
+        extents = []
+        for i,par in enumerate(params):
+            qs = np.array([0.5 - 0.5*extent, 0.5 + 0.5*extent])
+            minval, maxval = self.samples[par].quantile(qs)
+            if 'truths' in kwargs:
+                datarange = maxval - minval
+                if kwargs['truths'][i] < minval:
+                    minval = kwargs['truths'][i] - 0.05*datarange
+                if kwargs['truths'][i] > maxval:
+                    maxval = kwargs['truths'][i] + 0.05*datarange
+            extents.append((minval,maxval))
+            
 
         return triangle.corner(df[params], labels=params, 
                                extents=extents, **kwargs)
@@ -674,7 +687,7 @@ class BinaryStarModel(StarModel):
         #keep values in range; enforce mass_A > mass_B
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
            or mass_B < self.ic.minmass or mass_B > self.ic.maxmass \
-           or mass_B > mass_A \  
+           or mass_B > mass_A \
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
@@ -690,16 +703,14 @@ class BinaryStarModel(StarModel):
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
-                mod_A = self.ic.mag[prop](mass_A,age,feh) + 5*np.log10(dist) - 5
-                mod_B = self.ic.mag[prop](mass_B,age,feh) + 5*np.log10(dist) - 5
+                mods = self.ic.mag[prop]([mass_A, mass_B], age, feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
-                mod_A += A
-                mod_B += A
-                mod = addmags(mod_A, mod_B)
+                mods += A
+                mod = addmags(*mods)
             elif prop=='feh':
                 mod = feh
             else:
-                mod = getattr(self.ic,prop)(mass,age,feh)
+                mod = getattr(self.ic,prop)(mass_A,age,feh)
             logl += -(val-mod)**2/err**2
 
         if np.isnan(logl):
@@ -910,8 +921,7 @@ class BinaryStarModel(StarModel):
             plt.close()
         return fig1, fig2
 
-    def triangle(self, params=None, query=None, extent=0.999,
-                 **kwargs):
+    def triangle(self, params=None, **kwargs):
         """
         Makes a nifty corner plot.
 
@@ -936,23 +946,11 @@ class BinaryStarModel(StarModel):
             Figure oject containing corner plot.
             
         """
-        if triangle is None:
-            raise ImportError('please run "pip install triangle_plot".')
-        
         if params is None:
-            if self.fit_for_distance:
-                params = ['mass_A', 'mass_B', 'age', 'feh', 'distance', 'AV']
-            else:
-                params = ['mass_A', 'mass_B', 'age', 'feh']
+            params = ['mass_A', 'mass_B', 'age', 'feh', 'distance', 'AV']
 
-        df = self.samples
-        if query is not None:
-            df = df.query(query)
+        super(BinaryStarModel, self).triangle(params=params, **kwargs)
 
-        extents = [extent for foo in params]
-
-        return triangle.corner(df[params], labels=params, 
-                               extents=extents, **kwargs)
 
     @property
     def samples(self):
@@ -996,7 +994,10 @@ class BinaryStarModel(StarModel):
             for col in df_B.columns:
                 if re.search('_mag', col):
                     df[col] = addmags(df[col], df_B[col])
-
+            
+            df['mass_A'] = df['mass']
+            df.drop('mass', axis=1, inplace=True)
+            df['mass_B'] = df_B['mass']
             df['age'] = age
             df['feh'] = feh
             
