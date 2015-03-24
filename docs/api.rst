@@ -42,4 +42,13 @@ properties involves instantiating a :class:`StarModel`.
 .. autoclass:: isochrones.StarModel
     :members:
 
+BinaryStarModel
+---------
+
+This allows fitting for the combined light of two stars; same distance,
+age, and Fe/H.
+
+.. autoclass:: isochrones.starmodel.BinaryStarModel
+    :members:
+
 
