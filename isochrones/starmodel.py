@@ -454,8 +454,9 @@ class StarModel(object):
         if self._samples is not None:
             df = self._samples
         else:
-            max_lnlike = self.sampler.flatlnprobability.max()
-            ok = self.sampler.flatlnprobability > (max_lnlike - 20)
+            #cull points in lowest 0.5% of lnprob
+            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+            ok = self.sampler.flatlnprobability > lnlike_thresh
             
             mass = self.sampler.flatchain[:,0][ok]
             age = self.sampler.flatchain[:,1][ok]
@@ -940,8 +941,8 @@ class BinaryStarModel(StarModel):
         if self._samples is not None:
             df = self._samples
         else:
-            max_lnlike = self.sampler.flatlnprobability.max()
-            ok = self.sampler.flatlnprobability > (max_lnlike - 20)
+            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+            ok = self.sampler.flatlnprobability > lnlike_thresh
             
             mass_A = self.sampler.flatchain[:,0][ok]
             mass_B = self.sampler.flatchain[:,1][ok]
@@ -1239,8 +1240,8 @@ class TripleStarModel(StarModel):
         if self._samples is not None:
             df = self._samples
         else:
-            max_lnlike = self.sampler.flatlnprobability.max()
-            ok = self.sampler.flatlnprobability > (max_lnlike - 20)
+            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+            ok = self.sampler.flatlnprobability > lnlike_thresh
             
             mass_A = self.sampler.flatchain[:,0][ok]
             mass_B = self.sampler.flatchain[:,1][ok]
