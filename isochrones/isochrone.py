@@ -82,9 +82,13 @@ class Isochrone(object):
         Much better to use pre-computed ones, as provided in, e.g.,
         :class:`dartmouth.Dartmouth_Isochrone`.
     :type tri: :class:`scipy.spatial.qhull.Delaunay`, optional
+
+    :param minage,maxage:
+        If desired, a minimum or maximum age can be manually entered.
         
     """
-    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
+    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
+                 minage=None, maxage=None):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -94,7 +98,11 @@ class Isochrone(object):
         self.maxmass = m_act.max()
         self.minfeh = feh.min()
         self.maxfeh = feh.max()
-        
+
+        if minage is not None:
+            self.minage = minage
+        if maxage is not None:
+            self.maxage = maxage
 
         L = 10**logL
 
