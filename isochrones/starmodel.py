@@ -674,7 +674,7 @@ class BinaryStarModel(StarModel):
         #keep values in range; enforce mass_A > mass_B
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
            or mass_B < self.ic.minmass or mass_B > self.ic.maxmass \
-           or mass_B > mass_A \  
+           or mass_B > mass_A \
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
             return -np.inf
