@@ -438,7 +438,8 @@ class StarModel(object):
     def _make_samples(self, lnprob_thresh=0.005):
 
         #cull points in lowest 0.5% of lnprob
-        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, thresh*100)
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
+                                      lnprob_thresh*100)
         ok = self.sampler.flatlnprobability > lnprob_thresh
             
         mass = self.sampler.flatchain[:,0][ok]
