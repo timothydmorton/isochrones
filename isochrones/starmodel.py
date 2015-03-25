@@ -702,8 +702,10 @@ class BinaryStarModel(StarModel):
             val,err = self.properties[prop]
             if prop in self.ic.bands:
                 if not fit_for_distance:
-                    raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
-                mods = self.ic.mag[prop]([mass_A, mass_B], age, feh) + 5*np.log10(dist) - 5
+                    raise ValueError('must fit for mass, age, feh, dist,'+ 
+                                     'A_V if apparent magnitudes provided.')
+                mods = self.ic.mag[prop]([mass_A, mass_B], 
+                                         age, feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mods += A
                 mod = addmags(*mods)
@@ -1008,6 +1010,310 @@ class BinaryStarModel(StarModel):
             self._samples = df.copy()
 
         return df
+
+
+class TripleStarModel(StarModel):
+    """Just like BinaryStarModel but for three.
+
+    Parameters now include mass_A, mass_B, and mass_C
+    """
+    def loglike(self, p, use_local_fehprior=True):
+        """Log-likelihood of model at given parameters
+
+        
+        :param p: 
+            mass_A, mass_B, mass_C, log10(age), feh, [distance, A_V (extinction)].
+            Final two should only be provided if ``self.fit_for_distance``
+            is ``True``; that is, apparent magnitudes are provided.
+            
+        :param use_local_fehprior:
+            Whether to use the Casagrande et al. (2011) prior via
+            :func:`localfehdist`.  Default is ``True``.
+
+        :return:
+           log-likelihood.  Will be -np.inf if values out of range.
+        
+        """
+        if len(p)==7:
+            fit_for_distance = True
+            mass_A, mass_B, mass_C, age, feh, dist, AV = p
+        elif len(p)==5:
+            fit_for_distance = False
+            mass_A, mass_B, mass_C, age, feh = p
+                        
+        #keep values in range; enforce mass_A > mass_B > mass_C
+        if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
+           or mass_B < self.ic.minmass or mass_B > self.ic.maxmass \
+           or mass_C < self.ic.minmass or mass_C > self.ic.maxmass \
+           or mass_B > mass_A \
+           or mass_C > mass_B or mass_C > mass_A \
+           or age < self.ic.minage or age > self.ic.maxage \
+           or feh < self.ic.minfeh or feh > self.ic.maxfeh:
+            return -np.inf
+        if fit_for_distance:
+            if dist < 0 or AV < 0 or dist > self.max_distance:
+                return -np.inf
+            if AV > self.maxAV:
+                return -np.inf
+
+        logl = 0
+        for prop in self.properties.keys():
+            val,err = self.properties[prop]
+            if prop in self.ic.bands:
+                if not fit_for_distance:
+                    raise ValueError('must fit for mass_A, mass_B, mass_C, age, feh, dist,'+ 
+                                     'A_V if apparent magnitudes provided.')
+                mods = self.ic.mag[prop]([mass_A, mass_B, mass_C], 
+                                         age, feh) + 5*np.log10(dist) - 5
+                A = AV*EXTINCTION[prop]
+                mods += A
+                mod = addmags(*mods)
+            elif prop=='feh':
+                mod = feh
+            else:
+                mod = getattr(self.ic,prop)(mass_A,age,feh)
+            logl += -(val-mod)**2/err**2
+
+        if np.isnan(logl):
+            logl = -np.inf
+
+
+        #IMF prior
+        logl += np.log(salpeter_prior(mass_A))
+        
+        #distance prior ~d^2 out to d_max
+        if fit_for_distance:
+            logl += np.log(3/self.max_distance**3 * dist**2)
+
+        if use_local_fehprior:
+            #From Jo Bovy:
+            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
+            #2D gaussian fit based on Casagrande (2011)
+
+            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+            logl += np.log(fehdist)
+
+        ##prior to sample ages with linear prior
+        #a0 = 10**self.ic.minage
+        #a1 = 10**self.ic.maxage
+        #da = a1-a0
+        #a = 10**age
+        #logl += np.log(a/(a1-a0))
+
+        return logl
+        
+    def maxlike(self,nseeds=50):
+        """Returns the best-fit parameters, choosing the best of multiple starting guesses
+
+        :param nseeds: (optional)
+            Number of starting guesses, uniformly distributed throughout
+            allowed ranges.  Default=50.
+
+        :return:
+            list of best-fit parameters: ``[mA,mB,age,feh,[distance,A_V]]``.
+            Note that distance and A_V values will be meaningless unless
+            magnitudes are present in ``self.properties``.
+        
+        """
+        mA_0,age0,feh0 = self.ic.random_points(nseeds)
+        mB_0,foo1,foo2 = self.ic.random_points(nseeds)
+        mC_0,foo3,foo4 = self.ic.random_points(nseeds)
+        m_all = np.sort(np.array([mA_0, mB_0, mC_0]), axis=0)
+        mA_0, mB_0, mC_0 = (m_all[0,:], m_all[1,:], m_all[2,:])
+
+        d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nseeds))
+        AV0 = rand.uniform(0,self.maxAV,size=nseeds)
+
+        
+
+        costs = np.zeros(nseeds)
+
+        if self.fit_for_distance:
+            pfits = np.zeros((nseeds,7))
+        else:
+            pfits = np.zeros((nseeds,5))
+            
+        def fn(p): #fmin is a function *minimizer*
+            return -1*self.loglike(p)
+        
+        for i,mA,mB,mC,age,feh,d,AV in zip(range(nseeds),
+                                    mA_0,mB_0,mC_0,age0,feh0,d0,AV0):
+                if self.fit_for_distance:
+                    pfit = scipy.optimize.fmin(fn,[mA,mB,mC,age,feh,d,AV],disp=False)
+                else:
+                    pfit = scipy.optimize.fmin(fn,[mA,mB,mC,age,feh],disp=False)
+                pfits[i,:] = pfit
+                costs[i] = self.loglike(pfit)
+
+        return pfits[np.argmax(costs),:]
+
+            
+    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
+                 p0=None,initial_burn=None,
+                 ninitial=100, loglike_kwargs=None,
+                 **kwargs):
+        """Fits stellar model using MCMC.
+
+        See :func:`StarModel.fit_mcmc`.
+            
+        """
+
+        #clear any saved _samples
+        if self._samples is not None:
+            self._samples = None
+            
+
+        if self.fit_for_distance:
+            npars = 7
+            if initial_burn is None:
+                initial_burn = True
+        else:
+            if initial_burn is None:
+                initial_burn = False
+            npars = 5
+
+        if p0 is None:
+            mA_0,age0,feh0 = self.ic.random_points(nseeds)
+            mB_0,foo1,foo2 = self.ic.random_points(nseeds)
+            mC_0,foo3,foo4 = self.ic.random_points(nseeds)
+            m_all = np.sort(np.array([mA_0, mB_0, mC_0]), axis=0)
+            mA_0, mB_0, mC_0 = (m_all[0,:], m_all[1,:], m_all[2,:])
+
+            d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nwalkers))
+            AV0 = rand.uniform(0,self.maxAV,size=nwalkers)
+            if self.fit_for_distance:
+                p0 = np.array([mA_0,mB_0,mC_0,age0,feh0,d0,AV0]).T
+            else:
+                p0 = np.array([mA_0,mB_0,mC_0,age0,feh0]).T
+            if initial_burn:
+                sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,
+                                                **kwargs)
+                #ninitial = 300 #should this be parameter?
+                pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+                wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
+                                   (sampler.naccepted/ninitial < 0.4))[0]
+                i=1
+                while len(wokinds)==0:
+                    thresh = 0.15 - i*0.02
+                    if thresh < 0:
+                        raise RuntimeError('Initial burn has no acceptance?')
+                    wokinds = np.where((sampler.naccepted/ninitial > thresh) &
+                                       (sampler.naccepted/ninitial < 0.4))[0]
+                    i += 1
+                inds = rand.randint(len(wokinds),size=nwalkers)
+                p0 = sampler.chain[wokinds[inds],:,:].mean(axis=1) #reset p0
+                p0 *= (1 + rand.normal(size=p0.shape)*0.01)
+        else:
+            p0 = np.array(p0)
+            p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
+            if self.fit_for_distance:
+                p0[:,5] *= (1 + rand.normal(size=nwalkers)*0.5) #distance
+        
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike)
+        pos, prob, state = sampler.run_mcmc(p0, nburn)
+        sampler.reset()
+        sampler.run_mcmc(pos, niter, rstate0=state)
+        
+        self._sampler = sampler
+        return sampler
+
+    def triangle_plots(self, basename=None, format='png',
+                       **kwargs):
+        """Returns two triangle plots, one with physical params, one observational
+
+        :return:
+             * Physical parameters triangle plot (mass_A, mass_B, mass_C, radius, 
+                Teff, feh, age, distance)
+             * Observed properties triangle plot.
+             
+        """
+        fig1 = self.triangle(plot_datapoints=False,
+                            params=['mass_A', 'mass_B', 'mass_C', 'radius',
+                                    'Teff','feh','age','distance'],
+                            **kwargs)
+        if basename is not None:
+            plt.savefig('{}_physical.{}'.format(basename,format))
+            plt.close()
+        fig2 = self.prop_triangle(**kwargs)
+        if basename is not None:
+            plt.savefig('{}_observed.{}'.format(basename,format))
+            plt.close()
+        return fig1, fig2
+
+    def triangle(self, params=None, **kwargs):
+        """
+        Makes a nifty corner plot.
+
+        """
+        if params is None:
+            params = ['mass_A', 'mass_B', 'mass_C', 
+                      'age', 'feh', 'distance', 'AV']
+
+        super(TripleStarModel, self).triangle(params=params, **kwargs)
+
+
+    @property
+    def samples(self):
+        """Dataframe with samples drawn from isochrone according to posterior
+
+        Culls samples to have lnlike within 20 of max lnlike (hard-coded).
+
+        Columns include both the sampling parameters from the MCMC
+        fit (mass_A, mass_B, age, Fe/H, [distance, A_V]), and also evaluation
+        of the :class:`Isochrone` at each of these sample points---this
+        is how chains of physical/observable parameters get produced.
+        
+        """
+        if not hasattr(self,'sampler') and self._samples is None:
+            raise AttributeError('Must run MCMC (or load from file) '+
+                                 'before accessing samples')
+        
+        if self._samples is not None:
+            df = self._samples
+        else:
+            max_lnlike = self.sampler.flatlnprobability.max()
+            ok = self.sampler.flatlnprobability > (max_lnlike - 20)
+            
+            mass_A = self.sampler.flatchain[:,0][ok]
+            mass_B = self.sampler.flatchain[:,1][ok]
+            mass_C = self.sampler.flatchain[:,2][ok]
+            age = self.sampler.flatchain[:,3][ok]
+            feh = self.sampler.flatchain[:,4][ok]
+            
+            if self.fit_for_distance:
+                distance = self.sampler.flatchain[:,5][ok]
+                AV = self.sampler.flatchain[:,6][ok]
+            else:
+                distance = None
+                AV = 0
+
+            df = self.ic(mass_A, age, feh, 
+                           distance=distance, AV=AV)
+            df_B = self.ic(mass_B, age, feh, 
+                           distance=distance, AV=AV)
+            df_C = self.ic(mass_C, age, feh, 
+                           distance=distance, AV=AV)
+            
+            for col in df_B.columns:
+                if re.search('_mag', col):
+                    df[col] = addmags(df[col], df_B[col], df_C[col])
+            
+            df['mass_A'] = df['mass']
+            df.drop('mass', axis=1, inplace=True)
+            df['mass_B'] = df_B['mass']
+            df['mass_C'] = df_C['mass']
+            df['age'] = age
+            df['feh'] = feh
+            
+            if self.fit_for_distance:
+                df['distance'] = distance
+                df['AV'] = AV
+                
+            self._samples = df.copy()
+
+        return df
+
 
 
 #### Utility functions #####
