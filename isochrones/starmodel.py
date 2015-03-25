@@ -328,9 +328,16 @@ class StarModel(object):
              * Observed properties triangle plot.
              
         """
-        fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass','radius','Teff','feh','age','distance'],
-                            **kwargs)
+        if self.fit_for_distance:
+            fig1 = self.triangle(plot_datapoints=False,
+                                 params=['mass','radius','Teff','feh','age','distance'],
+                                 **kwargs)
+        else:
+            fig1 = self.triangle(plot_datapoints=False,
+                                 params=['mass','radius','Teff','feh','age'],
+                                 **kwargs)
+            
+
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
             plt.close()
