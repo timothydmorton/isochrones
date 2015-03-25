@@ -796,40 +796,7 @@ class BinaryStarModel(StarModel):
                  **kwargs):
         """Fits stellar model using MCMC.
 
-        :param nwalkers: (optional)
-            Number of walkers to pass to :class:`emcee.EnsembleSampler`.
-            Default is 200.
-
-        :param nburn: (optional)
-            Number of iterations for "burn-in."  Default is 100.
-
-        :param niter: (optional)
-            Number of for-keeps iterations for MCMC chain.
-            Default is 200.
-
-        :param p0: (optional)
-            Initial parameters for emcee.  If not provided, then chains
-            will behave according to whether inital_burn is set.
-
-        :param initial_burn: (optional)
-            If `True`, then initialize walkers first with a random initialization,
-            then cull the walkers, keeping only those with > 15% acceptance
-            rate, then reinitialize sampling.  If `False`, then just do
-            normal burn-in.  Default is `None`, which will be set to `True` if
-            fitting for distance (i.e., if there are apparent magnitudes as
-            properties of the model), and `False` if not.
-            
-        :param ninitial: (optional)
-            Number of iterations to test walkers for acceptance rate before
-            re-initializing.
-
-        :param loglike_args:
-            Any arguments to pass to :func:`StarModel.loglike`, such 
-            as what priors to use.
-        
-        :return:
-            :class:`emcee.EnsembleSampler` object.
-            
+        See :func:`StarModel.fit_mcmc`
         """
 
         #clear any saved _samples
@@ -1174,9 +1141,9 @@ class TripleStarModel(StarModel):
             npars = 5
 
         if p0 is None:
-            mA_0,age0,feh0 = self.ic.random_points(nseeds)
-            mB_0,foo1,foo2 = self.ic.random_points(nseeds)
-            mC_0,foo3,foo4 = self.ic.random_points(nseeds)
+            mA_0,age0,feh0 = self.ic.random_points(nwalkers)
+            mB_0,foo1,foo2 = self.ic.random_points(nwalkers)
+            mC_0,foo3,foo4 = self.ic.random_points(nwalkers)
             m_all = np.sort(np.array([mA_0, mB_0, mC_0]), axis=0)
             mA_0, mB_0, mC_0 = (m_all[0,:], m_all[1,:], m_all[2,:])
 
