@@ -178,6 +178,7 @@ class Isochrone(object):
             for band in mags:
                 A = AV*EXTINCTION[band]
                 mags[band] = mags[band] + dm + A
+                
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
