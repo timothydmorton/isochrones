@@ -435,11 +435,40 @@ class StarModel(object):
         else:
             raise AttributeError('MCMC must be run to access sampler')
 
+    def _make_samples(self, lnprob_thresh=0.005):
+
+        #cull points in lowest 0.5% of lnprob
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, thresh*100)
+        ok = self.sampler.flatlnprobability > lnprob_thresh
+            
+        mass = self.sampler.flatchain[:,0][ok]
+        age = self.sampler.flatchain[:,1][ok]
+        feh = self.sampler.flatchain[:,2][ok]
+            
+        if self.fit_for_distance:
+            distance = self.sampler.flatchain[:,3][ok]
+            AV = self.sampler.flatchain[:,4][ok]
+        else:
+            distance = None
+            AV = 0
+
+        df = self.ic(mass, age, feh, 
+                     distance=distance, AV=AV)
+        df['age'] = age
+        df['feh'] = feh
+            
+        if self.fit_for_distance:
+            df['distance'] = distance
+            df['AV'] = AV
+                
+        self._samples = df.copy()
+        
+
     @property
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
 
-        Culls samples to have lnlike within 20 of max lnlike (hard-coded).
+        Culls samples to drop lowest 0.5% of lnprob values.
 
         Columns include both the sampling parameters from the MCMC
         fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
@@ -454,31 +483,8 @@ class StarModel(object):
         if self._samples is not None:
             df = self._samples
         else:
-            #cull points in lowest 0.5% of lnprob
-            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
-            ok = self.sampler.flatlnprobability > lnlike_thresh
-            
-            mass = self.sampler.flatchain[:,0][ok]
-            age = self.sampler.flatchain[:,1][ok]
-            feh = self.sampler.flatchain[:,2][ok]
-            
-            if self.fit_for_distance:
-                distance = self.sampler.flatchain[:,3][ok]
-                AV = self.sampler.flatchain[:,4][ok]
-            else:
-                distance = None
-                AV = 0
-
-            df = self.ic(mass, age, feh, 
-                         distance=distance, AV=AV)
-            df['age'] = age
-            df['feh'] = feh
-            
-            if self.fit_for_distance:
-                df['distance'] = distance
-                df['AV'] = AV
-                
-            self._samples = df.copy()
+            self._make_samples()
+            df = self._samples
 
         return df
 
@@ -922,62 +928,43 @@ class BinaryStarModel(StarModel):
         super(BinaryStarModel, self).triangle(params=params, **kwargs)
 
 
-    @property
-    def samples(self):
-        """Dataframe with samples drawn from isochrone according to posterior
+    def _make_samples(self, lnprob_thresh=0.005):
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+        ok = self.sampler.flatlnprobability > lnprob_thresh
 
-        Culls samples to have lnlike within 20 of max lnlike (hard-coded).
+        mass_A = self.sampler.flatchain[:,0][ok]
+        mass_B = self.sampler.flatchain[:,1][ok]
+        age = self.sampler.flatchain[:,2][ok]
+        feh = self.sampler.flatchain[:,3][ok]
 
-        Columns include both the sampling parameters from the MCMC
-        fit (mass_A, mass_B, age, Fe/H, [distance, A_V]), and also evaluation
-        of the :class:`Isochrone` at each of these sample points---this
-        is how chains of physical/observable parameters get produced.
-        
-        """
-        if not hasattr(self,'sampler') and self._samples is None:
-            raise AttributeError('Must run MCMC (or load from file) '+
-                                 'before accessing samples')
-        
-        if self._samples is not None:
-            df = self._samples
+        if self.fit_for_distance:
+            distance = self.sampler.flatchain[:,4][ok]
+            AV = self.sampler.flatchain[:,5][ok]
         else:
-            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
-            ok = self.sampler.flatlnprobability > lnlike_thresh
-            
-            mass_A = self.sampler.flatchain[:,0][ok]
-            mass_B = self.sampler.flatchain[:,1][ok]
-            age = self.sampler.flatchain[:,2][ok]
-            feh = self.sampler.flatchain[:,3][ok]
-            
-            if self.fit_for_distance:
-                distance = self.sampler.flatchain[:,4][ok]
-                AV = self.sampler.flatchain[:,5][ok]
-            else:
-                distance = None
-                AV = 0
+            distance = None
+            AV = 0
 
-            df = self.ic(mass_A, age, feh, 
-                           distance=distance, AV=AV)
-            df_B = self.ic(mass_B, age, feh, 
-                           distance=distance, AV=AV)
-            
-            for col in df_B.columns:
-                if re.search('_mag', col):
-                    df[col] = addmags(df[col], df_B[col])
-            
-            df['mass_A'] = df['mass']
-            df.drop('mass', axis=1, inplace=True)
-            df['mass_B'] = df_B['mass']
-            df['age'] = age
-            df['feh'] = feh
-            
-            if self.fit_for_distance:
-                df['distance'] = distance
-                df['AV'] = AV
-                
-            self._samples = df.copy()
+        df = self.ic(mass_A, age, feh, 
+                       distance=distance, AV=AV)
+        df_B = self.ic(mass_B, age, feh, 
+                       distance=distance, AV=AV)
 
-        return df
+        for col in df_B.columns:
+            if re.search('_mag', col):
+                df[col] = addmags(df[col], df_B[col])
+
+        df['mass_A'] = df['mass']
+        df.drop('mass', axis=1, inplace=True)
+        df['mass_B'] = df_B['mass']
+        df['age'] = age
+        df['feh'] = feh
+
+        if self.fit_for_distance:
+            df['distance'] = distance
+            df['AV'] = AV
+
+        self._samples = df.copy()
+
 
 
 class TripleStarModel(StarModel):
@@ -1221,67 +1208,48 @@ class TripleStarModel(StarModel):
         super(TripleStarModel, self).triangle(params=params, **kwargs)
 
 
-    @property
-    def samples(self):
-        """Dataframe with samples drawn from isochrone according to posterior
-
-        Culls samples to have lnlike within 20 of max lnlike (hard-coded).
-
-        Columns include both the sampling parameters from the MCMC
-        fit (mass_A, mass_B, age, Fe/H, [distance, A_V]), and also evaluation
-        of the :class:`Isochrone` at each of these sample points---this
-        is how chains of physical/observable parameters get produced.
+    def _make_samples(self, lnprob_thresh=0.005):
         
-        """
-        if not hasattr(self,'sampler') and self._samples is None:
-            raise AttributeError('Must run MCMC (or load from file) '+
-                                 'before accessing samples')
-        
-        if self._samples is not None:
-            df = self._samples
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
+                                      lnprob_thresh*100)
+        ok = self.sampler.flatlnprobability > lnprob_thresh
+
+        mass_A = self.sampler.flatchain[:,0][ok]
+        mass_B = self.sampler.flatchain[:,1][ok]
+        mass_C = self.sampler.flatchain[:,2][ok]
+        age = self.sampler.flatchain[:,3][ok]
+        feh = self.sampler.flatchain[:,4][ok]
+
+        if self.fit_for_distance:
+            distance = self.sampler.flatchain[:,5][ok]
+            AV = self.sampler.flatchain[:,6][ok]
         else:
-            lnlike_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
-            ok = self.sampler.flatlnprobability > lnlike_thresh
-            
-            mass_A = self.sampler.flatchain[:,0][ok]
-            mass_B = self.sampler.flatchain[:,1][ok]
-            mass_C = self.sampler.flatchain[:,2][ok]
-            age = self.sampler.flatchain[:,3][ok]
-            feh = self.sampler.flatchain[:,4][ok]
-            
-            if self.fit_for_distance:
-                distance = self.sampler.flatchain[:,5][ok]
-                AV = self.sampler.flatchain[:,6][ok]
-            else:
-                distance = None
-                AV = 0
+            distance = None
+            AV = 0
 
-            df = self.ic(mass_A, age, feh, 
-                           distance=distance, AV=AV)
-            df_B = self.ic(mass_B, age, feh, 
-                           distance=distance, AV=AV)
-            df_C = self.ic(mass_C, age, feh, 
-                           distance=distance, AV=AV)
-            
-            for col in df_B.columns:
-                if re.search('_mag', col):
-                    df[col] = addmags(df[col], df_B[col], df_C[col])
-            
-            df['mass_A'] = df['mass']
-            df.drop('mass', axis=1, inplace=True)
-            df['mass_B'] = df_B['mass']
-            df['mass_C'] = df_C['mass']
-            df['age'] = age
-            df['feh'] = feh
-            
-            if self.fit_for_distance:
-                df['distance'] = distance
-                df['AV'] = AV
-                
-            self._samples = df.copy()
+        df = self.ic(mass_A, age, feh, 
+                       distance=distance, AV=AV)
+        df_B = self.ic(mass_B, age, feh, 
+                       distance=distance, AV=AV)
+        df_C = self.ic(mass_C, age, feh, 
+                       distance=distance, AV=AV)
 
-        return df
+        for col in df_B.columns:
+            if re.search('_mag', col):
+                df[col] = addmags(df[col], df_B[col], df_C[col])
 
+        df['mass_A'] = df['mass']
+        df.drop('mass', axis=1, inplace=True)
+        df['mass_B'] = df_B['mass']
+        df['mass_C'] = df_C['mass']
+        df['age'] = age
+        df['feh'] = feh
+
+        if self.fit_for_distance:
+            df['distance'] = distance
+            df['AV'] = AV
+
+        self._samples = df.copy()
 
 
 #### Utility functions #####
