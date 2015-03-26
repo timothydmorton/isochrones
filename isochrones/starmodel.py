@@ -328,9 +328,16 @@ class StarModel(object):
              * Observed properties triangle plot.
              
         """
-        fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass','radius','Teff','feh','age','distance'],
-                            **kwargs)
+        if self.fit_for_distance:
+            fig1 = self.triangle(plot_datapoints=False,
+                                 params=['mass','radius','Teff','feh','age','distance'],
+                                 **kwargs)
+        else:
+            fig1 = self.triangle(plot_datapoints=False,
+                                 params=['mass','radius','Teff','feh','age'],
+                                 **kwargs)
+            
+
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
             plt.close()
@@ -438,7 +445,8 @@ class StarModel(object):
     def _make_samples(self, lnprob_thresh=0.005):
 
         #cull points in lowest 0.5% of lnprob
-        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, thresh*100)
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
+                                      lnprob_thresh*100)
         ok = self.sampler.flatlnprobability > lnprob_thresh
             
         mass = self.sampler.flatchain[:,0][ok]
@@ -499,7 +507,7 @@ class StarModel(object):
             :class:`pandas.DataFrame` of length ``n`` with random samples.
         """
         samples = self.samples
-        inds = rand.randint(len(samples),size=n)
+        inds = rand.randint(len(samples),size=int(n))
 
         newsamples = samples.iloc[inds]
         newsamples.reset_index(inplace=True)

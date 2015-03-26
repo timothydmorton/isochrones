@@ -71,7 +71,7 @@ class Dartmouth_Isochrone(Isochrone):
     """
     def __init__(self,bands=['U','B','V','R','I','J','H',
                              'K','g','r','i','z','Kepler','D51',
-                             'W1','W2','W3']):
+                             'W1','W2','W3'], minage=9, **kwargs):
 
         df = MASTERDF
 
@@ -96,7 +96,8 @@ class Dartmouth_Isochrone(Isochrone):
         
         Isochrone.__init__(self,df['M/Mo'],np.log10(df['age']*1e9),
                            df['feh'],df['M/Mo'],df['LogL/Lo'],
-                           10**df['LogTeff'],df['LogG'],mags,tri=tri)
+                           10**df['LogTeff'],df['LogG'],mags,tri=tri, 
+                           minage=minage, **kwargs)
 
 
 ############ utility functions used to set up data sets from original isochrone data files----these are obselete, I believe, now! ########
