@@ -52,3 +52,16 @@ age, and Fe/H.
     :members:
 
 
+TripleStarModel
+---------
+
+Just like :class:`BinaryStarModel`, but allows fitting for the
+combined light of *three* stars; same distance,
+age, and Fe/H.
+
+.. autoclass:: isochrones.starmodel.TripleStarModel
+    :members:
+
+
+
+
