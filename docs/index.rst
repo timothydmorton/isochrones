@@ -108,6 +108,9 @@ Which you can then read back in later as::
 
     model = StarModel.load_hdf('starmodel.h5')
 
+In addition, if you would like to entertain the possibility of a star
+being having light from more than one component, you can also fit a
+:class:`BinaryStarModel` or :class:`TripleStarModel`, if desired.
 
 API Documentation
 -----------------
