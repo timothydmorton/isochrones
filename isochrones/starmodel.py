@@ -507,7 +507,7 @@ class StarModel(object):
             :class:`pandas.DataFrame` of length ``n`` with random samples.
         """
         samples = self.samples
-        inds = rand.randint(len(samples),size=n)
+        inds = rand.randint(len(samples),size=int(n))
 
         newsamples = samples.iloc[inds]
         newsamples.reset_index(inplace=True)

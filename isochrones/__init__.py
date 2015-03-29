@@ -8,5 +8,5 @@ except NameError:
 if not __ISOCHRONES_SETUP__:
     __all__ = ['dartmouth','basti','padova']
     from .isochrone import Isochrone
-    from .starmodel import StarModel
+    from .starmodel import StarModel, BinaryStarModel, TripleStarModel
      
