@@ -1259,6 +1259,17 @@ class TripleStarModel(StarModel):
 
         self._samples = df.copy()
 
+class MultipleStarModel(StarModel, BinaryStarModel, TripleStarModel):
+    """
+    StarModel where N_stars (1,2, or 3) is a parameter to estimate.
+    """
+
+    def binary_loglike(self, *args, **kwargs):
+        return BinaryStarModel.loglike(self, *args, **kwargs)
+
+    def triple_loglike(self, *args, **kwargs):
+        return TripleStarModel.loglike(self, *args, **kwargs)
+        
 
 #### Utility functions #####
 
