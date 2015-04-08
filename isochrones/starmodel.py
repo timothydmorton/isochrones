@@ -221,7 +221,7 @@ class StarModel(object):
         """
     
     def fit_multinest(self, **kwargs):
-        
+        pass
 
     
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
@@ -1271,16 +1271,16 @@ class TripleStarModel(StarModel):
 
         self._samples = df.copy()
 
-class MultipleStarModel(StarModel, BinaryStarModel, TripleStarModel):
-    """
-    StarModel where N_stars (1,2, or 3) is a parameter to estimate.
-    """
+#class MultipleStarModel(StarModel, BinaryStarModel, TripleStarModel):
+#    """
+#    StarModel where N_stars (1,2, or 3) is a parameter to estimate.
+#    """
 
-    def binary_loglike(self, *args, **kwargs):
-        return BinaryStarModel.loglike(self, *args, **kwargs)
+#    def binary_loglike(self, *args, **kwargs):
+#        return BinaryStarModel.loglike(self, *args, **kwargs)
 
-    def triple_loglike(self, *args, **kwargs):
-        return TripleStarModel.loglike(self, *args, **kwargs)
+#    def triple_loglike(self, *args, **kwargs):
+#        return TripleStarModel.loglike(self, *args, **kwargs)
         
 
 #### Utility functions #####

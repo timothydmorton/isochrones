@@ -36,6 +36,7 @@ setup(name = "isochrones",
     url = "https://github.com/timothydmorton/isochrones",
     packages = find_packages(),
     package_data = {'':['data/*']},
+    scripts = ['scripts/starfit'],
     classifiers=[
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Science/Research',
