@@ -211,7 +211,19 @@ class StarModel(object):
 
         return pfits[np.argmax(costs),:]
 
-            
+    def mnest_prior(self, cube, ndim, nparams):
+        """
+        Transforms unit cube into parameter cube.
+
+        Parameters if running multinest must be mass, age, feh, distance, AV.
+
+        
+        """
+    
+    def fit_multinest(self, **kwargs):
+        
+
+    
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
