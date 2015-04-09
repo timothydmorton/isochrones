@@ -59,11 +59,17 @@ class StarModel(object):
         
     """
     def __init__(self,ic,maxAV=1,max_distance=3000,**kwargs):
-        self.ic = ic
+        self._ic = ic
         self.properties = kwargs
         self.max_distance = max_distance
         self.maxAV = maxAV
         self._samples = None
+
+    @property
+    def ic(self):
+        if type(self._ic)==type:
+            self._ic = self._ic()
+        return self._ic
 
     def add_props(self,**kwargs):
         """
@@ -667,8 +673,9 @@ class StarModel(object):
         ic_type = attrs.ic_type
         store.close()
 
-        ic = ic_type()
-        mod = cls(ic, maxAV=maxAV, max_distance=max_distance,
+        #ic = ic_type() don't need to initialize anymore
+
+        mod = cls(ic_type, maxAV=maxAV, max_distance=max_distance,
                   **properties)
         mod._samples = samples
         return mod
