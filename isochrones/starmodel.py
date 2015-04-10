@@ -37,7 +37,8 @@ class StarModel(object):
 
     This is used to fit a physical stellar model to observed
     quantities, e.g. spectroscopic or photometric, based on
-    an :class:`Isochrone`.
+    an :class:`Isochrone`.  Parallax (in miliarcseconds) is
+    also accepted as an observed quantity.
 
     Note that by default a local metallicity prior, based on SDSS data,
     will be used when :func:`StarModel.fit_mcmc` is called.
@@ -55,7 +56,8 @@ class StarModel(object):
         Keyword arguments must be properties of given isochrone, e.g., logg,
         feh, Teff, and/or magnitudes.  The values represent measurements of
         the star, and must be in (value,error) format. All such keyword
-        arguments will be held in ``self.properties``.
+        arguments will be held in ``self.properties``.  ``parallax`` is
+        also a valid property, and should be provided in miliarcseconds.
         
     """
     def __init__(self,ic,maxAV=1,max_distance=3000,**kwargs):
@@ -145,6 +147,8 @@ class StarModel(object):
                 mod += A
             elif prop=='feh':
                 mod = feh
+            elif prop=='parallax':
+                mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass,age,feh)
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
@@ -344,7 +348,8 @@ class StarModel(object):
         """
         if self.fit_for_distance:
             fig1 = self.triangle(plot_datapoints=False,
-                                 params=['mass','radius','Teff','feh','age','distance'],
+                                 params=['mass','radius','Teff','feh','age',
+                                         'distance','AV'],
                                  **kwargs)
         else:
             fig1 = self.triangle(plot_datapoints=False,
@@ -440,9 +445,13 @@ class StarModel(object):
         for p in self.properties:
             if p in self.ic.bands:
                 params.append('{}_mag'.format(p))
+                truths.append(self.properties[p][0])
+            elif p=='parallax':
+                params.append('distance')
+                truths.append(1/(self.properties[p][0]/1000.))
             else:
                 params.append(p)
-            truths.append(self.properties[p][0])
+                truths.append(self.properties[p][0])
         return self.triangle(params, truths=truths, **kwargs)
         
 
@@ -905,7 +914,8 @@ class BinaryStarModel(StarModel):
              
         """
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass_A', 'mass_B','radius','Teff','feh','age','distance'],
+                            params=['mass_A', 'mass_B','radius','Teff','feh','age',
+                                    'distance', 'AV'],
                             **kwargs)
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
@@ -1200,7 +1210,7 @@ class TripleStarModel(StarModel):
         """
         fig1 = self.triangle(plot_datapoints=False,
                             params=['mass_A', 'mass_B', 'mass_C', 'radius',
-                                    'Teff','feh','age','distance'],
+                                    'Teff','feh','age','distance','AV'],
                             **kwargs)
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
