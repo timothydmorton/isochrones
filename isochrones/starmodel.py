@@ -67,12 +67,34 @@ class StarModel(object):
         self.maxAV = maxAV
         self._samples = None
 
+        self._props_cleaned = False
+
     @property
     def ic(self):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic
 
+    def _clean_props(self):
+        """
+        Makes sure all properties are legit for isochrone.
+
+        Not done in __init__ in order to save speed on loading.
+        """
+        remove = []
+        for p in self.properties.keys():
+            if not hasattr(self.ic, p) and \
+              p not in self.ic.bands and p != 'parallax':
+                remove.append(p)
+
+        for p in remove:
+            del self.properties[p]
+
+        logging.warning('Properties removed from Model because ' +
+                        'not present in {}: {}'.format(type(self.ic),remove))
+
+        self._props_cleaned = True
+    
     def add_props(self,**kwargs):
         """
         Adds observable properties to ``self.properties``.
@@ -119,6 +141,10 @@ class StarModel(object):
            log-likelihood.  Will be -np.inf if values out of range.
         
         """
+
+        if not self._props_cleaned:
+            self._clean_props()
+            
         if len(p)==5:
             fit_for_distance = True
             mass,age,feh,dist,AV = p
