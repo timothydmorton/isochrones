@@ -750,6 +750,8 @@ class BinaryStarModel(StarModel):
                 mod = addmags(*mods)
             elif prop=='feh':
                 mod = feh
+            elif prop=='parallax':
+                mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
@@ -1054,6 +1056,8 @@ class TripleStarModel(StarModel):
                 mod = addmags(*mods)
             elif prop=='feh':
                 mod = feh
+            elif prop=='parallax':
+                mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
