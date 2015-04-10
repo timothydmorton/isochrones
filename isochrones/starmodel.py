@@ -101,7 +101,7 @@ class StarModel(object):
             
     
     def loglike(self,p, use_local_fehprior=True):
-        """Log-likelihood of model at given parameters
+        """Log-likelihood (actually, posterior) of model at given parameters
 
         
         :param p: 
@@ -147,7 +147,7 @@ class StarModel(object):
                 mod = feh
             else:
                 mod = getattr(self.ic,prop)(mass,age,feh)
-            logl += -(val-mod)**2/err**2
+            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
         if np.isnan(logl):
             logl = -np.inf
@@ -168,12 +168,8 @@ class StarModel(object):
                 +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
             logl += np.log(fehdist)
 
-        ##prior to sample ages with linear prior
-        #a0 = 10**self.ic.minage
-        #a1 = 10**self.ic.maxage
-        #da = a1-a0
-        #a = 10**age
-        #logl += np.log(a/(a1-a0))
+        #prior to sample ages with linear prior (propto log(age))
+        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
 
         return logl
 
@@ -747,7 +743,7 @@ class BinaryStarModel(StarModel):
                 mod = feh
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-            logl += -(val-mod)**2/err**2
+            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
         if np.isnan(logl):
             logl = -np.inf
@@ -769,12 +765,8 @@ class BinaryStarModel(StarModel):
                 +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
             logl += np.log(fehdist)
 
-        ##prior to sample ages with linear prior
-        #a0 = 10**self.ic.minage
-        #a1 = 10**self.ic.maxage
-        #da = a1-a0
-        #a = 10**age
-        #logl += np.log(a/(a1-a0))
+        #prior to sample ages with linear prior (propto log(age))
+        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
 
         return logl
         
@@ -1054,7 +1046,7 @@ class TripleStarModel(StarModel):
                 mod = feh
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-            logl += -(val-mod)**2/err**2
+            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
         if np.isnan(logl):
             logl = -np.inf
@@ -1076,12 +1068,8 @@ class TripleStarModel(StarModel):
                 +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
             logl += np.log(fehdist)
 
-        ##prior to sample ages with linear prior
-        #a0 = 10**self.ic.minage
-        #a1 = 10**self.ic.maxage
-        #da = a1-a0
-        #a = 10**age
-        #logl += np.log(a/(a1-a0))
+        #prior to sample ages with linear prior (propto log(age))
+        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
 
         return logl
         
