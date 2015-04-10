@@ -10,6 +10,9 @@ be conditioned.  Multiple folder names can also be passed.
 """
 from __future__ import division, print_function
 
+import matplotlib
+matplotlib.use('agg')
+
 import os, os.path, re, sys
 import logging
 
