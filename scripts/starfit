@@ -65,13 +65,13 @@ if __name__=='__main__':
 
     if args.binary:
         Model = BinaryStarModel
-        model_filename = 'binary_starmodel.h5'
+        model_filename = 'binary_starmodel_{}.h5'.format(args.models)
     elif args.triple:
         Model = TripleStarModel
-        model_filename = 'triple_starmodel.h5'
+        model_filename = 'triple_starmodel_{}.h5'.format(args.models)
     else:
         Model = StarModel
-        model_filename = 'single_starmodel.h5'
+        model_filename = 'single_starmodel_{}.h5'.format(args.models)
     
     logger = None #dummy
 
@@ -96,7 +96,7 @@ if __name__=='__main__':
                     
             mod = Model(ichrone, **props)
             mod.fit_mcmc()
-            triangle_base = os.path.join(folder, 'triangle')
+            triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))
             
