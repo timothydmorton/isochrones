@@ -159,10 +159,11 @@ class StarModel(object):
         #IMF prior
         logl += np.log(salpeter_prior(mass))
         
-        #distance prior ~d^2 out to d_max
+        #distance prior ~d^2 out to d_max; flat AV prior
         if fit_for_distance:
             logl += np.log(3/self.max_distance**3 * dist**2)
-
+            logl += np.log(1/self.maxAV)
+            
         if use_local_fehprior:
             #From Jo Bovy:
             #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
@@ -763,9 +764,10 @@ class BinaryStarModel(StarModel):
         #IMF prior
         logl += np.log(salpeter_prior(mass_A))
         
-        #distance prior ~d^2 out to d_max
+        #distance prior ~d^2 out to d_max; flat AV prior
         if fit_for_distance:
             logl += np.log(3/self.max_distance**3 * dist**2)
+            logl += np.log(1/self.maxAV)
 
         if use_local_fehprior:
             #From Jo Bovy:
@@ -1069,9 +1071,10 @@ class TripleStarModel(StarModel):
         #IMF prior
         logl += np.log(salpeter_prior(mass_A))
         
-        #distance prior ~d^2 out to d_max
+        #distance prior ~d^2 out to d_max; flat AV prior
         if fit_for_distance:
             logl += np.log(3/self.max_distance**3 * dist**2)
+            logl += np.log(1/self.maxAV)
 
         if use_local_fehprior:
             #From Jo Bovy:
