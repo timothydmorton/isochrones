@@ -4,6 +4,8 @@ import numpy as np
 import logging
 import re
 
+from configobj import ConfigObj
+
 try:
     import pandas as pd
 except ImportError:
@@ -75,6 +77,27 @@ class StarModel(object):
             self._ic = self._ic()
         return self._ic
 
+    @classmethod
+    def from_ini(cls, ic, folder='.', ini_file='star.ini'):
+        """
+        Initialize a StarModel from a .ini file
+
+        File should contain all arguments with which to initialize
+        StarModel.  
+        """
+        if not os.path.isabs(ini_file):
+            ini_file = os.path.join(folder,ini_file)
+
+        config = ConfigObj(ini_file)
+        kwargs = {}
+        for kw in config.keys():
+            try:
+                kwargs[kw] = float(config[kw])
+            except:
+                kwargs[kw] = (float(config[kw][0]), float(config[kw][1]))
+
+        return cls(ic, **kwargs)
+    
     def _clean_props(self):
         """
         Makes sure all properties are legit for isochrone.
