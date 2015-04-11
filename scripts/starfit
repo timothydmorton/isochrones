@@ -104,7 +104,7 @@ if __name__=='__main__':
 
             end = time.time()
             logger.info('starfit successful for ' +
-                        '{} in {:.1f} minutes.'.format(folder, (start-end)/60))
+                        '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
         except KeyboardInterrupt:
             logger.error('starfit calculation interrupted for {}.'.format(folder))
             raise
