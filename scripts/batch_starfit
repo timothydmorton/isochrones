@@ -24,7 +24,7 @@ if __name__=='__main__':
     
     args = parser.parse_args()
     
-    runfolder = '{}-run'.format(args.file)
+    runfolder = os.path.abspath('{}-run'.format(args.file))
     if not os.path.exists(runfolder):
         os.makedirs(runfolder)
 
