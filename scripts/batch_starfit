@@ -28,22 +28,25 @@ if __name__=='__main__':
     if not os.path.exists(runfolder):
         os.makedirs(runfolder)
 
+
     num_lines = sum(1 for line in open(args.file))
     num_per_core = num_lines // args.ncores
     tot_minutes = args.time*num_per_core
     time_string = '{:02.0f}:{:02.0f}:00'.format(tot_minutes//60, tot__minutes % 60)
-        
+
+    ncores = num_lines if args.ncores is None else args.ncores
+            
     scriptfile = os.path.join(runfolder,'run.sh')
 
     fout = open(scriptfile)
     fout.write('#!/bin/bash\n')
     fout.write('#SBATCH -J starfit-{}\n'.format(args.file))
-    fout.write('#SBATCH -n {}\n'.format(args.ncores))
+    fout.write('#SBATCH -n {}\n'.format(ncores))
     fout.write('#SBATCH -t {}\n'.format(time_string))
     fout.write('#SBATCH -o {}/%A-%a.out\n'.format(runfolder))
     fout.write('#SBATCH -e {}/%A-%a.err\n'.format(runfolder))
     fout.write('\n')
-    fout.write('awk "NR % {} == ${SLURM_ARRAY_TASK_ID}" | '.format(args.ncores) +
+    fout.write('awk "NR % {} == ${SLURM_ARRAY_TASK_ID}" | '.format(ncores) +
                'xargs starfit {}\n'.format(args.extra))
 
     fout.close()
