@@ -57,3 +57,6 @@ if __name__=='__main__':
     fout.write('\n')
 
     fout.close()
+
+    #execute slurm job array
+    subprocess.call('sbatch --array=0-{} {}'.format(ncores, scriptfile))
