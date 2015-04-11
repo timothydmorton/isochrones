@@ -99,9 +99,11 @@ if __name__=='__main__':
             triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))
-            
+
+            logger.info('starfit calculation successfully completed for {}.'.format(folder))
         except KeyboardInterrupt:
+            logger.error('starfit calculation interrupted for {}.'.format(folder))
             raise
         except:
-            logger.error('FPP calculation failed for {}.'.format(folder),
+            logger.error('starfit calculation failed for {}.'.format(folder),
                          exc_info=True)
