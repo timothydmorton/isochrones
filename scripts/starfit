@@ -15,6 +15,7 @@ matplotlib.use('agg')
 
 import os, os.path, re, sys
 import logging
+import time
 
 from configobj import ConfigObj
 import argparse
@@ -83,6 +84,7 @@ if __name__=='__main__':
         logger = initLogging(logfile, logger)
 
         try:
+            start = time.time()
             ini_file = os.path.join(folder, 'star.ini')
             config = ConfigObj(ini_file)
 
@@ -100,7 +102,9 @@ if __name__=='__main__':
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))
 
-            logger.info('starfit calculation successfully completed for {}.'.format(folder))
+            end = time.time()
+            logger.info('starfit successful for ' +
+                        '{} in {:.1f} minutes.'.format(folder, (start-end)/60))
         except KeyboardInterrupt:
             logger.error('starfit calculation interrupted for {}.'.format(folder))
             raise
