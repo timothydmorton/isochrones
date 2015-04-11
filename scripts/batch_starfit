@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+"""
+Launches batch job running starfit on every folder listed in a file
+
+Uses slurm job array by default, but could be reconfigured
+to another batch scheduler if desired.
+"""
+from __future__ import print_function, division
+
+import os,re,sys,os.path,shutil,glob
+import argparse
+import numpy as np
+import subprocess
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(description='Fire up a batch starfit job')
+
+    parser.add_argument('file', type=str)
+    parser.add_argument('-n', '--ncores', type=int, default=None,
+                        help='Total number of cores to use.  Will default to length of file.')
+    parser.add_argument('-t', '--time', type=float, default=5,
+                        help='approximate time that one line will take, in minutes')
+    parser.add_argument('extra', nargs=argparse.REMAINDER)
+    
+    args = parser.parse_args()
+    
+    runfolder = '{}-run'.format(args.file)
+    if not os.path.exists(runfolder):
+        os.makedirs(runfolder)
+
+    num_lines = sum(1 for line in open(args.file))
+    num_per_core = num_lines // args.ncores
+    tot_minutes = args.time*num_per_core
+    time_string = '{:02.0f}:{:02.0f}:00'.format(tot_minutes//60, tot__minutes % 60)
+        
+    scriptfile = os.path.join(runfolder,'run.sh')
+
+    fout = open(scriptfile)
+    fout.write('#!/bin/bash\n')
+    fout.write('#SBATCH -J starfit-{}\n'.format(args.file))
+    fout.write('#SBATCH -n {}\n'.format(args.ncores))
+    fout.write('#SBATCH -t {}\n'.format(time_string))
+    fout.write('#SBATCH -o {}/%A-%a.out\n'.format(runfolder))
+    fout.write('#SBATCH -e {}/%A-%a.err\n'.format(runfolder))
+    fout.write('\n')
+    fout.write('awk "NR % {} == ${SLURM_ARRAY_TASK_ID}" | '.format(args.ncores) +
+               'xargs starfit {}\n'.format(args.extra))
+
+    fout.close()

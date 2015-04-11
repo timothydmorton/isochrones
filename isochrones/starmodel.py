@@ -113,8 +113,9 @@ class StarModel(object):
         for p in remove:
             del self.properties[p]
 
-        logging.warning('Properties removed from Model because ' +
-                        'not present in {}: {}'.format(type(self.ic),remove))
+        if len(remove) > 0:
+            logging.warning('Properties removed from Model because ' +
+                            'not present in {}: {}'.format(type(self.ic),remove))
 
         self._props_cleaned = True
     
