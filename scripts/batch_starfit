@@ -33,6 +33,8 @@ if __name__=='__main__':
     ncores = num_lines if args.ncores is None else args.ncores
 
     num_per_core = num_lines // ncores
+    if num_lines % ncores != 0:
+        num_per_core += 1
     tot_minutes = args.time*num_per_core
     time_string = '{:02.0f}:{:02.0f}:00'.format(tot_minutes//60, tot_minutes % 60)
 
