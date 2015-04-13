@@ -98,7 +98,7 @@ if __name__=='__main__':
 
                     
             mod = Model(ichrone, **props)
-            mod.fit_mcmc(threads=threads)
+            mod.fit_mcmc(threads=args.threads)
             triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))
