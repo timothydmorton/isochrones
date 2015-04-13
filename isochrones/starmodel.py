@@ -1472,6 +1472,8 @@ def fit_mcmc(model, nwalkers=200,nburn=100,niter=200,
     sampler.reset()
     sampler.run_mcmc(pos, niter, rstate0=state)
 
+    model._sampler = sampler
+    
     return sampler    
 
 
