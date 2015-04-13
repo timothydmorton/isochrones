@@ -58,7 +58,7 @@ if __name__=='__main__':
     fout.write('#SBATCH -o {}/%A_%a.out\n'.format(runfolder))
     fout.write('#SBATCH -e {}/%A_%a.err\n'.format(runfolder))
     fout.write('\n')
-    fout.write('awk "NR % {} == ${{SLURM_ARRAY_TASK_ID}}" {} | '.format(nsplit, listfile) +
+    fout.write('awk "NR % {} == ${{OMPI_COMM_WORLD_RANK}}" {} | '.format(nsplit, listfile) +
                'xargs starfit --threads {}'.format(args.ntasks_per_node))
     for arg in args.extra:
         fout.write('{} '.format(arg))
@@ -67,4 +67,4 @@ if __name__=='__main__':
     fout.close()
 
     #execute slurm job array
-    subprocess.call('sbatch --array=0-{} {}'.format(nsplit, scriptfile), shell=True)
+    subprocess.call('sbatch  {}'.format(scriptfile), shell=True)
