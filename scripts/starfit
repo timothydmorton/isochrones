@@ -49,6 +49,7 @@ if __name__=='__main__':
     parser.add_argument('--binary', action='store_true')
     parser.add_argument('--triple', action='store_true')
     parser.add_argument('--models', default='dartmouth')
+    parser.add_argument('--threads', type=int, default=1)
     
     args = parser.parse_args()
 
@@ -97,7 +98,7 @@ if __name__=='__main__':
 
                     
             mod = Model(ichrone, **props)
-            mod.fit_mcmc()
+            mod.fit_mcmc(threads=threads)
             triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))

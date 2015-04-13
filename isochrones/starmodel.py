@@ -317,7 +317,11 @@ class StarModel(object):
         :param loglike_args:
             Any arguments to pass to :func:`StarModel.loglike`, such 
             as what priors to use.
-        
+
+        :param **kwargs:
+            Additional keyword arguments passed to :class:`emcee.EnsembleSampler`
+            constructor.
+            
         :return:
             :class:`emcee.EnsembleSampler` object.
             

@@ -18,7 +18,7 @@ if __name__=='__main__':
     parser.add_argument('file', type=str)
     parser.add_argument('-n', '--nsplit', type=int, default=None,
                         help='Total number of jobs to split into.  Will default to length of file.')
-    parser.add_argument('--ntasks_per_node', type=int, default=12,
+    parser.add_argument('--ntasks_per_node', type=int, default=20,
                         help='number of cores to use per node.')
     
     parser.add_argument('-t', '--time', type=float, default=5,
