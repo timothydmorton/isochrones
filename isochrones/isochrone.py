@@ -135,18 +135,10 @@ class Isochrone(object):
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
 
     def Teff(self, *pts):
-        if not hasattr(self, '_Teff_fn'):
-            def fn(*pts):
-                return 10**self.logTeff(*pts)
-            self._Teff_fn = fn
-        return self._Teff_fn(*pts)
+        return 10**self.logTeff(*pts)
 
     def radius(self, *pts):
-        if not hasattr(self, '_R_fn'):
-            def fn(*pts):
-                return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
-            self._R_fn = fn
-        return self._R_fn(*pts)
+        return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
                 
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
