@@ -44,12 +44,12 @@ def _pickle_method(method):
 
 def _unpickle_method(func_name, obj, cls):
     for cls in cls.mro():
-    try:
-        func = cls.__dict__[func_name]
-    except KeyError:
-        pass
-    else:
-        break
+        try:
+            func = cls.__dict__[func_name]
+        except KeyError:
+            pass
+        else:
+            break
     return func.__get__(obj, cls)
 
 import copy_reg
