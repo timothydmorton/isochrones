@@ -59,7 +59,7 @@ if __name__=='__main__':
     fout.write('#SBATCH -e {}/%A_%a.err\n'.format(runfolder))
     fout.write('\n')
     fout.write('awk "NR % {} == ${{SLURM_ARRAY_TASK_ID}}" {} | '.format(nsplit, listfile) +
-               'xargs starfit ')
+               'xargs starfit --threads {}'.format(args.ntasks_per_node))
     for arg in args.extra:
         fout.write('{} '.format(arg))
     fout.write('\n')
