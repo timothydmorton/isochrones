@@ -21,6 +21,7 @@ from configobj import ConfigObj
 import argparse
 
 from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
+from isochrones.starmodel import fit_mcmc
 
 def initLogging(filename, logger):
     if logger == None:
@@ -98,7 +99,7 @@ if __name__=='__main__':
 
                     
             mod = Model(ichrone, **props)
-            mod.fit_mcmc(threads=args.threads)
+            fit_mcmc(mod, threads=args.threads)
             triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))

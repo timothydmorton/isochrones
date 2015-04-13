@@ -1016,7 +1016,8 @@ class BinaryStarModel(StarModel):
 
 
     def _make_samples(self, lnprob_thresh=0.005):
-        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability,
+                                      lnprob_thresh*100)
         ok = self.sampler.flatlnprobability > lnprob_thresh
 
         mass_A = self.sampler.flatchain[:,0][ok]
@@ -1348,6 +1349,109 @@ class TripleStarModel(StarModel):
 #    def triple_loglike(self, *args, **kwargs):
 #        return TripleStarModel.loglike(self, *args, **kwargs)
         
+
+###
+    
+def fit_mcmc(model, nwalkers=200,nburn=100,niter=200,
+            p0=None,initial_burn=None,
+            ninitial=100, loglike_kwargs=None,
+            **kwargs):
+    """Fits stellar model using MCMC.
+
+    :param nwalkers: (optional)
+        Number of walkers to pass to :class:`emcee.EnsembleSampler`.
+        Default is 200.
+
+    :param nburn: (optional)
+        Number of iterations for "burn-in."  Default is 100.
+
+    :param niter: (optional)
+        Number of for-keeps iterations for MCMC chain.
+        Default is 200.
+
+    :param p0: (optional)
+        Initial parameters for emcee.  If not provided, then chains
+        will behave according to whether inital_burn is set.
+
+    :param initial_burn: (optional)
+        If `True`, then initialize walkers first with a random initialization,
+        then cull the walkers, keeping only those with > 15% acceptance
+        rate, then reinitialize sampling.  If `False`, then just do
+        normal burn-in.  Default is `None`, which will be set to `True` if
+        fitting for distance (i.e., if there are apparent magnitudes as
+        properties of the model), and `False` if not.
+
+    :param ninitial: (optional)
+        Number of iterations to test walkers for acceptance rate before
+        re-initializing.
+
+    :param loglike_args:
+        Any arguments to pass to :func:`StarModel.loglike`, such 
+        as what priors to use.
+
+    :param **kwargs:
+        Additional keyword arguments passed to :class:`emcee.EnsembleSampler`
+        constructor.
+
+    :return:
+        :class:`emcee.EnsembleSampler` object.
+
+    """
+
+    #clear any saved _samples
+    if model._samples is not None:
+        model._samples = None
+
+    fit_for_distance = model.fit_for_distance
+        
+    if fit_for_distance:
+        npars = 5
+        if initial_burn is None:
+            initial_burn = True
+    else:
+        if initial_burn is None:
+            initial_burn = False
+        npars = 3
+
+    if p0 is None:
+        m0,age0,feh0 = model.ic.random_points(nwalkers)
+        d0 = 10**(rand.uniform(0,np.log10(model.max_distance),size=nwalkers))
+        AV0 = rand.uniform(0,model.maxAV,size=nwalkers)
+        if fit_for_distance:
+            p0 = np.array([m0,age0,feh0,d0,AV0]).T
+        else:
+            p0 = np.array([m0,age0,feh0]).T
+        if initial_burn:
+            sampler = emcee.EnsembleSampler(nwalkers,npars,model.loglike,
+                                            **kwargs)
+            #ninitial = 300 #should this be parameter?
+            pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+            wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
+                               (sampler.naccepted/ninitial < 0.4))[0]
+            i=1
+            while len(wokinds)==0:
+                thresh = 0.15 - i*0.02
+                if thresh < 0:
+                    raise RuntimeError('Initial burn has no acceptance?')
+                wokinds = np.where((sampler.naccepted/ninitial > thresh) &
+                                   (sampler.naccepted/ninitial < 0.4))[0]
+                i += 1
+            inds = rand.randint(len(wokinds),size=nwalkers)
+            p0 = sampler.chain[wokinds[inds],:,:].mean(axis=1) #reset p0
+            p0 *= (1 + rand.normal(size=p0.shape)*0.01)
+    else:
+        p0 = np.array(p0)
+        p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
+        if fit_for_distance:
+            p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
+
+    sampler = emcee.EnsembleSampler(nwalkers,npars,model.loglike)
+    pos, prob, state = sampler.run_mcmc(p0, nburn)
+    sampler.reset()
+    sampler.run_mcmc(pos, niter, rstate0=state)
+
+    return sampler    
+
 
 #### Utility functions #####
 
