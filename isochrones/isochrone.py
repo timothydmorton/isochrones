@@ -120,20 +120,34 @@ class Isochrone(object):
         self.logg = interpnd(self.tri,logg)
         self.logTeff = interpnd(self.tri,np.log10(Teff))
 
-        def Teff_fn(*pts):
-            return 10**self.logTeff(*pts)
-        self.Teff = Teff_fn
+        #def Teff_fn(*pts):
+        #    return 10**self.logTeff(*pts)
+        #self.Teff = Teff_fn
         
-        def R_fn(*pts):
-            return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
-        self.radius = R_fn
+        #def R_fn(*pts):
+        #    return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
+        #self.radius = R_fn
 
         self.bands = []
         for band in mags.keys():
             self.bands.append(band)
 
         self.mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}       
-        
+
+    def Teff(self, *pts):
+        if not hasattr(self, '_Teff_fn'):
+            def fn(*pts):
+                return 10**self.logTeff(*pts)
+            self._Teff_fn = fn
+        return self._Teff_fn(*pts)
+
+    def radius(self, *pts):
+        if not hasattr(self, '_R_fn'):
+            def fn(*pts):
+                return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
+            self._R_fn = fn
+        return self._R_fn(*pts)
+                
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
                  return_df=True, bands=None):
