@@ -40,6 +40,11 @@ if __name__=='__main__':
     if nsplit % args.ntasks_per_node != 0:
         n_nodes += 1
     
+    if nsplit < args.ntasks_per_node:
+        ntasks_per_node = nsplit
+    else:
+        ntasks_per_node = args.ntasks_per_node
+
     num_per_job = num_lines // nsplit
     if num_lines % nsplit != 0:
         num_per_job += 1
@@ -53,18 +58,18 @@ if __name__=='__main__':
     fout.write('#!/bin/bash\n')
     fout.write('#SBATCH -J starfit-{}\n'.format(args.file))
     fout.write('#SBATCH -N {}\n'.format(n_nodes))
-    fout.write('#SBATCH --ntasks-per-node={}\n'.format(args.ntasks_per_node))
+    fout.write('#SBATCH --ntasks-per-node={}\n'.format(ntasks_per_node))
     fout.write('#SBATCH -t {}\n'.format(time_string))
-    fout.write('#SBATCH -o {}/%A_%a.out\n'.format(runfolder))
-    fout.write('#SBATCH -e {}/%A_%a.err\n'.format(runfolder))
     fout.write('\n')
-    fout.write('awk "NR % {} == ${{SLURM_ARRAY_TASK_ID}}" {} | '.format(nsplit, listfile) +
+    fout.write('for ((i=0; i<=$(expr $SLURM_NPROCS-1); i++)) do\n' +
+               ' awk "NR % ${{SLURM_NPROCS}} == $i" {} | '.format(listfile) +
                'xargs starfit ')
     for arg in args.extra:
         fout.write('{} '.format(arg))
-    fout.write('\n')
-
+    fout.write('&\n')
+    fout.write('done\n' +
+               'wait\n')
     fout.close()
 
-    #execute slurm job array
-    subprocess.call('sbatch --array=0-{} {}'.format(nsplit, scriptfile), shell=True)
+    #execute slurm batch job
+    #subprocess.call('sbatch {}'.format(scriptfile), shell=True)
