@@ -27,10 +27,6 @@ if __name__=='__main__':
     
     args = parser.parse_args()
     
-    runfolder = os.path.abspath('{}-run'.format(args.file))
-    if not os.path.exists(runfolder):
-        os.makedirs(runfolder)
-
     listfile = os.path.abspath(args.file)
 
     num_lines = sum(1 for line in open(listfile))
@@ -52,7 +48,7 @@ if __name__=='__main__':
     time_string = '{:02.0f}:{:02.0f}:00'.format(tot_minutes//60, tot_minutes % 60)
 
             
-    scriptfile = os.path.join(runfolder,'run.sh')
+    scriptfile = '{}.batch'.format(listfile)
 
     fout = open(scriptfile, 'w')
     fout.write('#!/bin/bash\n')
