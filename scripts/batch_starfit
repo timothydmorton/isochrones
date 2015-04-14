@@ -64,6 +64,7 @@ if __name__=='__main__':
     fout.write('for ((i=0; i<=$(expr $SLURM_NPROCS-1); i++)) do\n' +
                ' awk "NR % ${{SLURM_NPROCS}} == $i" {} | '.format(listfile) +
                'xargs starfit ')
+
     for arg in args.extra:
         fout.write('{} '.format(arg))
     fout.write('&\n')
@@ -73,3 +74,4 @@ if __name__=='__main__':
 
     #execute slurm batch job
     #subprocess.call('sbatch {}'.format(scriptfile), shell=True)
+
