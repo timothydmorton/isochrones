@@ -73,5 +73,5 @@ if __name__=='__main__':
     fout.close()
 
     #execute slurm batch job
-    #subprocess.call('sbatch {}'.format(scriptfile), shell=True)
+    subprocess.call('sbatch {}'.format(scriptfile), shell=True)
 
