@@ -207,7 +207,11 @@ class StarModel(object):
             logl = -np.inf
 
         #IMF prior
-        logl += np.log(salpeter_prior(mass))
+        mass_prior = salpeter_prior(mass)
+        if mass_prior==0:
+            logl = -np.inf
+        else:
+            logl += np.log(mass_prior)
         
         #distance prior ~d^2 out to d_max; flat AV prior
         if fit_for_distance:
