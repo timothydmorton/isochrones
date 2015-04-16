@@ -1154,6 +1154,9 @@ class TripleStarModel(StarModel):
         #prior to sample ages with linear prior (propto log(age))
         logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
 
+
+        if np.isnan(logl):
+            logl = -np.inf
         return logl
         
     def maxlike(self,nseeds=50):
