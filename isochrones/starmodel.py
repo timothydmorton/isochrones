@@ -1,10 +1,15 @@
 from __future__ import print_function, division
 import os,os.path
-import numpy as np
 import logging
 import re
 
 from configobj import ConfigObj
+
+try:
+    import numpy as np
+    np.seterr(invalid='warn')
+except ImportError:
+    np = None
 
 try:
     import pandas as pd
