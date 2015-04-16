@@ -50,6 +50,7 @@ if __name__=='__main__':
     parser.add_argument('--triple', action='store_true')
     parser.add_argument('--models', default='dartmouth')
     parser.add_argument('--threads', type=int, default=1)
+    parser.add_argument('--no_local_fehprior', action='store_true')
     
     args = parser.parse_args()
 
@@ -97,8 +98,10 @@ if __name__=='__main__':
                     props[kw] = (float(config[kw][0]), float(config[kw][1]))
 
                     
+            use_local_fehprior = not args.no_local_fehprior
             mod = Model(ichrone, **props)
-            mod.fit_mcmc(threads=args.threads)
+            mod.fit_mcmc(threads=args.threads, 
+                         loglike_kwargs={'use_local_fehprior':use_local_fehprior})
             triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
             mod.triangle_plots(triangle_base)
             mod.save_hdf(os.path.join(folder, model_filename))

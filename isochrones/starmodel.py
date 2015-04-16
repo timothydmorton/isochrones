@@ -229,7 +229,11 @@ class StarModel(object):
 
             fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
                 +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
-            logl += np.log(fehdist)
+        else:
+            fehdist = 1/(self.ic.maxfeh - self.ic.minfeh)
+        logl += np.log(fehdist)
+            
+
 
         #prior to sample ages with linear prior (propto log(age))
         logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
