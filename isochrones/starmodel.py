@@ -7,7 +7,6 @@ from configobj import ConfigObj
 
 try:
     import numpy as np
-    np.seterr(invalid='warn')
 except ImportError:
     np = None
 
@@ -825,7 +824,7 @@ class BinaryStarModel(StarModel):
 
 
         #IMF prior
-        mass_prior = salpeter_prior(mass)
+        mass_prior = salpeter_prior(mass_A)
         if mass_prior==0:
             logl = -np.inf
         else:
@@ -1136,7 +1135,7 @@ class TripleStarModel(StarModel):
 
 
         #IMF prior
-        mass_prior = salpeter_prior(mass)
+        mass_prior = salpeter_prior(mass_A)
         if mass_prior==0:
             logl = -np.inf
         else:
