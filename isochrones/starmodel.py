@@ -111,7 +111,7 @@ class StarModel(object):
         remove = []
         for p in self.properties.keys():
             if not hasattr(self.ic, p) and \
-              p not in self.ic.bands and p != 'parallax':
+              p not in self.ic.bands and p not in ['parallax','feh','age']:
                 remove.append(p)
 
         for p in remove:
