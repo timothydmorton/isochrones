@@ -107,7 +107,11 @@ class StarModel(object):
         d = {}
         for prop,vals in self.properties.items():
             if prop in self.ic.bands:
-                d[prop] = vals[0]
+                try:
+                    val,err = vals
+                except TypeError:
+                    val = vals
+                d[prop] = val
         return d
 
     @property
@@ -115,7 +119,11 @@ class StarModel(object):
         d = {}
         for prop,vals in self.properties.items():
             if prop in self.ic.bands:
-                d[prop] = vals[1]
+                try:
+                    val,err = vals
+                except TypeError:
+                    continue
+                d[prop] = err
         return d
     
     @property
@@ -546,15 +554,19 @@ class StarModel(object):
         truths = []
         params = []
         for p in self.properties:
+            try:
+                val, err = self.properties[p]
+            except:
+                continue
             if p in self.ic.bands:
                 params.append('{}_mag'.format(p))
-                truths.append(self.properties[p][0])
+                truths.append(val)
             elif p=='parallax':
                 params.append('distance')
-                truths.append(1/(self.properties[p][0]/1000.))
+                truths.append(1/(val/1000.))
             else:
                 params.append(p)
-                truths.append(self.properties[p][0])
+                truths.append(val)
         return self.triangle(params, truths=truths, **kwargs)
         
 
