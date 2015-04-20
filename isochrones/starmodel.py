@@ -224,7 +224,11 @@ class StarModel(object):
 
         logl = 0
         for prop in self.properties.keys():
-            val,err = self.properties[prop]
+            try:
+                val,err = self.properties[prop]
+            except TypeError:
+                #property not appropriate for fitting (e.g. no error provided)
+                continue
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
@@ -837,7 +841,11 @@ class BinaryStarModel(StarModel):
 
         logl = 0
         for prop in self.properties.keys():
-            val,err = self.properties[prop]
+            try:
+                val,err = self.properties[prop]
+            except TypeError:
+                #property not appropriate for fitting (e.g. no error provided)
+                continue
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist,'+ 
@@ -1148,7 +1156,11 @@ class TripleStarModel(StarModel):
 
         logl = 0
         for prop in self.properties.keys():
-            val,err = self.properties[prop]
+            try:
+                val,err = self.properties[prop]
+            except TypeError:
+                #property not appropriate for fitting (e.g. no error provided)
+                continue
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass_A, mass_B, mass_C, age, feh, dist,'+ 
