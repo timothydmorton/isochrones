@@ -1,4 +1,4 @@
-__version__ = '0.8'
+__version__ = '0.8.1'
 
 try:
     __ISOCHRONES_SETUP__
