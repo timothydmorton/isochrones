@@ -48,6 +48,7 @@ if __name__=='__main__':
     parser.add_argument('folders', nargs='*', default=['.'])
     parser.add_argument('--binary', action='store_true')
     parser.add_argument('--triple', action='store_true')
+    parser.add_argument('--all', action='store_true')
     parser.add_argument('--models', default='dartmouth')
     parser.add_argument('--threads', type=int, default=1)
     parser.add_argument('--no_local_fehprior', action='store_true')
@@ -66,52 +67,59 @@ if __name__=='__main__':
     else:
         raise ValueError('Unknown stellar models: {}'.format(args.models))
 
-    if args.binary:
-        Model = BinaryStarModel
-        model_filename = 'binary_starmodel_{}.h5'.format(args.models)
+    if args.all:
+        multiplicities = ['single', 'binary', 'triple']
+    elif args.binary:
+        multiplicities = ['binary']
     elif args.triple:
-        Model = TripleStarModel
-        model_filename = 'triple_starmodel_{}.h5'.format(args.models)
+        multiplicities = ['triple']
     else:
-        Model = StarModel
-        model_filename = 'single_starmodel_{}.h5'.format(args.models)
+        multiplicities = ['single']
     
-    logger = None #dummy
+    Models = {'single':StarModel,
+              'binary':BinaryStarModel,
+              'triple':TripleStarModel}
 
+    logger = None #dummy
     
     for i,folder in enumerate(args.folders):
-        print('{} of {}: {}'.format(i+1, len(args.folders), folder))
-        #initialize logger for folder
-        logfile = os.path.join(folder, 'run.log')
-        logger = initLogging(logfile, logger)
+        for mult in multiplicities:
+            Model = Models[mult]
+            model_filename = '{}_starmodel_{}.h5'.format(args.models, mult)
 
-        try:
-            start = time.time()
-            ini_file = os.path.join(folder, 'star.ini')
-            config = ConfigObj(ini_file)
 
-            props = {}
-            for kw in config.keys():
-                try:
-                    props[kw] = float(config[kw])
-                except:
-                    props[kw] = (float(config[kw][0]), float(config[kw][1]))
+            print('{} of {}: {} ({})'.format(i+1, len(args.folders), folder, mult))
+            #initialize logger for folder
+            logfile = os.path.join(folder, 'run.log')
+            logger = initLogging(logfile, logger)
 
-                    
-            use_local_fehprior = not args.no_local_fehprior
-            mod = Model(ichrone, **props)
-            mod.fit_mcmc(threads=args.threads, 
-                         loglike_kwargs={'use_local_fehprior':use_local_fehprior})
-            triangle_base = os.path.join(folder, '{}_triangle'.format(args.models))
-            mod.triangle_plots(triangle_base)
-            mod.save_hdf(os.path.join(folder, model_filename))
+            try:
+                start = time.time()
+                ini_file = os.path.join(folder, 'star.ini')
+                config = ConfigObj(ini_file)
 
-            end = time.time()
-            logger.info('starfit successful for ' +
-                        '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
-        except KeyboardInterrupt:
-            logger.error('starfit calculation interrupted for {}.'.format(folder))
-            raise
-        except:
-            logger.error('starfit calculation failed for {}.'.format(folder),
-                         exc_info=True)
+                props = {}
+                for kw in config.keys():
+                    try:
+                        props[kw] = float(config[kw])
+                    except:
+                        props[kw] = (float(config[kw][0]), float(config[kw][1]))
+
+
+                use_local_fehprior = not args.no_local_fehprior
+                mod = Model(ichrone, **props)
+                mod.fit_mcmc(threads=args.threads, 
+                             loglike_kwargs={'use_local_fehprior':use_local_fehprior})
+                triangle_base = os.path.join(folder, '{}_triangle_{}'.format(args.models, mult))
+                mod.triangle_plots(triangle_base)
+                mod.save_hdf(os.path.join(folder, model_filename))
+
+                end = time.time()
+                logger.info('{} starfit successful for '.format(mult) +
+                            '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
+            except KeyboardInterrupt:
+                logger.error('{} starfit calculation interrupted for {}.'.format(mult,folder))
+                raise
+            except:
+                logger.error('{} starfit calculation failed for {}.'.format(mult,folder),
+                             exc_info=True)

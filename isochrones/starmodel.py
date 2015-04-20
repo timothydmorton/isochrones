@@ -102,6 +102,38 @@ class StarModel(object):
 
         return cls(ic, **kwargs)
     
+    @property
+    def mags(self):
+        d = {}
+        for prop,vals in self.properties.items():
+            if prop in self.ic.bands:
+                d[prop] = vals[0]
+        return d
+
+    @property
+    def mag_errs(self):
+        d = {}
+        for prop,vals in self.properties.items():
+            if prop in self.ic.bands:
+                d[prop] = vals[1]
+        return d
+    
+    @property
+    def Teff(self):
+        if 'Teff' in self.properties:
+            return self.properties['Teff']
+
+    @property
+    def feh(self):
+        if 'feh' in self.properties:
+            return self.properties['feh']
+
+    @property
+    def logg(self):
+        if 'logg' in self.properties:
+            return self.properties['logg']
+
+
     def _clean_props(self):
         """
         Makes sure all properties are legit for isochrone.
