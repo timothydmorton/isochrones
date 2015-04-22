@@ -821,15 +821,18 @@ class BinaryStarModel(StarModel):
     """
     Object used to fit two stars at the same distance to given observed properties
 
-    Initialize the same way as :class:`StarModel`. Can take additional 
-    ``dmag`` properties, representing contrast measurements of a companion
-    star.  These should be called, e.g., ``delta_r``.
-
-
+    Initialize the same way as :class:`StarModel`. 
 
     Difference between this object and a regular :class:`StarModel` is that
     the fit parameters include two masses: ``mass_A`` and ``mass_B`` instead
     of just one.
+
+    Notably, this object can also take additional 
+    ``delta_mag`` properties, representing contrast measurements of a companion
+    star.  These should be called, e.g., ``delta_r``.  This will be an additional
+    constraint in the model fitting.  All the other provided apparent magnitudes
+    should be the total combined light of the two stars.
+
 
 
 
