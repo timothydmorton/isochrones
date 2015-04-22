@@ -851,7 +851,7 @@ class BinaryStarModel(StarModel):
            log-likelihood.  Will be -np.inf if values out of range.
         
         """
-        if not self._props_cleaned():
+        if not self._props_cleaned:
             self._clean_props()
 
         if len(p)==6:
@@ -1182,7 +1182,7 @@ class TripleStarModel(StarModel):
            log-likelihood.  Will be -np.inf if values out of range.
         
         """
-        if not self._props_cleaned():
+        if not self._props_cleaned:
             self._clean_props()
 
         if len(p)==7:
