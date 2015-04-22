@@ -687,20 +687,31 @@ class BinaryStarModel(StarModel):
         logl = 0
         for prop in self.properties.keys():
             val,err = self.properties[prop]
+            m = re.search('delta_(\w+)$',prop)
             if prop in self.ic.bands:
                 if not fit_for_distance:
-                    raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
+                    raise ValueError('must fit for mass, age, feh, dist, A_V '+
+                                     'if apparent magnitudes provided.')
                 mod_A = self.ic.mag[prop](mass_A,age,feh) + 5*np.log10(dist) - 5
                 mod_B = self.ic.mag[prop](mass_B,age,feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mod_A += A
                 mod_B += A
                 mod = addmags(mod_A, mod_B)
+            elif m:
+                band = m.group(1)
+                mod_A = self.ic.mag[band](mass_A,age,feh) + 5*np.log10(dist) - 5
+                mod_B = self.ic.mag[band](mass_B,age,feh) + 5*np.log10(dist) - 5
+                A = AV*EXTINCTION[band]
+                mod_A += A
+                mod_B += A
+                mod = mod_B - mod_A
             elif prop=='feh':
                 mod = feh
             else:
                 mod = getattr(self.ic,prop)(mass,age,feh)
             logl += -(val-mod)**2/err**2
+
 
         if np.isnan(logl):
             logl = -np.inf
