@@ -864,13 +864,22 @@ class BinaryStarModel(StarModel):
                 continue
             if prop in self.ic.bands:
                 if not fit_for_distance:
-                    raise ValueError('must fit for mass, age, feh, dist,'+ 
-                                     'A_V if apparent magnitudes provided.')
-                mods = self.ic.mag[prop]([mass_A, mass_B], 
-                                         age, feh) + 5*np.log10(dist) - 5
+                    raise ValueError('must fit for mass, age, feh, dist, A_V '+
+                                     'if apparent magnitudes provided.')
+                mod_A = self.ic.mag[prop](mass_A,age,feh) + 5*np.log10(dist) - 5
+                mod_B = self.ic.mag[prop](mass_B,age,feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
-                mods += A
-                mod = addmags(*mods)
+                mod_A += A
+                mod_B += A
+                mod = addmags(mod_A, mod_B)
+            elif m:
+                band = m.group(1)
+                mod_A = self.ic.mag[band](mass_A,age,feh) + 5*np.log10(dist) - 5
+                mod_B = self.ic.mag[band](mass_B,age,feh) + 5*np.log10(dist) - 5
+                A = AV*EXTINCTION[band]
+                mod_A += A
+                mod_B += A
+                mod = mod_B - mod_A
             elif prop=='feh':
                 mod = feh
             elif prop=='parallax':
@@ -878,6 +887,7 @@ class BinaryStarModel(StarModel):
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
+
 
         if np.isnan(logl):
             logl = -np.inf
