@@ -520,8 +520,20 @@ class StarModel(object):
         # that truths are in range.
         extents = []
         for i,par in enumerate(params):
+            m = re.search('delta_(\w+)$',par)
+            if m:
+                if type(self) == BinaryStarModel:
+                    b = m.group(1)
+                    values = (self.samples['{}_mag_B'.format(b)] - 
+                              self.samples['{}_mag_A'.format(b)])
+                    df[par] = values
+                else:
+                    raise ValueError('Can only do delta-mag properties' +
+                                     'with BinaryStarModel')
+            else:
+                values = self.samples[par]
             qs = np.array([0.5 - 0.5*extent, 0.5 + 0.5*extent])
-            minval, maxval = self.samples[par].quantile(qs)
+            minval, maxval = values.quantile(qs)
             if 'truths' in kwargs:
                 datarange = maxval - minval
                 if kwargs['truths'][i] < minval:
@@ -558,6 +570,7 @@ class StarModel(object):
                 val, err = self.properties[p]
             except:
                 continue
+
             if p in self.ic.bands:
                 params.append('{}_mag'.format(p))
                 truths.append(val)
