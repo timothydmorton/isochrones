@@ -151,7 +151,8 @@ class StarModel(object):
         remove = []
         for p in self.properties.keys():
             if not hasattr(self.ic, p) and \
-              p not in self.ic.bands and p not in ['parallax','feh','age']:
+              p not in self.ic.bands and p not in ['parallax','feh','age'] and \
+              not re.search('delta_',p):
                 remove.append(p)
 
         for p in remove:
@@ -243,6 +244,8 @@ class StarModel(object):
                 mod = self.ic.mag[prop](mass,age,feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mod += A
+            elif re.search('delta_',prop):
+                continue
             elif prop=='feh':
                 mod = feh
             elif prop=='parallax':
@@ -848,6 +851,9 @@ class BinaryStarModel(StarModel):
            log-likelihood.  Will be -np.inf if values out of range.
         
         """
+        if not self._props_cleaned():
+            self._clean_props()
+
         if len(p)==6:
             fit_for_distance = True
             mass_A, mass_B, age, feh, dist, AV = p
@@ -1176,6 +1182,9 @@ class TripleStarModel(StarModel):
            log-likelihood.  Will be -np.inf if values out of range.
         
         """
+        if not self._props_cleaned():
+            self._clean_props()
+
         if len(p)==7:
             fit_for_distance = True
             mass_A, mass_B, mass_C, age, feh, dist, AV = p
@@ -1214,6 +1223,8 @@ class TripleStarModel(StarModel):
                 A = AV*EXTINCTION[prop]
                 mods += A
                 mod = addmags(*mods)
+            elif re.search('delta_',prop):
+                continue
             elif prop=='feh':
                 mod = feh
             elif prop=='parallax':
