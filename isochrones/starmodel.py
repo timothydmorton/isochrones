@@ -862,6 +862,7 @@ class BinaryStarModel(StarModel):
             except TypeError:
                 #property not appropriate for fitting (e.g. no error provided)
                 continue
+            m = re.search('delta_(\w+)',prop)
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist, A_V '+
@@ -1119,8 +1120,12 @@ class BinaryStarModel(StarModel):
                        distance=distance, AV=AV)
 
         for col in df_B.columns:
-            if re.search('_mag', col):
+            m = re.search('_mag$', col)
+            if m:
+                df['{}_A'.format(col)] = df[col]
+                df['{}_B'.format(col)] = df_B[col]
                 df[col] = addmags(df[col], df_B[col])
+
 
         df['mass_A'] = df['mass']
         df.drop('mass', axis=1, inplace=True)
@@ -1414,7 +1419,11 @@ class TripleStarModel(StarModel):
                        distance=distance, AV=AV)
 
         for col in df_B.columns:
-            if re.search('_mag', col):
+            m = re.search('_mag$', col)
+            if m:
+                df['{}_A'.format(col)] = df[col]
+                df['{}_B'.format(col)] = df_B[col]
+                df['{}_C'.format(col)] = df_C[col]
                 df[col] = addmags(df[col], df_B[col], df_C[col])
 
         df['mass_A'] = df['mass']
