@@ -522,6 +522,7 @@ class StarModel(object):
         #convert extent to ranges, but making sure
         # that truths are in range.
         extents = []
+        remove = []
         for i,par in enumerate(params):
             m = re.search('delta_(\w+)$',par)
             if m:
@@ -531,8 +532,9 @@ class StarModel(object):
                               self.samples['{}_mag_A'.format(b)])
                     df[par] = values
                 else:
-                    raise ValueError('Can only do delta-mag properties' +
-                                     'with BinaryStarModel')
+                    remove.append(i)
+                    continue
+                    
             else:
                 values = self.samples[par]
             qs = np.array([0.5 - 0.5*extent, 0.5 + 0.5*extent])
@@ -545,6 +547,7 @@ class StarModel(object):
                     maxval = kwargs['truths'][i] + 0.05*datarange
             extents.append((minval,maxval))
             
+        [params.pop(i) for i in remove]
 
         return triangle.corner(df[params], labels=params, 
                                extents=extents, **kwargs)
