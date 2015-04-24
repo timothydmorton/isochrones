@@ -192,6 +192,11 @@ class StarModel(object):
                 return True
         return False
             
+    def loglike(self, *args, **kwargs):
+        """For backwards compatibility
+        """
+        return lnpost(*args, **kwargs)
+
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
