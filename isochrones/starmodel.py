@@ -272,26 +272,43 @@ class StarModel(object):
         else:
             mass_lnprior = np.log(mass_prior)
 
+        if np.isnan(mass_lnprior):
+            logging.warning('mass prior is nan at {}'.format(mass))
+
         age_lnprior = np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
+        if np.isnan(age_lnprior):
+            logging.warning('age prior is nan at {}'.format(age))
+
 
         if use_local_fehprior:
             fehdist = local_fehdist(feh)
         else:
             fehdist = 1/(self.ic.maxfeh - self.ic.minfeh)
         feh_lnprior = np.log(fehdist)
+        if np.isnan(feh_lnprior):
+            logging.warning('feh prior is nan at {}'.format(feh))
+
 
         if distance is not None:
-            distance_lnprior = np.log(3/self.max_distance**3 * dist**2)
+            distance_lnprior = np.log(3/self.max_distance**3 * distance**2)
         else:
             distance_lnprior = 0
+        if np.isnan(distance_lnprior):
+            logging.warning('distance prior is nan at {}'.format(distance))
+
 
         if AV is not None:
             AV_lnprior = np.log(1/self.maxAV)
         else:
             AV_lnprior = 0
+        if np.isnan(AV_lnprior):
+            logging.warning('AV prior is nan at {}'.format(AV))
+            
 
-        return (mass_lnprior + age_lnprior + feh_lnprior + 
+        lnprior = (mass_lnprior + age_lnprior + feh_lnprior + 
                 distance_lnprior + AV_lnprior)
+
+        return lnprior
 
     def lnpost(self, p, use_local_fehprior=True):
         """
@@ -305,7 +322,7 @@ class StarModel(object):
             mass,age,feh = p
             dist = None
             AV = None
-
+            
         return (self.lnlike(p) + 
                 self.lnprior(mass, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
@@ -1502,4 +1519,4 @@ def local_fehdist(feh):
     fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
         +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
 
-    return np.log(fehdist)
+    return fehdist
