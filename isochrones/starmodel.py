@@ -722,9 +722,9 @@ class StarModel(object):
             hi_ind = int(n*(0.5 + conf/2))
             lo = med - sorted[lo_ind]
             hi = sorted[hi_ind] - med
-            return samples.values, (med,lo,hi)
+            return samples, (med,lo,hi)
         else:
-            return samples.values
+            return samples
 
     def plot_samples(self,prop,fig=None,label=True,
                      histtype='step',bins=50,lw=3,
