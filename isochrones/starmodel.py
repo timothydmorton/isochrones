@@ -192,9 +192,8 @@ class StarModel(object):
                 return True
         return False
             
-    
-    def loglike(self,p, use_local_fehprior=True):
-        """Log-likelihood (actually, posterior) of model at given parameters
+    def lnlike(self, p):
+        """Log-likelihood of model at given parameters
 
         
         :param p: 
@@ -202,10 +201,6 @@ class StarModel(object):
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
-        :param use_local_fehprior:
-            Whether to use the Casagrande et al. (2011) prior via
-            :func:`localfehdist`.  Default is ``True``.
-
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
         
@@ -257,35 +252,60 @@ class StarModel(object):
         if np.isnan(logl):
             logl = -np.inf
 
-        #IMF prior
+        return logl
+
+    def lnprior(self, mass, age, feh,
+                distance=None, AV=None, 
+                use_local_fehprior=True):
+        """
+        log-prior for model parameters
+        
+        """
         mass_prior = salpeter_prior(mass)
         if mass_prior==0:
-            logl = -np.inf
+            mass_lnprior = -np.inf
         else:
-            logl += np.log(mass_prior)
-        
-        #distance prior ~d^2 out to d_max; flat AV prior
-        if fit_for_distance:
-            logl += np.log(3/self.max_distance**3 * dist**2)
-            logl += np.log(1/self.maxAV)
-            
-        if use_local_fehprior:
-            #From Jo Bovy:
-            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
-            #2D gaussian fit based on Casagrande (2011)
+            mass_lnprior = np.log(mass_prior)
 
-            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
-                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+        age_lnprior = np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
+
+        if use_local_fehprior:
+            fehdist = local_fehdist(feh)
         else:
             fehdist = 1/(self.ic.maxfeh - self.ic.minfeh)
-        logl += np.log(fehdist)
-            
+        feh_lnprior = np.log(fehdist)
+
+        if distance is not None:
+            distance_lnprior = np.log(3/self.max_distance**3 * dist**2)
+        else:
+            distance_lnprior = 0
+
+        if AV is not None:
+            AV_lnprior = np.log(1/self.maxAV)
+        else:
+            AV_lnprior = 0
+
+        return (mass_lnprior + age_lnprior + feh_lnprior + 
+                distance_lnprior + AV_lnprior)
+
+    def lnpost(self, p, use_local_fehprior=True):
+        """
+        log-posterior of model at given parameters
+        """
+        if len(p)==5:
+            fit_for_distance = True
+            mass,age,feh,dist,AV = p
+        elif len(p)==3:
+            fit_for_distance = False
+            mass,age,feh = p
+            dist = None
+            AV = None
+
+        return (self.lnlike(p) + 
+                self.lnprior(mass, age, feh, dist, AV,
+                             use_local_fehprior=use_local_fehprior))
 
 
-        #prior to sample ages with linear prior (propto log(age))
-        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
-
-        return logl
 
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
@@ -314,7 +334,7 @@ class StarModel(object):
             pfits = np.zeros((nseeds,3))
             
         def fn(p): #fmin is a function *minimizer*
-            return -1*self.loglike(p)
+            return -1*self.lnpost(p)
         
         for i,m,age,feh,d,AV in zip(range(nseeds),
                                     m0,age0,feh0,d0,AV0):
@@ -323,7 +343,7 @@ class StarModel(object):
                 else:
                     pfit = scipy.optimize.fmin(fn,[m,age,feh],disp=False)
                 pfits[i,:] = pfit
-                costs[i] = self.loglike(pfit)
+                costs[i] = self.lnpost(pfit)
 
         return pfits[np.argmax(costs),:]
 
@@ -409,7 +429,7 @@ class StarModel(object):
             else:
                 p0 = np.array([m0,age0,feh0]).T
             if initial_burn:
-                sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,
+                sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
@@ -432,7 +452,7 @@ class StarModel(object):
             if self.fit_for_distance:
                 p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
         
-        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike)
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
@@ -840,7 +860,7 @@ class BinaryStarModel(StarModel):
 
 
     """
-    def loglike(self, p, use_local_fehprior=True):
+    def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
         
@@ -849,10 +869,6 @@ class BinaryStarModel(StarModel):
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
-        :param use_local_fehprior:
-            Whether to use the Casagrande et al. (2011) prior via
-            :func:`localfehdist`.  Default is ``True``.
-
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
         
@@ -919,32 +935,23 @@ class BinaryStarModel(StarModel):
             logl = -np.inf
 
 
-        #IMF prior
-        mass_prior = salpeter_prior(mass_A)
-        if mass_prior==0:
-            logl = -np.inf
-        else:
-            logl += np.log(mass_prior)
-        
-        #distance prior ~d^2 out to d_max; flat AV prior
-        if fit_for_distance:
-            logl += np.log(3/self.max_distance**3 * dist**2)
-            logl += np.log(1/self.maxAV)
-
-        if use_local_fehprior:
-            #From Jo Bovy:
-            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
-            #2D gaussian fit based on Casagrande (2011)
-
-            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
-                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
-            logl += np.log(fehdist)
-
-        #prior to sample ages with linear prior (propto log(age))
-        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
-
         return logl
         
+    def lnpost(self, p, use_local_fehprior=True):
+        if len(p)==6:
+            fit_for_distance = True
+            mass_A,mass_B,age,feh,dist,AV = p
+        elif len(p)==4:
+            fit_for_distance = False
+            mass_A,mass_B,age,feh = p
+            dist = None
+            AV = None
+
+        return (self.lnlike(p) + 
+                self.lnprior(mass_A, age, feh, dist, AV,
+                             use_local_fehprior=use_local_fehprior))
+        
+
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
 
@@ -977,7 +984,7 @@ class BinaryStarModel(StarModel):
             pfits = np.zeros((nseeds,4))
             
         def fn(p): #fmin is a function *minimizer*
-            return -1*self.loglike(p)
+            return -1*self.lnpost(p)
         
         for i,mA,mB,age,feh,d,AV in zip(range(nseeds),
                                     mA_0,mB_0,age0,feh0,d0,AV0):
@@ -986,7 +993,7 @@ class BinaryStarModel(StarModel):
                 else:
                     pfit = scipy.optimize.fmin(fn,[mA,mB,age,feh],disp=False)
                 pfits[i,:] = pfit
-                costs[i] = self.loglike(pfit)
+                costs[i] = self.lnpost(pfit)
 
         return pfits[np.argmax(costs),:]
 
@@ -1028,7 +1035,7 @@ class BinaryStarModel(StarModel):
             else:
                 p0 = np.array([mA_0,mB_0,age0,feh0]).T
             if initial_burn:
-                sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,
+                sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
@@ -1051,7 +1058,7 @@ class BinaryStarModel(StarModel):
             if self.fit_for_distance:
                 p0[:,4] *= (1 + rand.normal(size=nwalkers)*0.5)
         
-        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike)
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
@@ -1171,7 +1178,7 @@ class TripleStarModel(StarModel):
 
     Parameters now include mass_A, mass_B, and mass_C
     """
-    def loglike(self, p, use_local_fehprior=True):
+    def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
         
@@ -1180,10 +1187,6 @@ class TripleStarModel(StarModel):
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
             
-        :param use_local_fehprior:
-            Whether to use the Casagrande et al. (2011) prior via
-            :func:`localfehdist`.  Default is ``True``.
-
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
         
@@ -1242,35 +1245,21 @@ class TripleStarModel(StarModel):
         if np.isnan(logl):
             logl = -np.inf
 
-
-        #IMF prior
-        mass_prior = salpeter_prior(mass_A)
-        if mass_prior==0:
-            logl = -np.inf
-        else:
-            logl += np.log(mass_prior)
-        
-        #distance prior ~d^2 out to d_max; flat AV prior
-        if fit_for_distance:
-            logl += np.log(3/self.max_distance**3 * dist**2)
-            logl += np.log(1/self.maxAV)
-
-        if use_local_fehprior:
-            #From Jo Bovy:
-            #https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
-            #2D gaussian fit based on Casagrande (2011)
-
-            fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
-                +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
-            logl += np.log(fehdist)
-
-        #prior to sample ages with linear prior (propto log(age))
-        logl += np.log(age * (2/(self.ic.maxage**2-self.ic.minage**2)))
-
-
-        if np.isnan(logl):
-            logl = -np.inf
         return logl
+
+    def lnpost(self, p, use_local_fehprior=True):
+        if len(p)==7:
+            fit_for_distance = True
+            mass_A,mass_B,mass_C,age,feh,dist,AV = p
+        elif len(p)==5:
+            fit_for_distance = False
+            mass_A,mass_B,mass_C,age,feh = p
+            dist = None
+            AV = None
+
+        return (self.lnlike(p) + 
+                self.lnprior(mass_A, age, feh, dist, AV,
+                             use_local_fehprior=use_local_fehprior))
         
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
@@ -1304,7 +1293,7 @@ class TripleStarModel(StarModel):
             pfits = np.zeros((nseeds,5))
             
         def fn(p): #fmin is a function *minimizer*
-            return -1*self.loglike(p)
+            return -1*self.lnpost(p)
         
         for i,mA,mB,mC,age,feh,d,AV in zip(range(nseeds),
                                     mA_0,mB_0,mC_0,age0,feh0,d0,AV0):
@@ -1313,7 +1302,7 @@ class TripleStarModel(StarModel):
                 else:
                     pfit = scipy.optimize.fmin(fn,[mA,mB,mC,age,feh],disp=False)
                 pfits[i,:] = pfit
-                costs[i] = self.loglike(pfit)
+                costs[i] = self.lnpost(pfit)
 
         return pfits[np.argmax(costs),:]
 
@@ -1356,7 +1345,7 @@ class TripleStarModel(StarModel):
             else:
                 p0 = np.array([mA_0,mB_0,mC_0,age0,feh0]).T
             if initial_burn:
-                sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike,
+                sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial) 
@@ -1379,7 +1368,7 @@ class TripleStarModel(StarModel):
             if self.fit_for_distance:
                 p0[:,5] *= (1 + rand.normal(size=nwalkers)*0.5) #distance
         
-        sampler = emcee.EnsembleSampler(nwalkers,npars,self.loglike)
+        sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
@@ -1498,3 +1487,14 @@ def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     else:
         return C*m**(alpha)
 
+def local_fehdist(feh):
+    """feh PDF based on local SDSS distribution
+    
+    From Jo Bovy:
+    https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
+    2D gaussian fit based on Casagrande (2011)
+    """
+    fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+        +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+
+    return np.log(fehdist)
