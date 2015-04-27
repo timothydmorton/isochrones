@@ -641,7 +641,7 @@ class StarModel(object):
         else:
             raise AttributeError('MCMC must be run to access sampler')
 
-    def _make_samples(self, lnprob_thresh=0.005):
+    def _make_samples(self, lnprob_thresh=0.0):
 
         #cull points in lowest 0.5% of lnprob
         lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
@@ -1155,7 +1155,7 @@ class BinaryStarModel(StarModel):
         super(BinaryStarModel, self).triangle(params=params, **kwargs)
 
 
-    def _make_samples(self, lnprob_thresh=0.005):
+    def _make_samples(self, lnprob_thresh=0.0):
 
         lnprob_thresh = np.percentile(self.sampler.flatlnprobability,
                                       lnprob_thresh*100)
@@ -1441,7 +1441,7 @@ class TripleStarModel(StarModel):
         super(TripleStarModel, self).triangle(params=params, **kwargs)
 
 
-    def _make_samples(self, lnprob_thresh=0.005):
+    def _make_samples(self, lnprob_thresh=0.0):
         
         lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
                                       lnprob_thresh*100)
