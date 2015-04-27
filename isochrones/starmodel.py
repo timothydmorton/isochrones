@@ -651,7 +651,7 @@ class StarModel(object):
         mass = self.sampler.flatchain[:,0][ok]
         age = self.sampler.flatchain[:,1][ok]
         feh = self.sampler.flatchain[:,2][ok]
-            
+
         if self.fit_for_distance:
             distance = self.sampler.flatchain[:,3][ok]
             AV = self.sampler.flatchain[:,4][ok]
@@ -668,6 +668,9 @@ class StarModel(object):
             df['distance'] = distance
             df['AV'] = AV
                 
+        lnprob = self.sampler.flatlnprobability[ok]
+        df['lnprob'] = lnprob
+
         self._samples = df.copy()
         
 
@@ -1153,7 +1156,9 @@ class BinaryStarModel(StarModel):
 
 
     def _make_samples(self, lnprob_thresh=0.005):
-        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 0.5)
+
+        lnprob_thresh = np.percentile(self.sampler.flatlnprobability,
+                                      lnprob_thresh*100)
         ok = self.sampler.flatlnprobability > lnprob_thresh
 
         mass_A = self.sampler.flatchain[:,0][ok]
@@ -1190,6 +1195,9 @@ class BinaryStarModel(StarModel):
         if self.fit_for_distance:
             df['distance'] = distance
             df['AV'] = AV
+
+        lnprob = self.sampler.flatlnprobability[ok]
+        df['lnprob'] = lnprob
 
         self._samples = df.copy()
 
@@ -1477,6 +1485,9 @@ class TripleStarModel(StarModel):
         if self.fit_for_distance:
             df['distance'] = distance
             df['AV'] = AV
+
+        lnprob = self.sampler.flatlnprobability[ok]
+        df['lnprob'] = lnprob
 
         self._samples = df.copy()
 
