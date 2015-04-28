@@ -1161,11 +1161,11 @@ class BinaryStarModel(StarModel):
         mass_A = self.sampler.chain[ok_walkers,:,0]
         mass_B = self.sampler.chain[ok_walkers,:,1]
         age = self.sampler.chain[ok_walkers,:,2]
-        feh = self.sampler.chain[ok_walkers:,3]
+        feh = self.sampler.chain[ok_walkers,:,3]
 
         if self.fit_for_distance:
             distance = self.sampler.chain[ok_walkers,:,4]
-            AV = self.sampler.chain[ok_walkers:,5]
+            AV = self.sampler.chain[ok_walkers,:,5]
         else:
             distance = None
             AV = 0
