@@ -641,20 +641,24 @@ class StarModel(object):
         else:
             raise AttributeError('MCMC must be run to access sampler')
 
-    def _make_samples(self, lnprob_thresh=0.0):
+    def _make_samples(self):
 
-        #cull points in lowest 0.5% of lnprob
-        lnprob_thresh = np.percentile(self.sampler.flatlnprobability, 
-                                      lnprob_thresh*100)
-        ok = self.sampler.flatlnprobability > lnprob_thresh
+        #select out only walkers with > 0.15 acceptance fraction
+        ok_walkers = self.sampler.acceptance_fraction > 0.15
+
+        mass = self.sampler.chain[ok_walkers, :, 0].ravel()
+        age = self.sampler.chain[ok_walkers, :, 1].ravel()
+        feh = self.sampler.chain[ok_walkers, :, 2].ravel()
             
-        mass = self.sampler.flatchain[:,0][ok]
-        age = self.sampler.flatchain[:,1][ok]
-        feh = self.sampler.flatchain[:,2][ok]
+        #mass = self.sampler.flatchain[:,0][ok]
+        #age = self.sampler.flatchain[:,1][ok]
+        #feh = self.sampler.flatchain[:,2][ok]
 
         if self.fit_for_distance:
-            distance = self.sampler.flatchain[:,3][ok]
-            AV = self.sampler.flatchain[:,4][ok]
+            distance = self.sampler.chain[ok_walkers, :, 3].ravel()
+            AV = self.sampler.chain[ok_walkers, :, 4].ravel()
+            #distance = self.sampler.flatchain[:,3][ok]
+            #AV = self.sampler.flatchain[:,4][ok]
         else:
             distance = None
             AV = 0
@@ -668,7 +672,7 @@ class StarModel(object):
             df['distance'] = distance
             df['AV'] = AV
                 
-        lnprob = self.sampler.flatlnprobability[ok]
+        lnprob = self.sampler.lnprobability[ok_walkers, :].ravel()
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
