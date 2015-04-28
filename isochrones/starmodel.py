@@ -1158,14 +1158,14 @@ class BinaryStarModel(StarModel):
         #select out legit walkers
         ok_walkers = self.sampler.acceptance_fraction > 0.15
 
-        mass_A = self.sampler.chain[ok_walkers,:,0]
-        mass_B = self.sampler.chain[ok_walkers,:,1]
-        age = self.sampler.chain[ok_walkers,:,2]
-        feh = self.sampler.chain[ok_walkers,:,3]
+        mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
+        mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
+        age = self.sampler.chain[ok_walkers,:,2].ravel()
+        feh = self.sampler.chain[ok_walkers,:,3].ravel()
 
         if self.fit_for_distance:
-            distance = self.sampler.chain[ok_walkers,:,4]
-            AV = self.sampler.chain[ok_walkers,:,5]
+            distance = self.sampler.chain[ok_walkers,:,4].ravel()
+            AV = self.sampler.chain[ok_walkers,:,5].ravel()
         else:
             distance = None
             AV = 0
@@ -1194,7 +1194,7 @@ class BinaryStarModel(StarModel):
             df['distance'] = distance
             df['AV'] = AV
 
-        lnprob = self.sampler.lnprobability[ok_walkers,:]
+        lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
@@ -1443,15 +1443,15 @@ class TripleStarModel(StarModel):
         
         ok_walkers = self.sampler.acceptance_fraction > 0.15
 
-        mass_A = self.sampler.chain[ok_walkers,:,0]
-        mass_B = self.sampler.chain[ok_walkers,:,1]
-        mass_C = self.sampler.chain[ok_walkers,:,2]
-        age = self.sampler.chain[ok_walkers,:,3]
-        feh = self.sampler.chain[ok_walkers,:,4]
+        mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
+        mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
+        mass_C = self.sampler.chain[ok_walkers,:,2].ravel()
+        age = self.sampler.chain[ok_walkers,:,3].ravel()
+        feh = self.sampler.chain[ok_walkers,:,4].ravel()
 
         if self.fit_for_distance:
-            distance = self.sampler.chain[ok_walkers,:,5]
-            AV = self.sampler.chain[ok_walkers,:,6]
+            distance = self.sampler.chain[ok_walkers,:,5].ravel()
+            AV = self.sampler.chain[ok_walkers,:,6].ravel()
         else:
             distance = None
             AV = 0
@@ -1484,7 +1484,7 @@ class TripleStarModel(StarModel):
             df['distance'] = distance
             df['AV'] = AV
 
-        lnprob = self.sampler.lnprobability[ok_walkers,:]
+        lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
