@@ -965,7 +965,7 @@ class BinaryStarModel(StarModel):
         lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
         q = mass_B / mass_A
-        lnpr += q_prior(q, mass_A)
+        lnpr += np.log(q_prior(q, mass_A))
         return lnpr
 
     def lnpost(self, p, use_local_fehprior=True):
@@ -1285,12 +1285,12 @@ class TripleStarModel(StarModel):
 
     def lnprior(self, mass_A, mass_B, mass_C, age, feh, 
                 distance=None, AV=None, use_local_fehprior=True):
-        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, distance, AV,
+        lnpr = super(TripleStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
         q1 = mass_B / mass_A
         q2 = mass_C / mass_B
-        lnpr += q_prior(q1, mass_A)
-        lnpr += q_prior(q2, mass_B)
+        lnpr += np.log(q_prior(q1, mass_A))
+        lnpr += np.log(q_prior(q2, mass_B))
         return lnpr
 
 
@@ -1529,10 +1529,12 @@ def addmags(*mags):
         tot += 10**(-0.4*mag)
     return -2.5*np.log10(tot)
     
-def q_prior(q, m, gamma=0.3, qmin=0.1):
-    """Default prior on mass ratio q
+def q_prior(q, m=1, gamma=0.3, qmin=0.1):
+    """Default prior on mass ratio q ~ q^gamma
     """
-    C = 1/(gamma+1)*(1 - qmin**(gamma+1))
+    if q < qmin or q > 1:
+        return 0
+    C = 1/(1/(gamma+1)*(1 - qmin**(gamma+1)))
     return C*q**gamma
 
 def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
