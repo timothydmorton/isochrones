@@ -382,7 +382,7 @@ class StarModel(object):
         pass
 
     
-    def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
+    def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
                  **kwargs):
