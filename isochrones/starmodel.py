@@ -960,6 +960,14 @@ class BinaryStarModel(StarModel):
 
         return logl
         
+    def lnprior(self, mass_A, mass_B, age, feh, 
+                distance=None, AV=None, use_local_fehprior=True):
+        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, dist, AV,
+                                                  use_local_fehprior=use_local_fehprior)
+        q = mass_B / mass_A
+        lnpr += q_prior(q, mass_A)
+        return lnpr
+
     def lnpost(self, p, use_local_fehprior=True):
         if len(p)==6:
             fit_for_distance = True
@@ -971,7 +979,7 @@ class BinaryStarModel(StarModel):
             AV = None
 
         return (self.lnlike(p) + 
-                self.lnprior(mass_A, age, feh, dist, AV,
+                self.lnprior(mass_A, mass_B, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
         
 
@@ -1275,6 +1283,17 @@ class TripleStarModel(StarModel):
 
         return logl
 
+    def lnprior(self, mass_A, mass_B, mass_C, age, feh, 
+                distance=None, AV=None, use_local_fehprior=True):
+        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, dist, AV,
+                                                  use_local_fehprior=use_local_fehprior)
+        q1 = mass_B / mass_A
+        q2 = mass_C / mass_B
+        lnpr += q_prior(q1, mass_A)
+        lnpr += q_prior(q2, mass_B)
+        return lnpr
+
+
     def lnpost(self, p, use_local_fehprior=True):
         if len(p)==7:
             fit_for_distance = True
@@ -1286,7 +1305,7 @@ class TripleStarModel(StarModel):
             AV = None
 
         return (self.lnlike(p) + 
-                self.lnprior(mass_A, age, feh, dist, AV,
+                self.lnprior(mass_A, mass_B, mass_C, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
         
     def maxlike(self,nseeds=50):
@@ -1510,6 +1529,11 @@ def addmags(*mags):
         tot += 10**(-0.4*mag)
     return -2.5*np.log10(tot)
     
+def q_prior(q, m, gamma=0.3, qmin=0.1):
+    """Default prior on mass ratio q
+    """
+    C = 1/(gamma+1)*(1 - qmin**(gamma+1))
+    return C*q**gamma
 
 def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
     C = (1+alpha)/(maxmass**(1+alpha)-minmass**(1+alpha))
