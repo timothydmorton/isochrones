@@ -962,7 +962,7 @@ class BinaryStarModel(StarModel):
         
     def lnprior(self, mass_A, mass_B, age, feh, 
                 distance=None, AV=None, use_local_fehprior=True):
-        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, dist, AV,
+        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
         q = mass_B / mass_A
         lnpr += q_prior(q, mass_A)
@@ -1285,7 +1285,7 @@ class TripleStarModel(StarModel):
 
     def lnprior(self, mass_A, mass_B, mass_C, age, feh, 
                 distance=None, AV=None, use_local_fehprior=True):
-        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, dist, AV,
+        lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
         q1 = mass_B / mass_A
         q2 = mass_C / mass_B
