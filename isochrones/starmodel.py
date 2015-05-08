@@ -424,8 +424,9 @@ class StarModel(object):
     def fit_multinest(self, n_live_points=1000, basename='chains/single-',
                       verbose=True, refit=False, overwrite=False,
                       **kwargs):
-        if not os.path.exists('chains'):
-            os.makedirs('chains')
+        folder = os.path.abspath(os.path.dirname(basename))
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
         #If previous fit exists, see if it's using the same
         # observed properties
