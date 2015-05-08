@@ -595,7 +595,7 @@ class StarModel(object):
         """
         if self.fit_for_distance:
             fig1 = self.triangle(plot_datapoints=False,
-                                 params=['mass','radius','Teff','feh','age',
+                                 params=['mass','radius','Teff','logg','feh','age',
                                          'distance','AV'],
                                  **kwargs)
         else:
