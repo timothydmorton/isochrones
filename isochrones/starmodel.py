@@ -66,7 +66,7 @@ class StarModel(object):
     
     :param use_emcee: (optional)
         If set to true, then sampling done with emcee rather than MultiNest.
-        (not recommended).
+        (not recommended unless you have very precise spectroscopic properties).
 
     :param **kwargs:
         Keyword arguments must be properties of given isochrone, e.g., logg,
@@ -89,6 +89,7 @@ class StarModel(object):
         self.n_params = 5 #mass, feh, age, distance, AV
         
         self._props_cleaned = False
+        self._mnest_basename = None
 
     @property
     def ic(self):
@@ -408,8 +409,14 @@ class StarModel(object):
         """
         return self.lnpost(cube)
 
+    def fit(self, **kwargs):
+        if self.use_emcee:
+            self.fit_mcmc(**kwargs)
+        else:
+            self.fit_multinest(**kwargs)
+
     def fit_multinest(self, n_live_points=1000, basename='chains/single-',
-                      verbose=True, refit=False,
+                      verbose=True, refit=False, overwrite=False,
                       **kwargs):
         if not os.path.exists('chains'):
             os.makedirs('chains')
@@ -429,14 +436,17 @@ class StarModel(object):
                         if not self.properties[k][0] == v[0] and \
                                 self.properties[k][1] == v[1]:
                             props_nomatch = True
+                    else:
+                        if not self.properties[k] == v:
+                            props_nomatch = True
 
-        if prop_nomatch:
-            logging.warning('Properties not same as saved chains ' +
+        if prop_nomatch and not overwrite:
+            raise ValueError('Properties not same as saved chains ' +
                             '(basename {}*). '.format(basename) +
-                            'Re-fitting.')
-            refit = True
+                            'Use overwrite=True to fit.')
 
-        if refit:
+
+        if refit or overwrite:
             files = glob.glob('{}*'.format(basename))
             [os.remove(f) for f in files]
 
@@ -962,6 +972,11 @@ class BinaryStarModel(StarModel):
 
 
     """
+    def __init__(self, *args, **kwargs):
+        super(BinaryStarModel, self).__init__(*args, **kwargs)
+
+        self.n_params = 6
+
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
@@ -978,12 +993,17 @@ class BinaryStarModel(StarModel):
         if not self._props_cleaned:
             self._clean_props()
 
-        if len(p)==6:
+        if not self.use_emcee:
             fit_for_distance = True
-            mass_A, mass_B, age, feh, dist, AV = p
-        elif len(p)==4:
-            fit_for_distance = False
-            mass_A, mass_B, age, feh = p
+            mass_A, mass_B, age, feh, dist, AV = (p[0], p[1], p[2],
+                                                  p[3], p[4], p[5])
+        else:
+            if len(p)==6:
+                fit_for_distance = True
+                mass_A, mass_B, age, feh, dist, AV = p
+            elif len(p)==4:
+                fit_for_distance = False
+                mass_A, mass_B, age, feh = p
                         
         #keep values in range; enforce mass_A > mass_B
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
@@ -1048,14 +1068,18 @@ class BinaryStarModel(StarModel):
         return lnpr
 
     def lnpost(self, p, use_local_fehprior=True):
-        if len(p)==6:
-            fit_for_distance = True
-            mass_A,mass_B,age,feh,dist,AV = p
-        elif len(p)==4:
-            fit_for_distance = False
-            mass_A,mass_B,age,feh = p
-            dist = None
-            AV = None
+        if not self.use_emcee:
+            mass_A,mass_B,age,feh,dist,AV = (p[0], p[1], p[2],
+                                             p[3], p[4], p[5])
+        else:
+            if len(p)==6:
+                fit_for_distance = True
+                mass_A,mass_B,age,feh,dist,AV = p
+            elif len(p)==4:
+                fit_for_distance = False
+                mass_A,mass_B,age,feh = p
+                dist = None
+                AV = None
 
         return (self.lnlike(p) + 
                 self.lnprior(mass_A, mass_B, age, feh, dist, AV,
@@ -1107,6 +1131,14 @@ class BinaryStarModel(StarModel):
 
         return pfits[np.argmax(costs),:]
 
+    def mnest_prior(self, cube, ndim, nparams):
+        cube[0] = (self.ic.maxmass - self.ic.minmass)*cube[0] + self.ic.minmass
+        cube[1] = (self.ic.maxmass - self.ic.minmass)*cube[1] + self.ic.minmass
+        cube[2] = (self.ic.maxage - self.ic.minage)*cube[2] + self.ic.minage
+        cube[3] = (self.ic.maxfeh - self.ic.minfeh)*cube[3] + self.ic.minfeh
+        cube[4] = cube[4]*self.max_distance
+        cube[5] = cube[5]*self.maxAV
+        
             
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
@@ -1293,6 +1325,11 @@ class TripleStarModel(StarModel):
 
     Parameters now include mass_A, mass_B, and mass_C
     """
+    def __init__(self, *args, **kwargs):
+        super(TripleStarModel, self).__init__(*args, **kwargs)
+
+        self.n_params = 7
+
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
