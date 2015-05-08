@@ -923,6 +923,9 @@ class StarModel(object):
         attrs.ic_type = type(self.ic)
         attrs.maxAV = self.maxAV
         attrs.max_distance = self.max_distance
+
+        attrs.use_emcee = self.use_emcee
+        attrs._mnest_basename = self._mnest_basename
         store.close()
 
     @classmethod
@@ -952,13 +955,17 @@ class StarModel(object):
         maxAV = attrs.maxAV
         max_distance = attrs.max_distance
         ic_type = attrs.ic_type
+        use_emcee = attrs.use_emcee
+        basename = attrs._mnest_basename
         store.close()
 
         #ic = ic_type() don't need to initialize anymore
 
         mod = cls(ic_type, maxAV=maxAV, max_distance=max_distance,
+                  use_emcee=use_emcee,
                   **properties)
         mod._samples = samples
+        mod._mnest_basename = basename
         return mod
 
 
