@@ -36,10 +36,13 @@ try:
 except ImportError:
     triangle = None
 
+mnest_available = True
 try:
     import pymultinest
 except ImportError:
+    logging.warning('PyMultiNest not available; only emcee fits will be possible.')
     pymultinest = None
+    mnest_available = False
 
 
 from .extinction import EXTINCTION
@@ -85,6 +88,9 @@ class StarModel(object):
         self._samples = None
         self._mnest_samples = None
         self.use_emcee = use_emcee
+        if not mnest_available:
+            logging.warning('MultiNest not available; use_emcee being set to True')
+            self.use_emcee = True
 
         self.n_params = 5 #mass, feh, age, distance, AV
         
@@ -461,6 +467,10 @@ class StarModel(object):
             json.dump(self.properties, f, indent=2)
 
         self._make_samples()
+
+    @property
+    def mnest_analyzer(self):
+        return pymultinest.Analyzer(self.n_params, self._mnest_basename)
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
@@ -1133,13 +1143,15 @@ class BinaryStarModel(StarModel):
 
     def mnest_prior(self, cube, ndim, nparams):
         cube[0] = (self.ic.maxmass - self.ic.minmass)*cube[0] + self.ic.minmass
-        cube[1] = (self.ic.maxmass - self.ic.minmass)*cube[1] + self.ic.minmass
+        cube[1] = (cube[0] - self.ic.minmass)*cube[1] + self.ic.minmass
         cube[2] = (self.ic.maxage - self.ic.minage)*cube[2] + self.ic.minage
         cube[3] = (self.ic.maxfeh - self.ic.minfeh)*cube[3] + self.ic.minfeh
         cube[4] = cube[4]*self.max_distance
         cube[5] = cube[5]*self.maxAV
         
-            
+    def fit_multinest(self, basename='chains/binary-', **kwargs):
+        super(BinaryStarModel, self).fit_multinest(basename=basename, **kwargs)
+
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
@@ -1274,20 +1286,33 @@ class BinaryStarModel(StarModel):
 
     def _make_samples(self):
 
-        #select out legit walkers
-        ok_walkers = self.sampler.acceptance_fraction > 0.15
+        if not self.use_emcee:
+            chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+            mass_A = chain[:,0]
+            mass_B = chain[:,1]
+            age = chain[:,2]
+            feh = chain[:,3]
+            distance = chain[:,4]
+            AV = chain[:,5]
+            lnprob = chain[:,-1]
 
-        mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
-        mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
-        age = self.sampler.chain[ok_walkers,:,2].ravel()
-        feh = self.sampler.chain[ok_walkers,:,3].ravel()
-
-        if self.fit_for_distance:
-            distance = self.sampler.chain[ok_walkers,:,4].ravel()
-            AV = self.sampler.chain[ok_walkers,:,5].ravel()
         else:
-            distance = None
-            AV = 0
+            #select out legit walkers
+            ok_walkers = self.sampler.acceptance_fraction > 0.15
+
+            mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
+            mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
+            age = self.sampler.chain[ok_walkers,:,2].ravel()
+            feh = self.sampler.chain[ok_walkers,:,3].ravel()
+
+            if self.fit_for_distance:
+                distance = self.sampler.chain[ok_walkers,:,4].ravel()
+                AV = self.sampler.chain[ok_walkers,:,5].ravel()
+            else:
+                distance = None
+                AV = 0
+            lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
+
 
         df = self.ic(mass_A, age, feh, 
                        distance=distance, AV=AV)
@@ -1313,7 +1338,6 @@ class BinaryStarModel(StarModel):
             df['distance'] = distance
             df['AV'] = AV
 
-        lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
@@ -1346,12 +1370,18 @@ class TripleStarModel(StarModel):
         if not self._props_cleaned:
             self._clean_props()
 
-        if len(p)==7:
+        if not self.use_emcee:
             fit_for_distance = True
-            mass_A, mass_B, mass_C, age, feh, dist, AV = p
-        elif len(p)==5:
-            fit_for_distance = False
-            mass_A, mass_B, mass_C, age, feh = p
+            mass_A, mass_B, mass_C, age, feh, dist, AV = (p[0], p[1], p[2],
+                                                          p[3], p[4], p[5],
+                                                          p[6])
+        else:
+            if len(p)==7:
+                fit_for_distance = True
+                mass_A, mass_B, mass_C, age, feh, dist, AV = p
+            elif len(p)==5:
+                fit_for_distance = False
+                mass_A, mass_B, mass_C, age, feh = p
                         
         #keep values in range; enforce mass_A > mass_B > mass_C
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
@@ -1411,14 +1441,19 @@ class TripleStarModel(StarModel):
 
 
     def lnpost(self, p, use_local_fehprior=True):
-        if len(p)==7:
-            fit_for_distance = True
-            mass_A,mass_B,mass_C,age,feh,dist,AV = p
-        elif len(p)==5:
-            fit_for_distance = False
-            mass_A,mass_B,mass_C,age,feh = p
-            dist = None
-            AV = None
+        if not self.use_emcee:
+            mass_A,mass_B,mass_C,age,feh,dist,AV = (p[0], p[1], p[2],
+                                                    p[3], p[4], p[5], 
+                                                    p[6])
+        else:
+            if len(p)==7:
+                fit_for_distance = True
+                mass_A,mass_B,mass_C,age,feh,dist,AV = p
+            elif len(p)==5:
+                fit_for_distance = False
+                mass_A,mass_B,mass_C,age,feh = p
+                dist = None
+                AV = None
 
         return (self.lnlike(p) + 
                 self.lnprior(mass_A, mass_B, mass_C, age, feh, dist, AV,
@@ -1470,6 +1505,18 @@ class TripleStarModel(StarModel):
         return pfits[np.argmax(costs),:]
 
             
+    def mnest_prior(self, cube, ndim, nparams):
+        cube[0] = (self.ic.maxmass - self.ic.minmass)*cube[0] + self.ic.minmass
+        cube[1] = (cube[0] - self.ic.minmass)*cube[1] + self.ic.minmass
+        cube[2] = (cube[1] - self.ic.minmass)*cube[2] + self.ic.minmass
+        cube[3] = (self.ic.maxage - self.ic.minage)*cube[3] + self.ic.minage
+        cube[4] = (self.ic.maxfeh - self.ic.minfeh)*cube[4] + self.ic.minfeh
+        cube[5] = cube[5]*self.max_distance
+        cube[6] = cube[6]*self.maxAV
+        
+    def fit_multinest(self, basename='chains/triple-', **kwargs):
+        super(TripleStarModel, self).fit_multinest(basename=basename, **kwargs)    
+
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
@@ -1576,20 +1623,33 @@ class TripleStarModel(StarModel):
 
     def _make_samples(self):
         
-        ok_walkers = self.sampler.acceptance_fraction > 0.15
+        if not self.use_emcee:
+            chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+            mass_A = chain[:,0]
+            mass_B = chain[:,1]
+            age = chain[:,2]
+            feh = chain[:,3]
+            distance = chain[:,4]
+            AV = chain[:,5]
+            lnprob = chain[:,-1]
 
-        mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
-        mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
-        mass_C = self.sampler.chain[ok_walkers,:,2].ravel()
-        age = self.sampler.chain[ok_walkers,:,3].ravel()
-        feh = self.sampler.chain[ok_walkers,:,4].ravel()
-
-        if self.fit_for_distance:
-            distance = self.sampler.chain[ok_walkers,:,5].ravel()
-            AV = self.sampler.chain[ok_walkers,:,6].ravel()
         else:
-            distance = None
-            AV = 0
+            ok_walkers = self.sampler.acceptance_fraction > 0.15
+
+            mass_A = self.sampler.chain[ok_walkers,:,0].ravel()
+            mass_B = self.sampler.chain[ok_walkers,:,1].ravel()
+            mass_C = self.sampler.chain[ok_walkers,:,2].ravel()
+            age = self.sampler.chain[ok_walkers,:,3].ravel()
+            feh = self.sampler.chain[ok_walkers,:,4].ravel()
+
+            if self.fit_for_distance:
+                distance = self.sampler.chain[ok_walkers,:,5].ravel()
+                AV = self.sampler.chain[ok_walkers,:,6].ravel()
+            else:
+                distance = None
+                AV = 0
+            
+            lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
 
         df = self.ic(mass_A, age, feh, 
                        distance=distance, AV=AV)
@@ -1619,7 +1679,6 @@ class TripleStarModel(StarModel):
             df['distance'] = distance
             df['AV'] = AV
 
-        lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
