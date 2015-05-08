@@ -1627,10 +1627,11 @@ class TripleStarModel(StarModel):
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
             mass_A = chain[:,0]
             mass_B = chain[:,1]
-            age = chain[:,2]
-            feh = chain[:,3]
-            distance = chain[:,4]
-            AV = chain[:,5]
+            mass_C = chain[:,2]
+            age = chain[:,3]
+            feh = chain[:,4]
+            distance = chain[:,5]
+            AV = chain[:,6]
             lnprob = chain[:,-1]
 
         else:
