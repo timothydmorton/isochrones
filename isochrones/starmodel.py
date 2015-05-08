@@ -64,6 +64,10 @@ class StarModel(object):
     :param max_distance: (optional)
         Maximum allowed distance (pc).  Default is 3000.
     
+    :param use_emcee: (optional)
+        If set to true, then sampling done with emcee rather than MultiNest.
+        (not recommended).
+
     :param **kwargs:
         Keyword arguments must be properties of given isochrone, e.g., logg,
         feh, Teff, and/or magnitudes.  The values represent measurements of
@@ -72,14 +76,15 @@ class StarModel(object):
         also a valid property, and should be provided in miliarcseconds.
         
     """
-    def __init__(self,ic,maxAV=1,max_distance=3000,**kwargs):
+    def __init__(self,ic,maxAV=1,max_distance=3000,
+                 use_emcee=False, **kwargs):
         self._ic = ic
         self.properties = kwargs
         self.max_distance = max_distance
         self.maxAV = maxAV
         self._samples = None
         self._mnest_samples = None
-
+        self.use_emcee = use_emcee
 
         self.n_params = 5 #mass, feh, age, distance, AV
         
@@ -207,7 +212,7 @@ class StarModel(object):
         """
         return lnpost(*args, **kwargs)
 
-    def lnlike(self, p, mnest=False):
+    def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
         
@@ -224,7 +229,7 @@ class StarModel(object):
         if not self._props_cleaned:
             self._clean_props()
             
-        if mnest:
+        if not self.use_emcee:
             fit_for_distance = True
             mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
         else:
@@ -324,11 +329,11 @@ class StarModel(object):
 
         return lnprior
 
-    def lnpost(self, p, use_local_fehprior=True, mnest=False):
+    def lnpost(self, p, use_local_fehprior=True):
         """
         log-posterior of model at given parameters
         """
-        if mnest:
+        if not self.use_emcee:
             mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
         else:
             if len(p)==5:
@@ -340,7 +345,7 @@ class StarModel(object):
                 dist = None
                 AV = None
             
-        return (self.lnlike(p, mnest=mnest) + 
+        return (self.lnlike(p) + 
                 self.lnprior(mass, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
 
@@ -401,9 +406,9 @@ class StarModel(object):
     def mnest_loglike(self, cube, ndim, nparams):
         """loglikelihood function for multinest
         """
-        return self.lnpost(cube, mnest=True)
+        return self.lnpost(cube)
 
-    def fit_multinest(self, n_live_points=1000, basename='chains/1-',
+    def fit_multinest(self, n_live_points=1000, basename='chains/single-',
                       verbose=True, refit=False,
                       **kwargs):
         if not os.path.exists('chains'):
@@ -418,9 +423,12 @@ class StarModel(object):
                 props = json.load(f)
             if set(props.keys()) != set(self.properties.keys()):
                 prop_nomatch = True
-            for k,v in props.items():
-                if props[k] != self.properties[k]:
-                    prop_nomatch = True
+            else:
+                for k,v in props.items():
+                    if len(v)==2:
+                        if not self.properties[k][0] == v[0] and \
+                                self.properties[k][1] == v[1]:
+                            props_nomatch = True
 
         if prop_nomatch:
             logging.warning('Properties not same as saved chains ' +
@@ -442,7 +450,7 @@ class StarModel(object):
         with open(propfile, 'w') as f:
             json.dump(self.properties, f, indent=2)
 
-        self._make_samples(mnest=True)
+        self._make_samples()
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
@@ -585,7 +593,6 @@ class StarModel(object):
         return fig1, fig2
 
     def triangle(self, params=None, query=None, extent=0.999,
-                 mnest=False,
                  **kwargs):
         """
         Makes a nifty corner plot.
@@ -620,10 +627,7 @@ class StarModel(object):
             else:
                 params = ['mass', 'age', 'feh']
 
-        if mnest:
-            df = self.mnest_samples
-        else:
-            df = self.samples
+        df = self.samples
 
         if query is not None:
             df = df.query(query)
@@ -708,9 +712,9 @@ class StarModel(object):
         else:
             raise AttributeError('MCMC must be run to access sampler')
 
-    def _make_samples(self, mnest=False):
+    def _make_samples(self):
 
-        if mnest:
+        if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
             mass = chain[:,0]
             age = chain[:,1]
@@ -747,24 +751,8 @@ class StarModel(object):
 
         df['lnprob'] = lnprob
 
-        if mnest:
-            self._mnest_samples = df.copy()
-        else:
-            self._samples = df.copy()
+        self._samples = df.copy()
         
-    @property
-    def mnest_samples(self):
-        """
-        Samples drawn from isochrone according to MulitNest sampling
-        """
-        if self._mnest_samples is not None:
-            df = self._mnest_samples
-        else:
-            self._make_samples(mnest=True)
-            df = self._mnest_samples
-
-        return df
-
     @property
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
