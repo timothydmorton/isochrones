@@ -1,7 +1,8 @@
 from __future__ import print_function, division
-import os,os.path
+import os,os.path, glob
 import logging
 import re
+import json
 
 from configobj import ConfigObj
 
@@ -34,6 +35,11 @@ try:
     import triangle
 except ImportError:
     triangle = None
+
+try:
+    import pymultinest
+except ImportError:
+    pymultinest = None
 
 
 from .extinction import EXTINCTION
@@ -72,7 +78,11 @@ class StarModel(object):
         self.max_distance = max_distance
         self.maxAV = maxAV
         self._samples = None
+        self._mnest_samples = None
 
+
+        self.n_params = 5 #mass, feh, age, distance, AV
+        
         self._props_cleaned = False
 
     @property
@@ -197,7 +207,7 @@ class StarModel(object):
         """
         return lnpost(*args, **kwargs)
 
-    def lnlike(self, p):
+    def lnlike(self, p, mnest=False):
         """Log-likelihood of model at given parameters
 
         
@@ -214,12 +224,16 @@ class StarModel(object):
         if not self._props_cleaned:
             self._clean_props()
             
-        if len(p)==5:
+        if mnest:
             fit_for_distance = True
-            mass,age,feh,dist,AV = p
-        elif len(p)==3:
-            fit_for_distance = False
-            mass,age,feh = p
+            mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
+        else:
+            if len(p)==5:
+                fit_for_distance = True
+                mass,age,feh,dist,AV = p
+            elif len(p)==3:
+                fit_for_distance = False
+                mass,age,feh = p
                         
         if mass < self.ic.minmass or mass > self.ic.maxmass \
            or age < self.ic.minage or age > self.ic.maxage \
@@ -310,20 +324,23 @@ class StarModel(object):
 
         return lnprior
 
-    def lnpost(self, p, use_local_fehprior=True):
+    def lnpost(self, p, use_local_fehprior=True, mnest=False):
         """
         log-posterior of model at given parameters
         """
-        if len(p)==5:
-            fit_for_distance = True
-            mass,age,feh,dist,AV = p
-        elif len(p)==3:
-            fit_for_distance = False
-            mass,age,feh = p
-            dist = None
-            AV = None
+        if mnest:
+            mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
+        else:
+            if len(p)==5:
+                fit_for_distance = True
+                mass,age,feh,dist,AV = p
+            elif len(p)==3:
+                fit_for_distance = False
+                mass,age,feh = p
+                dist = None
+                AV = None
             
-        return (self.lnlike(p) + 
+        return (self.lnlike(p, mnest=mnest) + 
                 self.lnprior(mass, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
 
@@ -374,14 +391,59 @@ class StarModel(object):
         Transforms unit cube into parameter cube.
 
         Parameters if running multinest must be mass, age, feh, distance, AV.
-
-        
         """
+        cube[0] = (self.ic.maxmass - self.ic.minmass)*cube[0] + self.ic.minmass
+        cube[1] = (self.ic.maxage - self.ic.minage)*cube[1] + self.ic.minage
+        cube[2] = (self.ic.maxfeh - self.ic.minfeh)*cube[2] + self.ic.minfeh
+        cube[3] = cube[3]*self.max_distance
+        cube[4] = cube[4]*self.maxAV
     
-    def fit_multinest(self, **kwargs):
-        pass
+    def mnest_loglike(self, cube, ndim, nparams):
+        """loglikelihood function for multinest
+        """
+        return self.lnpost(cube, mnest=True)
 
-    
+    def fit_multinest(self, n_live_points=1000, basename='chains/1-',
+                      verbose=True, refit=False,
+                      **kwargs):
+        if not os.path.exists('chains'):
+            os.makedirs('chains')
+
+        #If previous fit exists, see if it's using the same
+        # observed properties
+        prop_nomatch = False
+        propfile = '{}properties.json'.format(basename)
+        if os.path.exists(propfile):
+            with open(propfile) as f:
+                props = json.load(f)
+            if set(props.keys()) != set(self.properties.keys()):
+                prop_nomatch = True
+            for k,v in props.items():
+                if props[k] != self.properties[k]:
+                    prop_nomatch = True
+
+        if prop_nomatch:
+            logging.warning('Properties not same as saved chains ' +
+                            '(basename {}*). '.format(basename) +
+                            'Re-fitting.')
+            refit = True
+
+        if refit:
+            files = glob.glob('{}*'.format(basename))
+            [os.remove(f) for f in files]
+
+        self._mnest_basename = basename
+
+        pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
+                        n_live_points=n_live_points, outputfiles_basename=basename,
+                        verbose=verbose,
+                        **kwargs)
+
+        with open(propfile, 'w') as f:
+            json.dump(self.properties, f, indent=2)
+
+        self._make_samples(mnest=True)
+
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
@@ -523,6 +585,7 @@ class StarModel(object):
         return fig1, fig2
 
     def triangle(self, params=None, query=None, extent=0.999,
+                 mnest=False,
                  **kwargs):
         """
         Makes a nifty corner plot.
@@ -557,7 +620,11 @@ class StarModel(object):
             else:
                 params = ['mass', 'age', 'feh']
 
-        df = self.samples
+        if mnest:
+            df = self.mnest_samples
+        else:
+            df = self.samples
+
         if query is not None:
             df = df.query(query)
 
@@ -570,15 +637,15 @@ class StarModel(object):
             if m:
                 if type(self) == BinaryStarModel:
                     b = m.group(1)
-                    values = (self.samples['{}_mag_B'.format(b)] - 
-                              self.samples['{}_mag_A'.format(b)])
+                    values = (df['{}_mag_B'.format(b)] - 
+                              df['{}_mag_A'.format(b)])
                     df[par] = values
                 else:
                     remove.append(i)
                     continue
                     
             else:
-                values = self.samples[par]
+                values = df[par]
             qs = np.array([0.5 - 0.5*extent, 0.5 + 0.5*extent])
             minval, maxval = values.quantile(qs)
             if 'truths' in kwargs:
@@ -641,42 +708,66 @@ class StarModel(object):
         else:
             raise AttributeError('MCMC must be run to access sampler')
 
-    def _make_samples(self):
+    def _make_samples(self, mnest=False):
 
-        #select out only walkers with > 0.15 acceptance fraction
-        ok_walkers = self.sampler.acceptance_fraction > 0.15
+        if mnest:
+            chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+            mass = chain[:,0]
+            age = chain[:,1]
+            feh = chain[:,2]
+            distance = chain[:,3]
+            AV = chain[:,4]
+            lnprob = chain[:,-1]
 
-        mass = self.sampler.chain[ok_walkers, :, 0].ravel()
-        age = self.sampler.chain[ok_walkers, :, 1].ravel()
-        feh = self.sampler.chain[ok_walkers, :, 2].ravel()
-            
-        if self.fit_for_distance:
-            distance = self.sampler.chain[ok_walkers, :, 3].ravel()
-            AV = self.sampler.chain[ok_walkers, :, 4].ravel()
         else:
-            distance = None
-            AV = 0
+            #select out only walkers with > 0.15 acceptance fraction
+            ok_walkers = self.sampler.acceptance_fraction > 0.15
+
+            mass = self.sampler.chain[ok_walkers, :, 0].ravel()
+            age = self.sampler.chain[ok_walkers, :, 1].ravel()
+            feh = self.sampler.chain[ok_walkers, :, 2].ravel()
+
+            if self.fit_for_distance:
+                distance = self.sampler.chain[ok_walkers, :, 3].ravel()
+                AV = self.sampler.chain[ok_walkers, :, 4].ravel()
+            else:
+                distance = None
+                AV = 0
+
+            lnprob = self.sampler.lnprobability[ok_walkers, :].ravel()
 
         df = self.ic(mass, age, feh, 
                      distance=distance, AV=AV)
         df['age'] = age
         df['feh'] = feh
-            
+
         if self.fit_for_distance:
             df['distance'] = distance
             df['AV'] = AV
-                
-        lnprob = self.sampler.lnprobability[ok_walkers, :].ravel()
+
         df['lnprob'] = lnprob
 
-        self._samples = df.copy()
+        if mnest:
+            self._mnest_samples = df.copy()
+        else:
+            self._samples = df.copy()
         
+    @property
+    def mnest_samples(self):
+        """
+        Samples drawn from isochrone according to MulitNest sampling
+        """
+        if self._mnest_samples is not None:
+            df = self._mnest_samples
+        else:
+            self._make_samples(mnest=True)
+            df = self._mnest_samples
+
+        return df
 
     @property
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
-
-        Culls samples to drop lowest 0.5% of lnprob values.
 
         Columns include both the sampling parameters from the MCMC
         fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
