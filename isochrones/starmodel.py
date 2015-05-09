@@ -439,7 +439,7 @@ class StarModel(object):
                 prop_nomatch = True
             else:
                 for k,v in props.items():
-                    if len(v)==2:
+                    if np.size(v)==2:
                         if not self.properties[k][0] == v[0] and \
                                 self.properties[k][1] == v[1]:
                             props_nomatch = True
