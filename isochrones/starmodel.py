@@ -944,6 +944,7 @@ class StarModel(object):
         attrs.ic_type = type(self.ic)
         attrs.maxAV = self.maxAV
         attrs.max_distance = self.max_distance
+        attrs.min_logg = self.min_logg
 
         attrs.use_emcee = self.use_emcee
         attrs._mnest_basename = self._mnest_basename
@@ -975,6 +976,7 @@ class StarModel(object):
         properties = attrs.properties
         maxAV = attrs.maxAV
         max_distance = attrs.max_distance
+        min_logg = attrs.min_logg
         ic_type = attrs.ic_type
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
