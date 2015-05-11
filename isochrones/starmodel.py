@@ -1279,7 +1279,7 @@ class BinaryStarModel(StarModel):
              
         """
         fig1 = self.triangle(plot_datapoints=False,
-                            params=['mass_A', 'mass_B','radius','Teff','feh','age',
+                            params=['mass_A', 'mass_B','radius','Teff','logg','feh','age',
                                     'distance', 'AV'],
                             **kwargs)
         if basename is not None:
@@ -1646,7 +1646,7 @@ class TripleStarModel(StarModel):
         """
         fig1 = self.triangle(plot_datapoints=False,
                             params=['mass_A', 'mass_B', 'mass_C', 'radius',
-                                    'Teff','feh','age','distance','AV'],
+                                    'Teff','logg','feh','age','distance','AV'],
                             **kwargs)
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
