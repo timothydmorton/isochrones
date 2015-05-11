@@ -119,7 +119,8 @@ if __name__=='__main__':
                         verbose=args.verbose, overwrite=args.overwrite)
 
                 triangle_base = os.path.join(folder, '{}_triangle_{}'.format(args.models, mult))
-                mod.triangle_plots(triangle_base)
+                fig1,fig2 = mod.triangle_plots(triangle_base)
+
                 mod.save_hdf(os.path.join(folder, model_filename))
 
                 end = time.time()

@@ -80,7 +80,9 @@ class StarModel(object):
         
     """
     def __init__(self,ic,maxAV=1,max_distance=3000,
-                 use_emcee=False, **kwargs):
+                 use_emcee=False, param_limits=None,
+                 min_logg=None,
+                 **kwargs):
         self._ic = ic
         self.properties = kwargs
         self.max_distance = max_distance
@@ -92,10 +94,19 @@ class StarModel(object):
             logging.warning('MultiNest not available; use_emcee being set to True')
             self.use_emcee = True
 
+        if param_limits is None:
+            param_limits = {}
+        if min_logg is not None and 'logg' not in param_limits:
+            param_limits['logg'] = (min_logg, np.inf)
+
+        self.param_limits = param_limits
+
+
         self.n_params = 5 #mass, feh, age, distance, AV
         
         self._props_cleaned = False
         self._mnest_basename = None
+
 
     @property
     def ic(self):
@@ -246,7 +257,7 @@ class StarModel(object):
             elif len(p)==3:
                 fit_for_distance = False
                 mass,age,feh = p
-                        
+
         if mass < self.ic.minmass or mass > self.ic.maxmass \
            or age < self.ic.minage or age > self.ic.maxage \
            or feh < self.ic.minfeh or feh > self.ic.maxfeh:
@@ -264,6 +275,7 @@ class StarModel(object):
             except TypeError:
                 #property not appropriate for fitting (e.g. no error provided)
                 continue
+
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist, A_V if apparent magnitudes provided.')
@@ -278,7 +290,15 @@ class StarModel(object):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass,age,feh)
-            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
+                
+            #see if model value is outside of allowed range
+            if prop in self.param_limits:
+                lo,hi = self.param_limits[prop]
+                if val < lo or val > hi:
+                    logl = -np.inf
+                    break
+            else:
+                logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
         if np.isnan(logl):
             logl = -np.inf
@@ -1068,7 +1088,15 @@ class BinaryStarModel(StarModel):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
+
+            #see if model value is outside of allowed range
+            if prop in self.param_limits:
+                lo,hi = self.param_limits[prop]
+                if val < lo or val > hi:
+                    logl = -np.inf
+                    break
+            else:
+                logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
 
         if np.isnan(logl):
@@ -1430,7 +1458,17 @@ class TripleStarModel(StarModel):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-            logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
+
+            #see if model value is outside of allowed range
+            if prop in self.param_limits:
+                lo,hi = self.param_limits[prop]
+                if val < lo or val > hi:
+                    logl = -np.inf
+                    break
+            else:
+                logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
+
+
 
         if np.isnan(logl):
             logl = -np.inf
