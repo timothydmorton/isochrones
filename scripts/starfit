@@ -111,7 +111,7 @@ if __name__=='__main__':
                 use_local_fehprior = not args.no_local_fehprior
                 mod = Model(ichrone, use_emcee=args.emcee, **props)
                 mod.fit(basename='{}/chains/{}-'.format(folder,mult),
-                        verbose=args.verbose)
+                        verbose=args.verbose, overwrite=args.overwrite)
 
                 triangle_base = os.path.join(folder, '{}_triangle_{}'.format(args.models, mult))
                 mod.triangle_plots(triangle_base)
