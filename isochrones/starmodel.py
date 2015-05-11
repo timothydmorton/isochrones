@@ -262,6 +262,11 @@ class StarModel(object):
             if AV > self.maxAV:
                 return -np.inf
 
+        if self.min_logg is not None:
+            logg = self.ic.logg(mass,age,feh)
+            if logg < self.min_logg:
+                return -np.inf
+
         logl = 0
         for prop in self.properties.keys():
             try:
@@ -284,11 +289,6 @@ class StarModel(object):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass,age,feh)
-
-            if prop=='logg' and self.min_logg is not None:
-                if mod < self.min_logg:
-                    logl = -np.inf
-                    break
 
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
@@ -1050,6 +1050,11 @@ class BinaryStarModel(StarModel):
             if AV > self.maxAV:
                 return -np.inf
 
+        if self.min_logg is not None:
+            logg = self.ic.logg(mass_A,age,feh)
+            if logg < self.min_logg:
+                return -np.inf        
+
         logl = 0
         for prop in self.properties.keys():
             try:
@@ -1082,11 +1087,6 @@ class BinaryStarModel(StarModel):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-
-            if prop=='logg' and self.min_logg is not None:
-                if mod < self.min_logg:
-                    logl = -np.inf
-                    break            
 
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
@@ -1426,6 +1426,11 @@ class TripleStarModel(StarModel):
             if AV > self.maxAV:
                 return -np.inf
 
+        if self.min_logg is not None:
+            logg = self.ic.logg(mass_A,age,feh)
+            if logg < self.min_logg:
+                return -np.inf
+
         logl = 0
         for prop in self.properties.keys():
             try:
@@ -1450,11 +1455,6 @@ class TripleStarModel(StarModel):
                 mod = 1./dist * 1000
             else:
                 mod = getattr(self.ic,prop)(mass_A,age,feh)
-
-            if prop=='logg' and self.min_logg is not None:
-                if mod < self.min_logg:
-                    logl = -np.inf
-                    break
 
             logl += -(val-mod)**2/(2*err**2) + np.log(1/(err*np.sqrt(2*np.pi)))
 
