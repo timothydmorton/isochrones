@@ -57,6 +57,11 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
+    try:
+        import pymultinest
+    except ImportError:
+        args.use_emcee = True
+
     if args.models=='dartmouth':
         from isochrones.dartmouth import Dartmouth_Isochrone
         ichrone = Dartmouth_Isochrone()
