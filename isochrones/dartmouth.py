@@ -1,7 +1,7 @@
 from __future__ import division,print_function
-import os,os.path
+import os,os.path, glob, re
 import numpy as np
-import pkg_resources
+from pkg_resources import resource_filename
 import logging
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
@@ -22,6 +22,9 @@ if not os.path.exists(DATADIR):
 
 MASTERFILE = '{}/dartmouth.h5'.format(DATADIR)
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
+
+MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))
+MAXAGE = interpnd(MAXAGES['points'], MAXAGES['maxages'])
 
 def _download_h5():
     """
@@ -99,6 +102,11 @@ class Dartmouth_Isochrone(Isochrone):
                            10**df['LogTeff'],df['LogG'],mags,tri=tri, 
                            minage=minage, **kwargs)
 
+    def agerange(self, m, feh=0.0):
+        minage = self.minage * np.ones_like(m)
+        maxage = MAXAGE(m, feh) * np.ones_like(m)
+        return minage,maxage
+        
 
 ############ utility functions used to set up data sets from original isochrone data files----these are obselete, I believe, now! ########
 
@@ -191,3 +199,53 @@ def dartmouth_to_df(feh):
                     'LogG':'logg','LogLLo':'logL'})
     df.rename(columns=columns,inplace=True)
     return df
+
+############# downloading files from stellar.dartmouth.edu
+
+def download_evtracks(fehs=[-2.5,-2.0,-1.5,-1.0,-0.5,0.0, 0.15, 0.3, 0.5],
+                      afe=0., phot_system='sdss'):
+    import urllib
+
+    urlbase = 'http://stellar.dartmouth.edu/models/tracks/{}/'.format(phot_system)
+
+    for feh in fehs:
+        print('Fetching evolution tracks for feh={}...'.format(feh))
+        feh_sign = 'p' if feh >= 0 else 'm'
+        afe_sign = 'p' if afe >= 0 else 'm'
+        filename = 'feh{}{:02.0f}afe{}{:01.0f}_{}.tgz'.format(feh_sign,abs(feh*10),
+                                                            afe_sign,abs(afe*10),
+                                                            phot_system)
+        url = urlbase+filename
+
+        folder = os.path.join(DATADIR, 'dartmouth')
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        localfile = os.path.join(folder,filename)
+        if not os.path.exists(localfile):
+            urllib.urlretrieve(url,localfile)
+
+def write_maxages(fehs=[-2.5,-2.0,-1.5,-1.0,-0.5,0.0, 0.15, 0.3, 0.5],
+                  afe=0., phot_system='sdss', savefile='maxages.npz'):
+    m_list = []
+    feh_list = []
+    maxage_list = []
+    for feh in fehs:
+        feh_sign = 'p' if feh >= 0 else 'm'
+        afe_sign = 'p' if afe >= 0 else 'm'
+        name = 'feh{}{:02.0f}afe{}{:01.0f}'.format(feh_sign,abs(feh*10),
+                                                            afe_sign,abs(afe*10))
+                                
+        folder = os.path.join(DATADIR,'dartmouth',name)
+        files = glob.glob('{}/m*'.format(folder))
+        for file in files:
+            m = re.search('m(\d\d\d)feh',file)
+            if m:
+                mass = int(m.group(1))/100.
+            ages = np.loadtxt(file, usecols=(0,))
+            feh_list.append(feh)
+            m_list.append(mass)
+            maxage_list.append(np.log10(ages[-1]))
+
+    points = np.array([m_list, feh_list]).T
+    maxages = np.array(maxage_list)
+    np.savez(savefile, points=points, maxages=maxages)
