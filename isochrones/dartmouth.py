@@ -57,7 +57,7 @@ if not os.path.exists(TRI_FILE):
     _download_tri()
 
 if pd is not None:
-    MASTERDF = pd.read_hdf(MASTERFILE,'df')
+    MASTERDF = pd.read_hdf(MASTERFILE,'df').dropna() #temporary hack
 else:
     MASTERDF = None
     
