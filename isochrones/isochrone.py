@@ -185,7 +185,7 @@ class Isochrone(object):
 
         #coerce 0-d arrays into floats...
         for k in props:
-            if np.size(props(k))==1:
+            if np.size(props[k])==1:
                 props[k] = 1 * props[k]
 
         if not return_df:
