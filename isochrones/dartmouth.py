@@ -119,7 +119,7 @@ def write_tri(df=MASTERDF, outfile=TRI_FILE):
     """
     N = len(df)
     pts = np.zeros((N,3))
-    pts[:,0] = np.array(df['M'])
+    pts[:,0] = np.array(df['M/Mo'])
     pts[:,1] = np.log10(np.array(df['age'])*1e9)
     pts[:,2] = np.array(df['feh'])
     Jmags = np.array(df['J'])
