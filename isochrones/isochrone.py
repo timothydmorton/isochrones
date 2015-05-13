@@ -182,7 +182,12 @@ class Isochrone(object):
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
-                
+
+        #coerce 0-d arrays into floats...
+        for k in props:
+            if np.size(props(k))==1:
+                props[k] = 1 * props[k]
+
         if not return_df:
             return props
         else:
