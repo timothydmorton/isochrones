@@ -44,7 +44,8 @@ def _download_tri():
     Downloads pre-computed triangulation for Dartmouth grids from Zenodo.
     """
     #url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
-    url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
+    #url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
+    url = 'http://zenodo.org/record/17627/files/dartmouth.tri'
     import urllib
     print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...)')
     if os.path.exists(TRI_FILE):
