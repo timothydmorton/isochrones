@@ -56,7 +56,7 @@ class StarModel(object):
     also accepted as an observed quantity.
 
     Note that by default a local metallicity prior, based on SDSS data,
-    will be used when :func:`StarModel.fit_mcmc` is called.
+    will be used when :func:`StarModel.fit` is called.
 
     :param ic: 
         :class:`Isochrone` object used to model star.
@@ -428,6 +428,12 @@ class StarModel(object):
         return self.lnpost(cube)
 
     def fit(self, **kwargs):
+        """
+        Wrapper for either :func:`fit_multinest` or :func:`fit_mcmc`.
+
+        Default will be to use MultiNest; set `use_emcee` keyword to `True` 
+        if you want to use MCMC, or just call :func:`fit_mcmc` directly.
+        """
         if self.use_emcee:
             self.fit_mcmc(**kwargs)
         else:
@@ -436,6 +442,32 @@ class StarModel(object):
     def fit_multinest(self, n_live_points=1000, basename='chains/single-',
                       verbose=True, refit=False, overwrite=False,
                       **kwargs):
+        """
+        Fits model using MultiNest, via pymultinest.  
+
+        :param n_live_points:
+            Number of live points to use for MultiNest fit.
+
+        :param basename:
+            Where the MulitNest-generated files will live.  
+            By default this will be in a folder named `chains`
+            in the current working directory.  Calling this 
+            will define a `_mnest_basename` attribute for 
+            this object.
+
+        :param verbose:
+            Whether you want MultiNest to talk to you.
+
+        :param refit, overwrite:
+            Set either of these to true if you want to 
+            delete the MultiNest files associated with the
+            given basename and start over.
+
+        :param **kwargs:
+            Additional keyword arguments will be passed to 
+            :func:`pymultinest.run`.
+
+        """
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -483,6 +515,11 @@ class StarModel(object):
 
     @property
     def mnest_analyzer(self):
+        """
+        PyMultiNest Analyzer object associated with fit.  
+
+        See PyMultiNest documentation for more.
+        """
         return pymultinest.Analyzer(self.n_params, self._mnest_basename)
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,

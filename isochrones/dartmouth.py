@@ -26,6 +26,7 @@ TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))
 MAXAGE = interpnd(MAXAGES['points'], MAXAGES['maxages'])
 
+
 def _download_h5():
     """
     Downloads HDF5 file containing Dartmouth grids from Zenodo.
@@ -55,6 +56,22 @@ if not os.path.exists(MASTERFILE):
 
 if not os.path.exists(TRI_FILE):
     _download_tri()
+
+#Check to see if you have the right dataframe and tri file
+import hashlib
+
+DF_SHASUM = '0515e83521f03cfe3ab8bafcb9c8187a90fd50c7'
+TRI_SHASUM = 'e05a06c799abae3d526ac83ceeea5e6df691a16d'
+
+if hashlib.sha1(open(MASTERFILE, 'rb').read()).hexdigest() != DF_SHASUM:
+    raise ImportError('You have a wrong/corrupted/outdated Dartmouth DataFrame!' + 
+                      ' Delete {} and try re-importing to download afresh.'.format(MASTERFILE))
+if hashlib.sha1(open(TRI_FILE, 'rb').read()).hexdigest() != TRI_SHASUM:
+    raise ImportError('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
+                      ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
+
+#
+
 
 if pd is not None:
     MASTERDF = pd.read_hdf(MASTERFILE,'df').dropna() #temporary hack
