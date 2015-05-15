@@ -31,16 +31,18 @@ if __name__=='__main__':
                                                              args.models))
         names = []
         evidence = {}
-        tot = 0
+        evidences = []
         for sm in starmodels:
             m = re.search('{}_starmodel_(\w+)\.h5'.format(args.models), sm)
             if m:
                 name = m.group(1)
                 model = Model[name].load_hdf(sm)
-                evidence[name] = model.evidence
-            tot = np.sumexp(tot, evidence[name])
-    print(tot)
-    print(evidence)
+                evidences.append(model.evidence)
+
+        evidences = np.array(evidences)
+        evidences -= evidences.max()
+
+        print(names, evidences)
             
             
         
