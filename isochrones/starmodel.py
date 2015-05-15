@@ -786,6 +786,11 @@ class StarModel(object):
 
         if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+
+            #for purposes of unit test, sometimes there will be 1-length chain...
+            if chain.ndim==1:
+                chain = np.array([chain])
+
             mass = chain[:,0]
             age = chain[:,1]
             feh = chain[:,2]
@@ -1353,6 +1358,11 @@ class BinaryStarModel(StarModel):
 
         if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+
+            #for purposes of unit test, sometimes there will be 1-length chain...
+            if chain.ndim==1:
+                chain = np.array([chain])
+
             mass_A = chain[:,0]
             mass_B = chain[:,1]
             age = chain[:,2]
@@ -1698,6 +1708,11 @@ class TripleStarModel(StarModel):
         
         if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+
+            #for purposes of unit test, sometimes there will be 1-length chain...
+            if chain.ndim==1:
+                chain = np.array([chain])
+
             mass_A = chain[:,0]
             mass_B = chain[:,1]
             mass_C = chain[:,2]
