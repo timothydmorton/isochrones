@@ -527,8 +527,8 @@ class StarModel(object):
         """
         Log(evidence) from multinest fit
         """
-        return (self.mnest_analyzer.get_stats()['global evidence'],
-                self.mnest_analyzer.get_stats()['global evidence error'])
+        s = self.mnest_analyzer.get_stats()
+        return (s['global evidence'],s['global evidence error'])
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
