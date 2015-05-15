@@ -34,7 +34,10 @@ please feel free to contribute.
 
 .. warning::
   
-  Also note that there was a bug in the 
+  Also note that there was a bug in the ``dartmouth.tri`` triangulation
+  file in versions prior to 0.9.  So if you've previously installed 
+  ``isochrones`` and upgrade to 0.9, you should be prompted to delete
+  this file so it can be re-installed.
 
 Installation
 ------------
