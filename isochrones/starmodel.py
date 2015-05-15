@@ -522,6 +522,14 @@ class StarModel(object):
         """
         return pymultinest.Analyzer(self.n_params, self._mnest_basename)
 
+    @property
+    def evidence(self):
+        """
+        Log(evidence) from multinest fit
+        """
+        return (self.mnest_analyzer.get_stats()['global evidence'],
+                self.mnest_analyzer.get_stats()['global evidence error'])
+
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
                  ninitial=100, loglike_kwargs=None,
