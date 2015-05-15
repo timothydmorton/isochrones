@@ -35,7 +35,7 @@ if __name__=='__main__':
             m = re.search('{}_starmodel_(\w+)\.h5'.format(args.models), sm)
             if m:
                 name = m.group(1)
-                model = Model[name]
+                model = Model[name].load_hdf(sm)
                 evidence[name] = model.evidence
     print(evidence)
             
