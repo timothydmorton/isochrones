@@ -8,6 +8,10 @@ import argparse
 
 from isochrones import StarModel, BinaryStarModel, TripleStarModel
 
+Model = {'single':StarModel,
+         'binary':BinaryStarModel,
+         'triple':TripleStarModel}
+
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='Model select between different multinest runs.')
@@ -25,9 +29,15 @@ if __name__=='__main__':
             
         starmodels = glob.glob('{}/{}_starmodel_*.h5'.format(folder,
                                                              args.models))
+        names = []
+        evidence = {}
         for sm in starmodels:
             m = re.search('{}_starmodel_(\w+)\.h5'.format(args.models), sm)
             if m:
                 name = m.group(1)
-                print name
+                model = Model[name]
+                evidence[name] = model.evidence
+    print(evidence)
+            
+            
         
