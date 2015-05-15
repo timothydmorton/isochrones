@@ -12,8 +12,9 @@ inputs.
 
 While ``isochrones`` comes packaged with three different model grids
 (Padova, BASTI, and Dartmouth), it can be easily extended to a
-user-defined grid.  It uses `emcee
-<http://dan.iel.fm/emcee/current/>`_ for MCMC sampling.
+user-defined grid.  It uses MultiNest/PyMultiNest for sampling, or `emcee
+<http://dan.iel.fm/emcee/current/>`_ for MCMC sampling if (Py)MultiNest
+is not installed.
 
 Note that the first time you import any of the pre-packaged model
 grids, it will download the required data to a ``~/.isochrones``
