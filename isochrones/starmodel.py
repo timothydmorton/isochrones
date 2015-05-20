@@ -653,46 +653,46 @@ class StarModel(object):
                              for b in bands]) + edge,
                      np.max([self.properties[b][0] + edge for b in bands]))
 
-    n_bands = len(bands)
-    width = n_bands * (pix_width + spacing) + spacing
-    mag_grid = np.linspace(minmag, maxmag, height)[::-1]
+        n_bands = len(bands)
+        width = n_bands * (pix_width + spacing) + spacing
+        mag_grid = np.linspace(minmag, maxmag, height)[::-1]
 
-    image = np.zeros((height, width))
+        image = np.zeros((height, width))
 
-    plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize)
 
-    mids = []
-    for i,b in enumerate(bands):
-        col1 = spacing*(i+1) + i*(pix_width)
-        col2 = spacing*(i+1) + (i+1)*(pix_width)
-        mids.append((col1 + col2)//2)
-        vslice = image[:, col1:col2]
+        mids = []
+        for i,b in enumerate(bands):
+            col1 = spacing*(i+1) + i*(pix_width)
+            col2 = spacing*(i+1) + (i+1)*(pix_width)
+            mids.append((col1 + col2)//2)
+            vslice = image[:, col1:col2]
 
-        kde = gaussian_kde(mod.samples['{}_mag'.format(b)])
-        pdf = kde(mag_grid)
-        vslice += pdf[:, np.newaxis]
-    
-    extent = [0, image.shape[1], maxmag, minmag]
-    plt.imshow(image, aspect='auto', cmap='binary', extent=extent)
-    ax = plt.gca()
-    ax.set_xticks(mids)
-    ax.set_xticklabels(bands, fontsize=18);
-    ax.set_ylabel('mag', fontsize=18)
-    yticks = ax.get_yticks()
-    ax.set_yticks(yticks[::-1])
-    plt.tick_params(axis='y', labelsize=16)
+            kde = gaussian_kde(mod.samples['{}_mag'.format(b)])
+            pdf = kde(mag_grid)
+            vslice += pdf[:, np.newaxis]
 
-    for i,(b,m) in enumerate(zip(bands,mids)):
-        val, err = mod.properties[b]
-        plt.errorbar(m, val, err, marker='o', color='w', 
-                     ms=4, lw=5, mec='w', mew=5)    
-        plt.errorbar(m, val, err, marker='o', color='r', 
-                     ms=4, lw=3, mec='r', mew=3)
+        extent = [0, image.shape[1], maxmag, minmag]
+        plt.imshow(image, aspect='auto', cmap='binary', extent=extent)
+        ax = plt.gca()
+        ax.set_xticks(mids)
+        ax.set_xticklabels(bands, fontsize=18);
+        ax.set_ylabel('mag', fontsize=18)
+        yticks = ax.get_yticks()
+        ax.set_yticks(yticks[::-1])
+        plt.tick_params(axis='y', labelsize=16)
 
-    plt.annotate(self.name, xy=(0.8,0.05), 
-                 xycoords='axes fraction', fontsize=22);        
+        for i,(b,m) in enumerate(zip(bands,mids)):
+            val, err = mod.properties[b]
+            plt.errorbar(m, val, err, marker='o', color='w', 
+                         ms=4, lw=5, mec='w', mew=5)    
+            plt.errorbar(m, val, err, marker='o', color='r', 
+                         ms=4, lw=3, mec='r', mew=3)
 
-    return plt.gcf()
+        plt.annotate(self.name, xy=(0.8,0.05), 
+                     xycoords='axes fraction', fontsize=22)
+
+        return plt.gcf()
 
     def triangle_plots(self, basename=None, format='png',
                        **kwargs):
