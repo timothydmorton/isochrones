@@ -52,7 +52,7 @@ if __name__=='__main__':
     parser.add_argument('--models', default='dartmouth')
     parser.add_argument('--emcee', action='store_true')
     parser.add_argument('--no_local_fehprior', action='store_true')
-    parser.add_argument('--plotonly', action='store_true')
+    parser.add_argument('--plot_only', action='store_true')
     parser.add_argument('-o','--overwrite', action='store_true')
     parser.add_argument('-v','--verbose', action='store_true')
 
