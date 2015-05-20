@@ -651,7 +651,7 @@ class StarModel(object):
                      np.min([self.properties[b][0] - edge for b in bands]))
         maxmag = max(np.max([self.samples['{}_mag'.format(b)].quantile(1-q) 
                              for b in bands]) + edge,
-                     np.max([self..properties[b][0] + edge for b in bands]))
+                     np.max([self.properties[b][0] + edge for b in bands]))
 
     n_bands = len(bands)
     width = n_bands * (pix_width + spacing) + spacing
