@@ -52,6 +52,7 @@ if __name__=='__main__':
     parser.add_argument('--models', default='dartmouth')
     parser.add_argument('--emcee', action='store_true')
     parser.add_argument('--no_local_fehprior', action='store_true')
+    parser.add_argument('--plotonly', action='store_true')
     parser.add_argument('-o','--overwrite', action='store_true')
     parser.add_argument('-v','--verbose', action='store_true')
 
@@ -100,32 +101,43 @@ if __name__=='__main__':
             logfile = os.path.join(folder, 'run.log')
             logger = initLogging(logfile, logger)
 
+            name = os.path.basename(folder)
+
             try:
                 start = time.time()
-                ini_file = os.path.join(folder, 'star.ini')
-                config = ConfigObj(ini_file)
+                if args.plot_only:
+                    mod = Model.load_hdf(model_filename, name=name)
+                else:
+                    ini_file = os.path.join(folder, 'star.ini')
+                    config = ConfigObj(ini_file)
 
-                props = {}
-                for kw in config.keys():
-                    try:
-                        props[kw] = float(config[kw])
-                    except:
-                        props[kw] = (float(config[kw][0]), float(config[kw][1]))
+                    props = {}
+                    for kw in config.keys():
+                        try:
+                            props[kw] = float(config[kw])
+                        except:
+                            props[kw] = (float(config[kw][0]), float(config[kw][1]))
 
 
-                use_local_fehprior = not args.no_local_fehprior
-                mod = Model(ichrone, use_emcee=args.emcee, **props)
-                mod.fit(basename='{}/chains/{}-'.format(folder,mult),
-                        verbose=args.verbose, overwrite=args.overwrite)
+                    use_local_fehprior = not args.no_local_fehprior
+                    mod = Model(ichrone, use_emcee=args.emcee, name=name,
+                                **props)
+                    mod.fit(basename='{}/chains/{}-'.format(folder,mult),
+                            verbose=args.verbose, overwrite=args.overwrite)
+
+                    mod.save_hdf(os.path.join(folder, model_filename))
 
                 triangle_base = os.path.join(folder, '{}_triangle_{}'.format(args.models, mult))
                 fig1,fig2 = mod.triangle_plots(triangle_base)
 
-                mod.save_hdf(os.path.join(folder, model_filename))
+                fig = mod.mag_plot()
+                plt.savefig(os.path.join(folder,'{}_mags_{}.png'.format(args.models,
+                                                                        mult))
 
                 end = time.time()
-                logger.info('{} starfit successful for '.format(mult) +
-                            '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
+                if not plot_only:
+                    logger.info('{} starfit successful for '.format(mult) +
+                                '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
             except KeyboardInterrupt:
                 logger.error('{} starfit calculation interrupted for {}.'.format(mult,folder))
                 raise

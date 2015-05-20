@@ -807,9 +807,11 @@ class StarModel(object):
             
         [params.pop(i) for i in remove]
 
-        return triangle.corner(df[params], labels=params, 
+        fig = triangle.corner(df[params], labels=params, 
                                extents=extents, **kwargs)
 
+        fig.suptitle(self.name, fontsize=22)
+        return fig
 
     def prop_triangle(self, **kwargs):
         """
