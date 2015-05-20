@@ -692,8 +692,7 @@ class StarModel(object):
             plt.errorbar(m, val, err, marker='o', color='r', 
                          ms=4, lw=3, mec='r', mew=3)
 
-        plt.annotate(self.name, xy=(0.8,0.05), 
-                     xycoords='axes fraction', fontsize=22)
+        plt.title(self.name, fontsize=20)
 
         return plt.gcf()
 
