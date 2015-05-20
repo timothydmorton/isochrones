@@ -132,7 +132,7 @@ if __name__=='__main__':
 
                 fig = mod.mag_plot()
                 plt.savefig(os.path.join(folder,'{}_mags_{}.png'.format(args.models,
-                                                                        mult))
+                                                                        mult)))
 
                 end = time.time()
                 if not plot_only:
