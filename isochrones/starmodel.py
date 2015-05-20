@@ -93,6 +93,9 @@ class StarModel(object):
         self.properties = kwargs
         self.max_distance = max_distance
         self.maxAV = maxAV
+
+        self.name = name
+
         self._samples = None
         self._mnest_samples = None
         self.use_emcee = use_emcee
@@ -1054,10 +1057,13 @@ class StarModel(object):
 
         attrs.use_emcee = self.use_emcee
         attrs._mnest_basename = self._mnest_basename
+
+        attrs.name = self.name
+
         store.close()
 
     @classmethod
-    def load_hdf(cls, filename, path=''):
+    def load_hdf(cls, filename, path='', name=None):
         """
         A class method to load a saved StarModel from an HDF5 file.
 
@@ -1086,12 +1092,19 @@ class StarModel(object):
         ic_type = attrs.ic_type
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
+        
+        if name is None:
+            try:
+                name = attrs.name
+            except:
+                name = ''
+
         store.close()
 
         #ic = ic_type() don't need to initialize anymore
 
         mod = cls(ic_type, maxAV=maxAV, max_distance=max_distance,
-                  use_emcee=use_emcee,
+                  use_emcee=use_emcee, name=name,
                   **properties)
         mod._samples = samples
         mod._mnest_basename = basename
