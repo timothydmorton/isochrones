@@ -138,7 +138,7 @@ if __name__=='__main__':
                                                                         mult)))
 
                 end = time.time()
-                if not plot_only:
+                if not args.plot_only:
                     logger.info('{} starfit successful for '.format(mult) +
                                 '{} in {:.1f} minutes.'.format(folder, (end-start)/60))
             except KeyboardInterrupt:
