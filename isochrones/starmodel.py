@@ -658,7 +658,7 @@ class StarModel(object):
 
         n_bands = len(bands)
         width = n_bands * (pix_width + spacing) + spacing
-        mag_grid = np.linspace(minmag, maxmag, height)[::-1]
+        mag_grid = np.linspace(minmag, maxmag, height)
 
         image = np.zeros((height, width))
 
