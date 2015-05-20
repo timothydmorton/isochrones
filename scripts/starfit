@@ -13,6 +13,8 @@ from __future__ import division, print_function
 import matplotlib
 matplotlib.use('agg')
 
+import matplotlib.pyplot as plt
+
 import os, os.path, re, sys
 import logging
 import time
