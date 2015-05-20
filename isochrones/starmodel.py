@@ -668,7 +668,7 @@ class StarModel(object):
             mids.append((col1 + col2)//2)
             vslice = image[:, col1:col2]
 
-            kde = gaussian_kde(mod.samples['{}_mag'.format(b)])
+            kde = gaussian_kde(self.samples['{}_mag'.format(b)])
             pdf = kde(mag_grid)
             vslice += pdf[:, np.newaxis]
 
@@ -683,7 +683,7 @@ class StarModel(object):
         plt.tick_params(axis='y', labelsize=16)
 
         for i,(b,m) in enumerate(zip(bands,mids)):
-            val, err = mod.properties[b]
+            val, err = self.properties[b]
             plt.errorbar(m, val, err, marker='o', color='w', 
                          ms=4, lw=5, mec='w', mew=5)    
             plt.errorbar(m, val, err, marker='o', color='r', 
