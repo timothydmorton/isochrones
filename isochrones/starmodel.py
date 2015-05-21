@@ -658,7 +658,7 @@ class StarModel(object):
 
         n_bands = len(bands)
         width = n_bands * (pix_width + spacing) + spacing
-        mag_grid = np.linspace(minmag, maxmag, height)
+        mag_grid = np.linspace(minmag, maxmag, height)[::-1]
 
         image = np.zeros((height, width))
 
@@ -676,7 +676,8 @@ class StarModel(object):
             vslice += pdf[:, np.newaxis]
 
         extent = [0, image.shape[1], maxmag, minmag]
-        plt.imshow(image, aspect='auto', cmap='binary', extent=extent)
+        plt.imshow(image, aspect='auto', cmap='binary', 
+                   extent=extent, origin='lower')
         ax = plt.gca()
         ax.set_xticks(mids)
         ax.set_xticklabels(bands, fontsize=18);
