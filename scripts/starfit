@@ -108,8 +108,11 @@ if __name__=='__main__':
             try:
                 start = time.time()
                 if args.plot_only:
-                    mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
-                                         name=name)
+                    try:
+                        mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
+                                             name=name)
+                    except:
+                        pass
                 else:
                     ini_file = os.path.join(folder, 'star.ini')
                     config = ConfigObj(ini_file)
