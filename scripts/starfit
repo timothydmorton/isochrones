@@ -103,7 +103,7 @@ if __name__=='__main__':
             logfile = os.path.join(folder, 'run.log')
             logger = initLogging(logfile, logger)
 
-            name = os.path.basename(folder)
+            name = os.path.basename(os.path.abspath(folder))
 
             try:
                 start = time.time()
