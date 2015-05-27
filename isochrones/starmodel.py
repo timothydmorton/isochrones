@@ -337,7 +337,10 @@ class StarModel(object):
 
 
         if distance is not None:
-            distance_lnprior = np.log(3/self.max_distance**3 * distance**2)
+            if distance <= 0:
+                distance_lnprior = -np.inf
+            else:
+                distance_lnprior = np.log(3/self.max_distance**3 * distance**2)
         else:
             distance_lnprior = 0
         if np.isnan(distance_lnprior):
