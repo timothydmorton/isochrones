@@ -204,6 +204,8 @@ class StarModel(object):
                 val = self.properties[p][0]
                 if not np.isfinite(val):
                     remove.append(p)
+            except:
+                pass
 
         for p in remove:
             del self.properties[p]
