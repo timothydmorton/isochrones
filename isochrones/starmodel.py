@@ -198,6 +198,22 @@ class StarModel(object):
             logging.warning('Properties removed from Model because ' +
                             'not present in {}: {}'.format(type(self.ic),remove))
 
+        remove = []
+        for p in self.properties.keys():
+            try:
+                val = self.properties[p][0]
+                if not np.isfinite(val):
+                    remove.append(p)
+
+        for p in remove:
+            del self.properties[p]
+
+        if len(remove) > 0:
+            logging.warning('Properties removed from Model because ' +
+                            'value is nan or inf: {}'.format(remove))
+        
+
+
         self._props_cleaned = True
     
     def add_props(self,**kwargs):
