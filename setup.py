@@ -47,6 +47,6 @@ setup(name = "isochrones",
       'Topic :: Scientific/Engineering :: Astronomy'
       ],
     install_requires=['plotutils','pandas>=0.14','astropy>=0.3','emcee>=2.0',
-                      'numpy>=1.9', 'tables>=3.0', 'triangle_plot'],
+                      'numpy>=1.9', 'triangle_plot'],
     zip_safe=False
 ) 
