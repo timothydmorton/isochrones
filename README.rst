@@ -17,6 +17,8 @@ as can easily be installed trouble-free via, e.g., the anaconda python distribut
 For usage details, `read the documentation <http://isochrones.rtfd.org>`_ or
 check out the `demo notebook <http://nbviewer.ipython.org/github/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb>`_.
 
+Stellar fits will want to use ``MultiNest``/``pymultinest`` if those packages are installed (recommended); otherwise the fits will default to MCMC fitting using ``emcee``.
+
 Basic Usage
 ------------
 
@@ -37,3 +39,7 @@ and run ``starfit mystar`` from the command line.  The ``starfit`` script
 will create an HDF5 file containing the saved ``StarModel``, which you 
 can load from python using ``StarModel.load_hdf``, as well as triangle
 plots illustrating the fit.
+
+Attribution
+------------
+If you use ``isochrones`` in your research, please cite `this ASCL reference <http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2015ascl.soft03010M&data_type=BIBTEX&db_key=AST&nocookieset=1>`_.
