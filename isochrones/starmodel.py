@@ -467,6 +467,8 @@ class StarModel(object):
         if self.use_emcee:
             if 'basename' in kwargs:
                 del kwargs['basename']
+            if 'verbose' in kwargs:
+                del kwargs['verbose']
             self.fit_mcmc(**kwargs)
         else:
             self.fit_multinest(**kwargs)
