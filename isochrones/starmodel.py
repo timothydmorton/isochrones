@@ -469,6 +469,8 @@ class StarModel(object):
                 del kwargs['basename']
             if 'verbose' in kwargs:
                 del kwargs['verbose']
+            if 'overwrite' in kwargs:
+                del kwargs['overwrite']
             self.fit_mcmc(**kwargs)
         else:
             self.fit_multinest(**kwargs)
