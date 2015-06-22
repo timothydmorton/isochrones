@@ -100,7 +100,7 @@ if __name__=='__main__':
 
             print('{} of {}: {} ({})'.format(i+1, len(args.folders), folder, mult))
             #initialize logger for folder
-            logfile = os.path.join(folder, 'run.log')
+            logfile = os.path.join(folder, 'starfit.log')
             logger = initLogging(logfile, logger)
 
             name = os.path.basename(os.path.abspath(folder))
