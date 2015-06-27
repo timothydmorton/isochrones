@@ -51,8 +51,7 @@ if __name__=='__main__':
             model_filename = '{}_starmodel_{}.h5'.format(args.models, mult)
 
             try:
-                mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
-                                             name=name)
+                mod = Model.load_hdf('{}/{}'.format(folder,model_filename))
                 results_file = '{}/{}_{}_results.txt'.format(folder, 
                                                              args.models, 
                                                              mult)
