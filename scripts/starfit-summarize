@@ -16,7 +16,7 @@ import logging
 from configobj import ConfigObj
 import argparse
 
-from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
+#from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
 import pandas as pd
 
 PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'distance', 'age']
