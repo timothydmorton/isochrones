@@ -17,6 +17,7 @@ from configobj import ConfigObj
 import argparse
 
 from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
+import pandas as pd
 
 PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'distance', 'age']
 
@@ -48,10 +49,12 @@ if __name__=='__main__':
     for i,folder in enumerate(args.folders):
         for mult in multiplicities:
             Model = Models[mult]
-            model_filename = '{}_starmodel_{}.h5'.format(args.models, mult)
-
+            model_filename = '{}/{}_starmodel_{}.h5'.format(folder,
+                                                            args.models, mult)
+            
             try:
-                mod = Model.load_hdf('{}/{}'.format(folder,model_filename))
+                samples = pd.read_hdf(model_filename, 'samples')
+                #mod = Model.load_hdf('{}/{}'.format(folder,model_filename))
                 results_file = '{}/{}_{}_results.txt'.format(folder, 
                                                              args.models, 
                                                              mult)
@@ -60,9 +63,9 @@ if __name__=='__main__':
                     fout.write('{0} {0}_lo {0}_hi '.format(prop))
                 fout.write('\n')
                 for prop in PROPS:
-                    med, lo, hi = mod.samples[prop].quantile([0.5, 
-                                                              0.1585,
-                                                              0.8415])
+                    med, lo, hi = samples[prop].quantile([0.5, 
+                                                          0.1585,
+                                                          0.8415])
                     fout.write('{:.3f} {:.3f} {:.3f} '.format(med, lo, hi))
                 fout.write('\n')
 
