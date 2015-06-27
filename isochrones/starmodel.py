@@ -465,6 +465,12 @@ class StarModel(object):
         if you want to use MCMC, or just call :func:`fit_mcmc` directly.
         """
         if self.use_emcee:
+            if 'basename' in kwargs:
+                del kwargs['basename']
+            if 'verbose' in kwargs:
+                del kwargs['verbose']
+            if 'overwrite' in kwargs:
+                del kwargs['overwrite']
             self.fit_mcmc(**kwargs)
         else:
             self.fit_multinest(**kwargs)
