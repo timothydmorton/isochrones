@@ -42,13 +42,13 @@ if __name__=='__main__':
     else:
         multiplicities = ['single']
     
-    Models = {'single':StarModel,
-              'binary':BinaryStarModel,
-              'triple':TripleStarModel}
+    #Models = {'single':StarModel,
+    #          'binary':BinaryStarModel,
+    #          'triple':TripleStarModel}
 
     for i,folder in enumerate(args.folders):
         for mult in multiplicities:
-            Model = Models[mult]
+            #Model = Models[mult]
             model_filename = '{}/{}_starmodel_{}.h5'.format(folder,
                                                             args.models, mult)
             
