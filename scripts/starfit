@@ -114,25 +114,37 @@ if __name__=='__main__':
                     except:
                         pass
                 else:
-                    ini_file = os.path.join(folder, 'star.ini')
-                    config = ConfigObj(ini_file)
+                    # Only try to fit model if it doesn't exist, unless overwrite is set
+                    fit_model = True
+                    
+                    try:
+                        mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
+                                             name=name)
+                        fit_model = False
+                    except:
+                        pass
 
-                    props = {}
-                    for kw in config.keys():
-                        try:
-                            props[kw] = float(config[kw])
-                        except:
-                            props[kw] = (float(config[kw][0]), float(config[kw][1]))
+                    if fit_model or args.overwrite:
+                        ini_file = os.path.join(folder, 'star.ini')
+                        config = ConfigObj(ini_file)
+
+                        props = {}
+                        for kw in config.keys():
+                            try:
+                                props[kw] = float(config[kw])
+                            except:
+                                props[kw] = (float(config[kw][0]), float(config[kw][1]))
 
 
-                    use_local_fehprior = not args.no_local_fehprior
-                    mod = Model(ichrone, use_emcee=args.emcee, name=name,
-                                **props)
-                    mod.fit(basename='{}/chains/{}-'.format(folder,mult),
-                            verbose=args.verbose, overwrite=args.overwrite)
+                        use_local_fehprior = not args.no_local_fehprior
+                        mod = Model(ichrone, use_emcee=args.emcee, name=name,
+                                    **props)
+                        mod.fit(basename='{}/chains/{}-'.format(folder,mult),
+                                verbose=args.verbose, overwrite=args.overwrite)
 
-                    mod.save_hdf(os.path.join(folder, model_filename))
-
+                        mod.save_hdf(os.path.join(folder, model_filename))
+                    else:
+                        logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
 
                 # Only make triangle plots if they are older 
                 #  than the starmodel hdf file
