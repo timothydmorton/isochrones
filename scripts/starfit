@@ -174,7 +174,7 @@ if __name__=='__main__':
                     if os.path.getmtime(os.path.join(folder, model_filename)) > \
                             os.path.getmtime(magplot_file) or \
                             args.plot_only:
-                        pass:
+                        pass
                     else:
                         make_magplot = False
 
