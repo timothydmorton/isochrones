@@ -19,7 +19,7 @@ import argparse
 #from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
 import pandas as pd
 
-PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'distance', 'age']
+PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'age', 'distance', 'AV']
 
 if __name__=='__main__':
 
