@@ -107,9 +107,10 @@ class Isochrone(object):
         L = 10**logL
 
         if tri is None:
-            points = np.zeros((len(m_ini),2))
+            points = np.zeros((len(m_ini),3))
             points[:,0] = m_ini
             points[:,1] = age
+            points[:,2] = feh
             self.mass = interpnd(points,m_act)
             self.tri = self.mass.tri
         else:
