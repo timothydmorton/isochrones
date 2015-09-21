@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+"""
+A command-line program to fit a StarModel using the isochrones package
+
+Input argument is name of a folder that contains a file
+called ``star.ini``, which is a config file containing all
+the observed properties of the star on which the model should
+be conditioned.  Multiple folder names can also be passed.
+
+"""
+from __future__ import division, print_function
+
+import os, os.path, re, sys
+import logging
+
+from configobj import ConfigObj
+import argparse
+
+#from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
+import pandas as pd
+
+PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'age', 'distance', 'AV']
+
+if __name__=='__main__':
+
+    parser = argparse.ArgumentParser(description='Fit physical properties of a star conditioned on observed quantities.')
+
+    parser.add_argument('folders', nargs='*', default=['.'])
+    parser.add_argument('--binary', action='store_true')
+    parser.add_argument('--triple', action='store_true')
+    parser.add_argument('--all', action='store_true')
+    parser.add_argument('--models', default='dartmouth')
+
+    args = parser.parse_args()
+
+    if args.all:
+        multiplicities = ['single', 'binary', 'triple']
+    elif args.binary:
+        multiplicities = ['binary']
+    elif args.triple:
+        multiplicities = ['triple']
+    else:
+        multiplicities = ['single']
+    
+    #Models = {'single':StarModel,
+    #          'binary':BinaryStarModel,
+    #          'triple':TripleStarModel}
+
+    for i,folder in enumerate(args.folders):
+        for mult in multiplicities:
+            #Model = Models[mult]
+            model_filename = '{}/{}_starmodel_{}.h5'.format(folder,
+                                                            args.models, mult)
+            
+            try:
+                samples = pd.read_hdf(model_filename, 'samples')
+                #mod = Model.load_hdf('{}/{}'.format(folder,model_filename))
+                results_file = '{}/{}_{}_results.txt'.format(folder, 
+                                                             args.models, 
+                                                             mult)
+                fout = open(results_file, 'w')
+                for prop in PROPS:
+                    fout.write('{0} {0}_lo {0}_hi '.format(prop))
+                fout.write('\n')
+                for prop in PROPS:
+                    med, lo, hi = samples[prop].quantile([0.5, 
+                                                          0.1585,
+                                                          0.8415])
+                    fout.write('{:.3f} {:.3f} {:.3f} '.format(med, lo, hi))
+                fout.write('\n')
+
+            except KeyboardInterrupt:
+                raise
+            except:
+                logging.error('failed to write starfit summary '
+                             'file for {}.'.format(mult,folder),
+                             exc_info=True)
+
+

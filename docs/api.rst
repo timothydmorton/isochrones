@@ -6,7 +6,7 @@ API
 .. module:: isochrones
 
 This page details the methods and classes provided by the
-``isochrones`` module.  The main workhorse for the stellar grid
+``isochrones`` package.  The main workhorse for the stellar grid
 interpolation is the :class:`Isochrone` object, and the
 :class:`StarModel` object is used to fit the stellar models to
 observational data.
@@ -41,5 +41,27 @@ properties involves instantiating a :class:`StarModel`.
 
 .. autoclass:: isochrones.StarModel
     :members:
+
+BinaryStarModel
+---------
+
+This allows fitting for the combined light of two stars; same distance,
+age, and Fe/H.
+
+.. autoclass:: isochrones.starmodel.BinaryStarModel
+    :members:
+
+
+TripleStarModel
+---------
+
+Just like :class:`BinaryStarModel`, but allows fitting for the
+combined light of *three* stars; same distance,
+age, and Fe/H.
+
+.. autoclass:: isochrones.starmodel.TripleStarModel
+    :members:
+
+
 
 

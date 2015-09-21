@@ -82,9 +82,13 @@ class Isochrone(object):
         Much better to use pre-computed ones, as provided in, e.g.,
         :class:`dartmouth.Dartmouth_Isochrone`.
     :type tri: :class:`scipy.spatial.qhull.Delaunay`, optional
+
+    :param minage,maxage:
+        If desired, a minimum or maximum age can be manually entered.
         
     """
-    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None):
+    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
+                 minage=None, maxage=None):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -94,7 +98,11 @@ class Isochrone(object):
         self.maxmass = m_act.max()
         self.minfeh = feh.min()
         self.maxfeh = feh.max()
-        
+
+        if minage is not None:
+            self.minage = minage
+        if maxage is not None:
+            self.maxage = maxage
 
         L = 10**logL
 
@@ -157,23 +165,24 @@ class Isochrone(object):
             model values evaluated at input points.
         """
         args = (mass, age, feh)
-        Ms = self.mass(*args)
-        Rs = self.radius(*args)
-        logLs = self.logL(*args)
-        loggs = self.logg(*args)
-        Teffs = self.Teff(*args)
+        Ms = self.mass(*args)*1
+        Rs = self.radius(*args)*1
+        logLs = self.logL(*args)*1
+        loggs = self.logg(*args)*1
+        Teffs = self.Teff(*args)*1
         if bands is None:
             bands = self.bands
-        mags = {band:self.mag[band](*args) for band in bands}
+        mags = {band:1*self.mag[band](*args) for band in bands}
         if distance is not None:
             dm = 5*np.log10(distance) - 5
             for band in mags:
                 A = AV*EXTINCTION[band]
                 mags[band] = mags[band] + dm + A
+                
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
-                
+
         if not return_df:
             return props
         else:

@@ -36,6 +36,10 @@ setup(name = "isochrones",
     url = "https://github.com/timothydmorton/isochrones",
     packages = find_packages(),
     package_data = {'':['data/*']},
+    scripts = ['scripts/starfit',
+               'scripts/batch_starfit',
+               'scripts/starmodel_select',
+               'scripts/starfit-summarize'],
     classifiers=[
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Science/Research',
@@ -44,6 +48,6 @@ setup(name = "isochrones",
       'Topic :: Scientific/Engineering :: Astronomy'
       ],
     install_requires=['plotutils','pandas>=0.14','astropy>=0.3','emcee>=2.0',
-                      'numpy>=1.9', 'tables>=3.0'],
+                      'numpy>=1.9', 'tables>=3.0', 'triangle_plot'],
     zip_safe=False
 ) 

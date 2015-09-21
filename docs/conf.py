@@ -20,6 +20,7 @@ import os, os.path
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
+sys.path.insert(0, os.path.abspath('..'))
 import isochrones
 
 # -- General configuration ------------------------------------------------
@@ -32,7 +33,9 @@ import isochrones
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
+    'sphinx.ext.viewcode',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -100,6 +103,15 @@ pygments_style = 'sphinx'
 
 
 # -- Options for HTML output ----------------------------------------------
+
+#import os
+#on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+#if not on_rtd:  # only import and set the theme if we're building docs locally
+#    import sphinx_rtd_theme
+#    html_theme = 'sphinx_rtd_theme'
+#    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
