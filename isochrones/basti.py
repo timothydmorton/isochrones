@@ -19,19 +19,19 @@ TRI_FILE = '{}/basti.tri'.format(DATADIR)
 
 def _download_h5():
     url = 'http://zenodo.org/record/12800/files/basti.h5'
-    import urllib
+    from six.moves import urllib
     print('Downloading BASTI stellar model data (should happen only once)...')
     if os.path.exists(MASTERFILE):
         os.remove(MASTERFILE)
-    urllib.urlretrieve(url,MASTERFILE)
+    urllib.request.urlretrieve(url,MASTERFILE)
 
 def _download_tri():
     url = 'http://zenodo.org/record/12800/files/basti.tri'
-    import urllib
+    from six.moves import urllib
     print('Downloading BASTI isochrone pre-computed triangulation (should happen only once...)')
     if os.path.exists(TRI_FILE):
         os.remove(TRI_FILE)
-    urllib.urlretrieve(url,TRI_FILE)
+    urllib.request.urlretrieve(url,TRI_FILE)
 
 if not os.path.exists(MASTERFILE):
     _download_h5()
@@ -55,9 +55,14 @@ class Basti_Isochrone(Isochrone):
     def __init__(self):
         df = MASTERDF
 
-        f = open(TRI_FILE,'rb')
-        tri = pickle.load(f)
-        f.close()
+        try:
+            f = open(TRI_FILE,'rb')
+            tri = pickle.load(f)
+        except:
+            f = open(TRI_FILE,'rb')
+            tri = pickle.load(f,encoding='latin-1')
+        finally:
+            f.close()
 
         mags = {}
 
