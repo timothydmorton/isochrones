@@ -33,11 +33,11 @@ def _download_h5():
     """
     #url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
     url = 'http://zenodo.org/record/15843/files/dartmouth.h5'
-    import urllib
+    from six.moves import urllib
     print('Downloading Dartmouth stellar model data (should happen only once)...')
     if os.path.exists(MASTERFILE):
         os.remove(MASTERFILE)
-    urllib.urlretrieve(url,MASTERFILE)
+    urllib.request.urlretrieve(url,MASTERFILE)
 
 def _download_tri():
     """
@@ -46,11 +46,11 @@ def _download_tri():
     #url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
     #url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
     url = 'http://zenodo.org/record/17627/files/dartmouth.tri'
-    import urllib
+    from six.moves import urllib
     print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...)')
     if os.path.exists(TRI_FILE):
         os.remove(TRI_FILE)
-    urllib.urlretrieve(url,TRI_FILE)
+    urllib.request.urlretrieve(url,TRI_FILE)
 
 if not os.path.exists(MASTERFILE):
     _download_h5()
@@ -111,9 +111,14 @@ class Dartmouth_Isochrone(Isochrone):
                 else:
                     raise
 
-        f = open(TRI_FILE,'rb')
-        tri = pickle.load(f)
-        f.close()
+        try:
+            f = open(TRI_FILE,'rb')
+            tri = pickle.load(f)
+        except:
+            f = open(TRI_FILE,'rb')
+            tri = pickle.load(f,encoding='latin-1')
+        finally:
+            f.close()
         
         Isochrone.__init__(self,df['M/Mo'],np.log10(df['age']*1e9),
                            df['feh'],df['M/Mo'],df['LogL/Lo'],
