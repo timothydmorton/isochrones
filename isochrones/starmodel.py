@@ -1520,6 +1520,9 @@ class BinaryStarModel(StarModel):
         df.drop('mass', axis=1, inplace=True)
         df['mass_B'] = df_B['mass']
         df['radius_B'] = df_B['radius']
+        df['Teff_B'] = df_B['Teff']
+        df['logg_B'] = df_B['logg']
+        df['logl_B'] = df_B['logl']
         df['age'] = age
         df['feh'] = feh
 
@@ -1875,6 +1878,12 @@ class TripleStarModel(StarModel):
         df['mass_C'] = df_C['mass']
         df['radius_B'] = df_B['radius']
         df['radius_C'] = df_C['radius']
+        df['Teff_B'] = df_B['Teff']
+        df['Teff_C'] = df_C['Teff']
+        df['logg_B'] = df_B['logg']
+        df['logg_C'] = df_C['logg']
+        df['logl_B'] = df_B['logl']
+        df['logl_C'] = df_C['logl']
         df['age'] = age
         df['feh'] = feh
 
