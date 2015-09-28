@@ -1888,8 +1888,8 @@ class TripleStarModel(StarModel):
         df['Teff_C'] = df_C['Teff']
         df['logg_B'] = df_B['logg']
         df['logg_C'] = df_C['logg']
-        df['logl_B'] = df_B['logl']
-        df['logl_C'] = df_C['logl']
+        df['logL_B'] = df_B['logL']
+        df['logL_C'] = df_C['logL']
         df['age'] = age
         df['feh'] = feh
 
