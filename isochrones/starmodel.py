@@ -85,6 +85,11 @@ class StarModel(object):
         also a valid property, and should be provided in miliarcseconds.
         
     """
+    #properties model allowed to have, in addition to anything
+    # predicted by self.ic
+    allowed_props = ['parallax', 'feh', 'age']
+    allowed_delta_patterns = []
+
     def __init__(self,ic,maxAV=1,max_distance=3000,
                  use_emcee=False, 
                  min_logg=None, name='',
@@ -187,16 +192,20 @@ class StarModel(object):
         remove = []
         for p in self.properties.keys():
             if not hasattr(self.ic, p) and \
-              p not in self.ic.bands and p not in ['parallax','feh','age','mass_B','mass_C'] and \
-              not re.search('delta_',p):
-                remove.append(p)
+                    p not in self.ic.bands and p not in self.allowed_props: 
+                bad = True
+                for ptrn in self.allowed_delta_patterns:
+                    if re.search(ptrn, p):
+                        bad = False
+                if bad:
+                    remove.append(p)
 
         for p in remove:
             del self.properties[p]
 
         if len(remove) > 0:
             logging.warning('Properties removed from Model because ' +
-                            'not present in {}: {}'.format(type(self.ic),remove))
+                            'not allowed in {}: {}'.format(type(self.ic),remove))
 
         remove = []
         for p in self.properties.keys():
@@ -308,7 +317,7 @@ class StarModel(object):
                 mod = self.ic.mag[prop](mass,age,feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mod += A
-            elif re.search('delta_',prop):
+            elif re.search('delta_',prop): #ignoring
                 continue
             elif prop=='feh':
                 mod = feh
@@ -809,12 +818,23 @@ class StarModel(object):
         extents = []
         remove = []
         for i,par in enumerate(params):
-            m = re.search('delta_(\w+)$',par)
+            m = re.search('delta_(\w+)',par)
             if m:
                 if type(self) == BinaryStarModel:
                     b = m.group(1)
                     values = (df['{}_mag_B'.format(b)] - 
                               df['{}_mag_A'.format(b)])
+                    df[par] = values
+                elif type(self) == TripleStarModel:
+                    m = re.search('delta_(\w+)_([BC])', par)
+                    if m:
+                        b = m.group(1)
+                        if m.group(2)=='B':
+                            values = (df['{}_mag_B'.format(b)] - 
+                                      df['{}_mag_A'.format(b)])
+                        elif m.group(2)=='C':
+                            values = (df['{}_mag_C'.format(b)] - 
+                                      df['{}_mag_A'.format(b)])
                     df[par] = values
                 else:
                     remove.append(i)
@@ -1157,9 +1177,10 @@ class BinaryStarModel(StarModel):
     should be the total combined light of the two stars.
 
 
-
-
     """
+    allowed_props = ['parallax', 'feh', 'age', 'mass_B']
+    allowed_delta_patterns = ['delta_']
+
     def __init__(self, *args, **kwargs):
         super(BinaryStarModel, self).__init__(*args, **kwargs)
 
@@ -1218,7 +1239,7 @@ class BinaryStarModel(StarModel):
             except TypeError:
                 #property not appropriate for fitting (e.g. no error provided)
                 continue
-            m = re.search('delta_(\w+)',prop)
+            m = re.search('delta_(\w+)$',prop)
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass, age, feh, dist, A_V '+
@@ -1543,6 +1564,11 @@ class TripleStarModel(StarModel):
 
     Parameters now include mass_A, mass_B, and mass_C
     """
+    allowed_props = ['parallax', 'feh', 'age',
+                     'mass_B', 'mass_C']
+    allowed_delta_patterns = ['delta_\w+_B$',
+                              'delta_\w+_C$'] #'delta_w+$' not yet supported
+
     def __init__(self, *args, **kwargs):
         super(TripleStarModel, self).__init__(*args, **kwargs)
 
@@ -1604,6 +1630,7 @@ class TripleStarModel(StarModel):
             except TypeError:
                 #property not appropriate for fitting (e.g. no error provided)
                 continue
+            m = re.search('delta_(\w+)_([BC])', prop)
             if prop in self.ic.bands:
                 if not fit_for_distance:
                     raise ValueError('must fit for mass_A, mass_B, mass_C, age, feh, dist,'+ 
@@ -1613,8 +1640,17 @@ class TripleStarModel(StarModel):
                 A = AV*EXTINCTION[prop]
                 mods += A
                 mod = addmags(*mods)
-            elif re.search('delta_',prop):
-                continue
+            elif m:
+                band = m.group(1)
+                mod_A = self.ic.mag[band](mass_A,age,feh) + 5*np.log10(dist) - 5
+                if m.group(2)=='B':
+                    mod_B = self.ic.mag[band](mass_B,age,feh) + 5*np.log10(dist) - 5
+                elif m.group(2)=='C':
+                    mod_B = self.ic.mag[band](mass_C,age,feh) + 5*np.log10(dist) - 5
+                A = AV*EXTINCTION[band]
+                mod_A += A
+                mod_B += A
+                mod = mod_B - mod_A
             elif prop=='feh':
                 mod = feh
             elif prop=='mass_B':
