@@ -2,10 +2,29 @@ import numpy as np
 import re
 
 def addmags(*mags):
-    tot=0
+    """
+    mags is either list of magnitudes or list of (mag, err) pairs
+    """
+    tot = 0
+    uncs = []
     for mag in mags:
-        tot += 10**(-0.4*mag)
-    return -2.5*np.log10(tot)
+        try:
+            tot += 10**(-0.4*mag)
+        except:
+            m, dm = mag
+            f = 10**(-0.4*m)
+            tot += f
+            unc = f * (1 - 10**(-0.4*dm))
+            uncs.append(unc)
+    
+    totmag = -2.5*np.log10(tot)
+    if len(uncs) > 0:
+        f_unc = np.sqrt(np.array([u**2 for u in uncs]).sum())
+        return totmag, -2.5*np.log10(1 - f_unc/tot)
+    else:
+        return totmag 
+
+
 
 class StarModel(object):
     def __init__(self, ic):
@@ -139,10 +158,10 @@ class MultipleStarModel(StarModel):
         in 2mass but resolved in Keck/NIRC2:
         
             mod = MultipleStarModel(dar, [0,0])
-            mod.add_photometry('2mass', 'J', [10.1, None])
-            mod.add_photometry('2mass', 'H', [9.8, None])
-            mod.add_photometry('2mass', 'K', [9.4, None])
-            mod.add_photometry('NIRC2', 'J', [0, 2.5], relative=True)
+            mod.add_photometry('2mass', 'J', [(10.1, 0.02), None])
+            mod.add_photometry('2mass', 'H', [(9.8, 0.02), None])
+            mod.add_photometry('2mass', 'K', [(9.4, 0.02), None])
+            mod.add_photometry('NIRC2', 'J', [0, (2.5, 0.03)], relative=True)
 
         """
         
@@ -163,15 +182,38 @@ class MultipleStarModel(StarModel):
         parlist = self._parse_params(p)
 
         tot = 0
-        for obs in self._photometry:
-            for b in obs:
-                rel = self._photometry['relative'][b]
-                if not rel:
-                    model_mag = np.inf
-                    for i,l in enumerate(self.labels):
-                        if self._photometry[obs][b][i] is not None:
-                            
-        
+        for obs in self._photometry.keys():
+            print(obs)
+            for b in self._photometry[obs].keys():
+                if b=='relative':
+                    continue
+                rel = self._photometry[obs]['relative'][b]
+                if rel:
+                    i_ref = self._photometry[obs][b].index(0)
+                    ref_mag = super(MultipleStarModel, 
+                                     self).evaluate_mag(parlist[i_ref], b)
+                obs_mag = {s:(np.inf, 0) for s in self.systems}
+                model_mag = {s:np.inf for s in self.systems}
+                for i,l in enumerate(self.labels):
+                    if self._photometry[obs][b][i] is not None:
+                        if np.size(self._photometry[obs][b][i])==1:
+                            continue    
+                        mag = self._photometry[obs][b][i]
+                        obs_mag[l] = addmags(obs_mag[l], mag)
+
+                    this_mag = super(MultipleStarModel, 
+                                     self).evaluate_mag(parlist[i], b)
+                    model_mag[l] = addmags(model_mag[l], this_mag)
+                for l in self.systems:
+                    m, dm = obs_mag[l]
+                    if rel:
+                        model_mag[l] -= ref_mag
+                    tot += -0.5*(m - model_mag[l])**2 / dm**2
+
+                print(obs_mag, model_mag)
+
+        return tot
+
     def evaluate(self, p, prop, which=None):
         """
         p is parsed according to ._parse_params
