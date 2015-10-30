@@ -1,5 +1,5 @@
 import numpy as np
-import re
+import logging
 
 def addmags(*mags):
     """
@@ -23,268 +23,219 @@ def addmags(*mags):
         return totmag, -2.5*np.log10(1 - f_unc/tot)
     else:
         return totmag 
-
-
-
-class StarModel(object):
-    def __init__(self, ic):
-        self._ic = ic
-        self.n_params = 5
     
+    
+class Node(object):
+    def __init__(self, label):
+
+        self.label = label
+        self.parent = None
+        self.children = []
+        self._leaves = None
+
+    @property
+    def is_root(self):
+        return self.parent is None
+        
+    @property
+    def is_leaf(self):
+        return len(self.children)==0
+
+    def _clear_leaves(self):
+        self._leaves = None
+    
+    def _clear_all_leaves(self):
+        if not self.is_root:
+            self.parent._clear_all_leaves()
+        self._clear_leaves()
+        
+    def add_child(self, node):
+        node.parent = self
+        self.children.append(node)
+        self._clear_all_leaves()
+    
+    def remove_child(self, label):
+        """
+        Removes node by label
+        """
+        ind = None
+        for i,c in enumerate(self.children):
+            if c.label==label:
+                ind = i
+
+        if ind is None:
+            logging.warning('No child labeled {}.'.format(label))
+            return
+        self.children.pop(ind)
+        self._clear_all_leaves()
+    
+    def attach_to_parent(self, node):
+        # detach from current parent, if necessary
+        if self.parent is not None:
+            self.parent.remove_child(self.label)
+            
+        node.children += [self]
+        self.parent = node
+        self._clear_all_leaves()
+    
+    @property
+    def leaves(self):
+        if self._leaves is None:
+            self._leaves = self._get_leaves()
+        return self._leaves
+    
+    
+    def _get_leaves(self):
+        if self.is_leaf:
+            return [self]
+        else:
+            leaves = []
+            for c in self.children:
+                leaves += c._get_leaves()
+            return leaves
+        
+    @property
+    def leaf_labels(self):
+        return [l.label for l in J.leaves]
+        
+    def __str__(self):
+        return self.label
+                
+    def __repr__(self):
+        if self.is_leaf:
+            s = "<{} '{}', parent='{}'>".format(self.__class__,
+                                                        self.label,
+                                                        self.parent)
+        else:
+            child_labels = [str(c) for c in self.children]
+            s = "<{} '{}', parent='{}', children={}>".format(self.__class__,
+                                                        self.label,
+                                                        self.parent,
+                                                        child_labels)
+        return s
+    
+class ObsNode(Node):
+    def __init__(self, instrument, band, value,
+                 nodetype='absolute',
+                 reference=None):
+
+        self.instrument = instrument
+        self.band = band
+        self.value = value
+        self.nodetype = nodetype
+        self.reference = reference
+        
+        self.children = []
+        self.parent = None
+        self._leaves = None
+        
+        #indices of underlying models, defining physical systems        
+        self._inds = None 
+        self._n_params = None
+        self._Nstars = None
+        
+    @property
+    def n_params(self):
+        if self._n_params is None:
+            self._n_params = 5 * len(self.leaves)
+        return self._n_params
+        
+    def _get_inds(self):
+        inds = [n.index for n in self.leaves]
+        inds = list(set(inds))
+        inds.sort()
+        return inds
+    
+    def _clear_leaves(self):
+        self._leaves = None
+        self._inds = None
+        self._n_params = None
+        self._Nstars = None
+        
+    @property
+    def Nstars(self):
+        """
+        dictionary of number of stars per system
+        """
+        if self._Nstars is None:
+            N = {}
+            for n in self.leaves:
+                if n.index not in N:
+                    N[n.index] = 1
+                else:
+                    N[n.index] += 1
+            self._Nstars = N
+        return self._Nstars
+        
+    @property
+    def inds(self):
+        if self._inds is None:
+            self._inds = self._get_inds()
+        return self._inds
+    
+    @property
+    def label(self):
+        return '{} {}={}'.format(self.instrument, self.band,
+                                self.value)
+
+    def get_system(self, ind):
+        if self.is_leaf:
+            return []
+        else:
+            return [l for l in self.leaves if l.index==ind]
+    
+    def add_model(self, ic, N=1, index=0):
+        """
+        Should only be able to do this to a leaf node.
+        """
+        existing = self.get_system(index)
+        initial_tag = 65 + len(existing) #chr(65) is 'A'
+        
+        for i in range(N):            
+            tag = chr(initial_tag+i)
+            self.add_child(ModelNode(ic, index=index, tag=tag))
+            
+    def model_mag(self, p):
+        tot = np.inf
+        for i,m in enumerate(self.leaves):
+            tot = addmags(tot, m.evaluate(p[i*5:(i+1)*5], self.band))
+        return tot
+            
+    def lnlike(self, p):
+        assert len(p) == self.n_params
+        
+        mag, dmag = self.value
+        if self.nodetype=='absolute':
+            mod = self.model_mag(p)
+        elif self.nodetype=='relative':
+            mod = self.model_mag(p) - self.reference.model_mag(p)
+
+        return -0.5*(mag - mod)**2 / dmag**2
+        
+class ModelNode(Node):
+    """
+    These are always leaves; leaves are always these.
+
+    Index keeps track of which physical system node is in.
+    """
+    def __init__(self, ic, index=0, tag='A'):
+        self._ic = ic
+        self.index = index
+        self.tag = tag
+        
+        self.children = []
+        self.parent = None
+
+    @property
+    def label(self):
+        return '{}_{}'.format(self.index, self.tag)
+        
     @property
     def ic(self):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic        
-    
-    def evaluate(self, p, prop):
-        """Returns value of 'prop' predicted by parameters 'p'
-        
-        p = (mass, age, feh, distance, AV)
-        """
-        mass, age, feh, distance, AV = p
-        if prop in ['mass','age','feh','distance','AV']:
-            return eval(prop)
-        elif prop in self.ic.bands:
-            return self.evaluate_mag(p, prop)
-        else:
-            return getattr(self.ic, prop)(mass, age, feh)
 
-    def evaluate_mag(self, p, band):
+    def evaluate(self, p, band):
         return self.ic.mag[band](*p)
         
-class MultipleStarModel(StarModel):
-
-    tags = ['A','B','C','D','E'] #order of tags w/in single system
-
-    def __init__(self, ic, labels):
-        """
-        models is list of StarModel objects
-        labels a list of labels; anything with the same label will be
-            assumed to be physically associated, and will be assumed
-            to be in descending order of mass.
-            
-        """
-        self._ic = ic
-        
-        self.labels = labels
-        
-        self.systems = []
-        self.full_labels = []
-        self.Nstars = {}
-        for l in self.labels:
-            if l not in self.systems:
-                self.systems.append(l)
-            if l in self.Nstars:
-                self.Nstars[l] += 1
-            else:
-                self.Nstars[l] = 1
-            self.full_labels.append('{}_{}'.format(l, self.tags[self.Nstars[l]-1]))
-        self.systems.sort()
-        self.Nsystems = len(self.systems)
-        
-        n = 0
-        for s in self.systems:
-            n += 4 + self.Nstars[s]
-        self.n_params = n
-        
-        self._photometry = {}
-        
-    def _parse_params(self, p):
-        """
-        To parse parameter vector p
-        
-        For each system labeled by 'l', Nparams = 4 + self.Nstars[l] (one mass per star)
-        Loop through systems in label-order, grabbing the appropriate number of params
-        
-        returns list of "normal" param vectors for each StarModel
-        """
-        assert len(p)==self.n_params
-        
-        pdict = {}
-        i=0
-        for l in self.systems:
-            n = self.Nstars[l]
-            pdict[l] = p[i:i+4+n]
-            i += 4 + n
-        
-        params = []
-        mass_ind = {l:0 for l in self.systems}
-        for l in self.labels:
-            pars = [pdict[l][mass_ind[l]]]
-            pars += pdict[l][-4:]
-            mass_ind[l] += 1
-            params.append(pars)
-            
-        return params
-            
-    def _describe_params(self):
-        """
-        Prints schema of params
-        """
-        
-        s = '['
-        for l in self.systems:
-            n = self.Nstars[l]
-            if n==1:
-                s += 'mass_{}, '.format(l)
-            else:
-                for i in range(n):
-                    s += 'mass_{}_{}, '.format(self.tags[i],l)
-            s += 'age_{0}, feh_{0}, distance_{0}, AV_{0}, '.format(l)
-        s = s[:-2]
-        s += ']'
-        print(s)
-               
-    def add_photometry(self, name, band, mag, relative=False):
-        """
-        Add photometric observation to model
-        
-        string : Name of instrument/survey
-        band : photometric band
-        mag : list of magnitude values.  If a particular
-              star is not resolved in this observation,
-              corresponding entry should be ``None``, and the blended
-              magnitude should go with the next brightest.
-        relative : Should be true to just provide relative (rather
-                   than absolute) photometry.  In this case, the 
-                   "reference" magnitude should be 0.
-        
-        Each observation gets stored in a dictionary.
-        
-        Let's do some examples, starting simple. 
-
-        First, a physically associated 2-star model unresolved 
-        in 2mass but resolved in Keck/NIRC2:
-        
-            mod = MultipleStarModel(dar, [0,0])
-            mod.add_photometry('2mass', 'J', [(10.1, 0.02), None])
-            mod.add_photometry('2mass', 'H', [(9.8, 0.02), None])
-            mod.add_photometry('2mass', 'K', [(9.4, 0.02), None])
-            mod.add_photometry('NIRC2', 'J', [0, (2.5, 0.03)], relative=True)
-
-        """
-        
-        if name not in self._photometry:
-            self._photometry[name] = {}
-        
-        if 'relative' not in self._photometry[name]:
-            self._photometry[name]['relative'] = {}
-        
-        self._photometry[name]['relative'][band] = relative
-        self._photometry[name][band] = mag
-        
-    def photometry_lnlike(self, p):
-        """
-        log-likelihood of observed photometry, given parameters p
-        """
-        
-        parlist = self._parse_params(p)
-
-        tot = 0
-        for obs in self._photometry.keys():
-            print(obs)
-            for b in self._photometry[obs].keys():
-                if b=='relative':
-                    continue
-                rel = self._photometry[obs]['relative'][b]
-                if rel:
-                    i_ref = self._photometry[obs][b].index(0)
-                    ref_mag = super(MultipleStarModel, 
-                                     self).evaluate_mag(parlist[i_ref], b)
-                obs_mag = {s:(np.inf, 0) for s in self.systems}
-                model_mag = {s:np.inf for s in self.systems}
-                for i,l in enumerate(self.labels):
-                    if self._photometry[obs][b][i] is not None:
-                        if np.size(self._photometry[obs][b][i])==1:
-                            continue    
-                        mag = self._photometry[obs][b][i]
-                        obs_mag[l] = addmags(obs_mag[l], mag)
-
-                    this_mag = super(MultipleStarModel, 
-                                     self).evaluate_mag(parlist[i], b)
-                    model_mag[l] = addmags(model_mag[l], this_mag)
-                for l in self.systems:
-                    m, dm = obs_mag[l]
-                    if rel:
-                        model_mag[l] -= ref_mag
-                    tot += -0.5*(m - model_mag[l])**2 / dm**2
-
-                print(obs_mag, model_mag)
-
-        return tot
-
-    def evaluate(self, p, prop, which=None):
-        """
-        p is parsed according to ._parse_params
-
-        ``which`` must be specified unless ``prop`` is photometric band
-        
-        delta_? is a magnitude difference.  In order for this to be
-        defined, there needs to be a "reference" magnitude, which by 
-        convention is the brightest unresolved system (in any band) 
-        being considered.
-        
-        This means that there needs to be some structured way to 
-        define the photometric observations, allowing for stars
-        to be blended or resolved in any given band.
-        
-        
-        
-        """
-        
-        
-        if prop in self.ic.bands:
-            return self.evaluate_mag(p, prop, which=which)
-        
-        if which is None:
-            raise ValueError('Must specify which system.')
-            
-        m = re.search('([a-zA-Z]+)(_([A-Z]))?', prop)
-        
-        if m.group(2) is None:
-            tag = self.tags[0]
-        else:
-            tag = m.group(3)
-        
-        i_tag = self.tags.index(tag)
-        if i_tag > self.Nstars[which] - 1:
-            raise ValueError('System {} has only {} stars.'.format(which, self.Nstars[which]))
-        
-        prop = m.group(1)
-
-        full_label = '{}_{}'.format(which, tag)
-        
-        parlist = self._parse_params(p)
-        i = self.full_labels.index(full_label)
-        
-        return super(MultipleStarModel, self).evaluate(parlist[i], prop)
-                    
-    def evaluate_mag(self, p, band, which=None):
-        """
-        p is parsed according to ._parse_params
-        
-        band : name of desired photometric band
-        
-        which : Label of system for which property is desired.
-                If ``None``, will return the flux-sum of all.
-                If array-like, then the flux-sum of everything
-                ``True``.
-        
-        What about subset of a system?
-        
-        """
-        parlist = self._parse_params(p)
-        
-        if which is not None:
-            assert which in self.systems
-        
-        mags = []
-        for i,l in enumerate(self.labels):
-            if which is not None:
-                if l != which:
-                    continue
-            mag = super(MultipleStarModel, self).evaluate_mag(parlist[i], band)
-            mags.append(mag)
-        return addmags(*mags)
-            
