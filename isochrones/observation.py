@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import numpy as np
 import logging
 
@@ -14,6 +15,7 @@ class NodeTraversal(Traversal):
         return node.children
     
     def get_root(self, node):
+        return node
         return node.get_root()
     
     def get_text(self, node):
@@ -310,7 +312,7 @@ class Source(object):
         self.relative = relative
         self.reference = reference
 
-        
+
 class Observation(object):
     """
     Contains relevant information about imaging observation
@@ -364,6 +366,24 @@ class ObservationTree(Node):
 
         [self.add_observation(obs) for obs in observations]
         
+    @classmethod
+    def from_df(cls, df):
+        """
+        DataFrame must have the right columns.
+
+        these are: name, band, resolution, mag, e_mag, separation, pa
+        """
+        tree = cls()
+
+        for (n,b), g in df.groupby(['name','band']):
+            sources = [Source(**s[['mag','e_mag','separation','pa','relative']]) 
+                        for _,s in g.iterrows()]
+            obs = Observation(n, b, g.resolution.mean(),
+                              sources=sources, relative=g.any())
+            tree.add_observation(obs)
+
+        return tree
+
     def add_observation(self, obs):
         """Adds an observation to observation list, keeping proper order        
         """
@@ -380,6 +400,14 @@ class ObservationTree(Node):
         
         self._build_tree()
         
+    def add_models(self, N=1):
+        """
+        N is either integer or list of integers.
+
+        If list, then it represents the number of stars for each 
+        source in final level.
+        """
+
     def _build_tree(self):
         """Constructs tree from [ordered] list of observations
         """
@@ -397,7 +425,7 @@ class ObservationTree(Node):
                                              (o.sources[0].mag, 
                                               o.sources[0].e_mag),
                                              relative=True,
-                                             ref_node=None)
+                                             reference=None)
                     
                 node = ObsNode(o.name, o.band, 
                                (s.mag, s.e_mag),
