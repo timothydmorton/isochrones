@@ -71,7 +71,7 @@ class Node(object):
         
     def print_ascii(self):
         box_tr = MyLeftAligned(draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
-        print box_tr(self)
+        print(box_tr(self))
         
     @property
     def is_leaf(self):
@@ -89,7 +89,11 @@ class Node(object):
         node.parent = self
         self.children.append(node)
         self._clear_all_leaves()
-        
+
+    def remove_children(self):
+        self.children = []    
+        self._clear_all_leaves()    
+
     def remove_child(self, label):
         """
         Removes node by label
@@ -238,20 +242,26 @@ class ObsNode(Node):
                                 self.value, self.separation, self.pa)
 
     def get_system(self, ind):
-        if self.is_leaf:
-            return []
-        else:
-            return [l for l in self.leaves if l.index==ind]
+        system = []
+        for l in self.get_root().leaves:
+            try:
+                if l.index==ind:
+                    system.append(l)
+            except AttributeError:
+                pass
+        return system
     
     def add_model(self, ic, N=1, index=0):
         """
         Should only be able to do this to a leaf node.
+
         """
         existing = self.get_system(index)
-        initial_tag = 65 + len(existing) #chr(65) is 'A'
-        
+        initial_tag = len(existing) # + chr(65) is 'A' if I want to go back to letters
+
         for i in range(N):            
-            tag = chr(initial_tag+i)
+            #tag = chr(initial_tag+i)
+            tag = initial_tag + i
             self.add_child(ModelNode(ic, index=index, tag=tag))
             
     def model_mag(self, p):
@@ -280,7 +290,7 @@ class ModelNode(Node):
 
     Index keeps track of which physical system node is in.
     """
-    def __init__(self, ic, index=0, tag='A'):
+    def __init__(self, ic, index=0, tag=0):
         self._ic = ic
         self.index = index
         self.tag = tag
@@ -330,14 +340,29 @@ class Observation(object):
         self.name = name
         self.band = band
         self.resolution = resolution
+        self.sources = []
         if sources is None:
             sources = []
-        self.sources = sources
+        for s in sources:
+            self.add_source(s)
         
     def add_source(self, source):
+        """
+        Adds source to observation, keeping sorted order
+        """
         if not type(source)==Source:
             raise TypeError('Can only add Source object.')
-        self.sources.append(source)
+
+        if len(self.sources)==0:
+            self.sources.append(source)
+        else:
+            ind = 0
+            for s in self.sources:
+                if source.mag < s.mag:
+                    break
+                ind += 1
+
+            self.sources.insert(ind, source)
         
     def __str__(self):
         return '{}-{}'.format(self.name, self.band)
@@ -376,10 +401,11 @@ class ObservationTree(Node):
         tree = cls()
 
         for (n,b), g in df.groupby(['name','band']):
+            #g.sort('mag', inplace=True)
             sources = [Source(**s[['mag','e_mag','separation','pa','relative']]) 
                         for _,s in g.iterrows()]
             obs = Observation(n, b, g.resolution.mean(),
-                              sources=sources, relative=g.any())
+                              sources=sources, relative=g.relative.any())
             tree.add_observation(obs)
 
         return tree
@@ -400,13 +426,29 @@ class ObservationTree(Node):
         
         self._build_tree()
         
-    def add_models(self, N=1):
+    def define_models(self, ic, N=1, index=0):
         """
-        N is either integer or list of integers.
+        N, index are either integers or lists of integers.
 
-        If list, then it represents the number of stars for each 
-        source in final level.
+        N : number of model stars per observed star
+        index : index of physical association
+
+        If these are lists, then they are defined individually for 
+        each star in the final level (highest-resoluion)
         """
+
+        if np.size(N)==1:
+            N = (np.ones(len(self._levels[-1]))*N).astype(int)
+        if np.size(index)==1:
+            index = (np.ones_like(N)*index).astype(int)
+
+        # Add the appropriate number of model nodes to each
+        #  star in the highest-resoluion image
+        for s,n,i in zip(self._levels[-1], N, index):
+            # Remove any previous model nodes (should do some checks here?)
+            s.remove_children()
+            s.add_model(ic, n, i)
+
 
     def _build_tree(self):
         """Constructs tree from [ordered] list of observations
@@ -418,6 +460,7 @@ class ObservationTree(Node):
         
         for i,o in enumerate(self._observations):
             self._levels.append([])
+
             for s in o.sources:
                 ref_node = None
                 if s.relative:
