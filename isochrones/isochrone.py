@@ -137,13 +137,16 @@ class Isochrone(object):
 
         d = {}
         for b in self._mag.keys():
-            def fn(mass, age, feh, distance=10, AV=0.0):
-                A = AV*EXTINCTION[b]
-                dm = 5*np.log10(distance) - 5
-                return self._mag[b](mass, age, feh) + dm + A
-            d[b] = fn
+            d[b] = self._mag_fn(b)
 
         self.mag = d
+
+    def _mag_fn(self, band):
+        def fn(mass, age, feh, distance=10, AV=0.0):
+            A = AV*EXTINCTION[band]
+            dm = 5*np.log10(distance) - 5
+            return self._mag[band](mass, age, feh) + dm + A
+        return fn
 
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
