@@ -12,6 +12,10 @@ class NodeTraversal(Traversal):
     """
     Custom subclass to traverse tree for ascii printing
     """
+    def __init__(self, pars=None, **kwargs):
+        self.pars = pars
+        super(NodeTraversal,self).__init__(**kwargs)
+
     def get_children(self, node):
         return node.children
     
@@ -20,13 +24,20 @@ class NodeTraversal(Traversal):
         return node.get_root()
     
     def get_text(self, node):
-        return node.label
-    
+        text = node.label
+        if self.pars is not None and hasattr(node, 'model_mag'):
+            text += '; model={:.2f} ({})'.format(node.model_mag(self.pars),
+                                                 node.lnlike(self.pars))
+        return text
+
 class MyLeftAligned(LeftAligned):
     """For custom ascii tree printing
     """
-    traverse = NodeTraversal()
-
+    pars = None
+    def __init__(self, pars=None, **kwargs):
+        self.pars = pars
+        self.traverse = NodeTraversal(pars)
+        super(MyLeftAligned,self).__init__(**kwargs)
     
 def addmags(*mags):
     """
@@ -85,8 +96,8 @@ class Node(object):
         else:
             return self.parent.get_root()
         
-    def print_ascii(self):
-        box_tr = MyLeftAligned(draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
+    def print_ascii(self, pars=None):
+        box_tr = MyLeftAligned(pars,draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
         print(box_tr(self))
         
     @property
@@ -310,8 +321,11 @@ class ObsNode(Node):
         assert len(p) == self.n_params
 
         tot = np.inf
+        print('Building {} mag for {}:'.format(self.band, self))
         for i,m in enumerate(self.leaves):
-            tot = addmags(tot, m.evaluate(p[i*5:(i+1)*5], self.band))
+            mag = m.evaluate(p[i*5:(i+1)*5], self.band)
+            print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
+            tot = addmags(tot, mag)
 
         self._cache_val = tot
         return tot
