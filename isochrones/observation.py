@@ -446,6 +446,10 @@ class ObservationTree(Node):
 
         [self.add_observation(obs) for obs in observations]
         
+        #likelihood cache
+        self._cache_key = None
+        self._cache_val = None
+
     @classmethod
     def from_df(cls, df):
         """
@@ -534,6 +538,9 @@ class ObservationTree(Node):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
+        if p==self._cache_key:
+            return self._cache_val
+        self._cache_key = p
 
         pardict = self.p2pardict(p)
 
@@ -541,6 +548,7 @@ class ObservationTree(Node):
         for n in self:
             if n is not self:
                 lnl += n.lnlike(pardict)
+        self._cache_val = lnl
         return lnl
 
 

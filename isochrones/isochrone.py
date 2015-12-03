@@ -145,7 +145,6 @@ class Isochrone(object):
 
         self.mag = d
 
-        
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
                  return_df=True, bands=None):
