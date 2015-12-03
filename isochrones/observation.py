@@ -28,6 +28,8 @@ class NodeTraversal(Traversal):
         if self.pars is not None and hasattr(node, 'model_mag'):
             text += '; model={:.2f} ({})'.format(node.model_mag(self.pars),
                                                  node.lnlike(self.pars))
+        if type(node)==ModelNode:
+            text += ': ({})'.format(self.pars['{}_{}'.format(node.index,node.tag)])
         return text
 
 class MyLeftAligned(LeftAligned):
