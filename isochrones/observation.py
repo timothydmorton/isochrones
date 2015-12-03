@@ -5,7 +5,8 @@ import logging
 from asciitree import LeftAligned, Traversal
 from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
 
-
+from itertools import chain, imap, izip, count
+from collections import OrderedDict
 
 class NodeTraversal(Traversal):
     """
@@ -58,6 +59,21 @@ class Node(object):
         self.parent = None
         self.children = []
         self._leaves = None
+
+    def __iter__(self):
+        """
+        Iterate through tree, leaves first
+
+        following http://stackoverflow.com/questions/6914803/python-iterator-through-tree-with-list-of-children
+        """
+        for node in chain(*imap(iter, self.children)):
+            yield node
+        yield self
+
+    def __getitem__(self, ind):
+        for n,i in izip(self, count()):
+            if i==ind:
+                return n
 
     @property
     def is_root(self):
@@ -123,8 +139,7 @@ class Node(object):
         if self._leaves is None:
             self._leaves = self._get_leaves()
         return self._leaves
-    
-    
+
     def _get_leaves(self):
         if self.is_leaf:
             return [self]
@@ -136,7 +151,7 @@ class Node(object):
         
     @property
     def leaf_labels(self):
-        return [l.label for l in J.leaves]
+        return [l.label for l in self.leaves]
         
     def print_tree(self):
         print(self.label)
@@ -181,6 +196,10 @@ class ObsNode(Node):
         self._inds = None 
         self._n_params = None
         self._Nstars = None
+
+        #for model_mag caching
+        self._cache_key = None
+        self._cache_val = None
         
     def distance(self, other):
         """Coordinate distance from another ObsNode
@@ -231,6 +250,12 @@ class ObsNode(Node):
         return self._Nstars
         
     @property
+    def systems(self):
+        lst = self._Nstars.keys()
+        lst.sort()
+        return lst
+
+    @property
     def inds(self):
         if self._inds is None:
             self._inds = self._get_inds()
@@ -264,25 +289,52 @@ class ObsNode(Node):
             tag = initial_tag + i
             self.add_child(ModelNode(ic, index=index, tag=tag))
             
-    def model_mag(self, p):
+    def model_mag(self, pardict):
+        """
+        pardict is a dictionary of parameters for all leaves
+        gets converted back to traditional parameter vector
+        """
+        if pardict == self._cache_key:
+            #print('{}: using cached'.format(self))
+            return self._cache_val
+
+        #print('{}: calculating'.format(self))
+        self._cache_key = pardict
+
+
+        # Generate appropriate parameter vector from dictionary
+        p = []
+        for l in self.leaf_labels:
+            p.extend(pardict[l])
+
+        assert len(p) == self.n_params
+
         tot = np.inf
         for i,m in enumerate(self.leaves):
             tot = addmags(tot, m.evaluate(p[i*5:(i+1)*5], self.band))
+
+        self._cache_val = tot
         return tot
-            
-    def lnlike(self, p):
-        assert len(p) == self.n_params
-        
+
+    def lnlike(self, pardict):
+        """
+        returns log-likelihood of this observation
+
+        pardict is a dictionary of parameters for all leaves
+        gets converted back to traditional parameter vector
+        """
+
         mag, dmag = self.value
         if self.relative:
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = self.model_mag(p) - self.reference.model_mag(p)
+            mod = self.model_mag(pardict) - self.reference.model_mag(pardict)
         else:
-            mod = self.model_mag(p)
+            mod = self.model_mag(pardict)
 
         return -0.5*(mag - mod)**2 / dmag**2
+
         
 class ModelNode(Node):
     """
@@ -297,6 +349,7 @@ class ModelNode(Node):
         
         self.children = []
         self.parent = None
+        self._leaves = None
 
     @property
     def label(self):
@@ -310,7 +363,9 @@ class ModelNode(Node):
 
     def evaluate(self, p, band):
         return self.ic.mag[band](*p)
-        
+
+    def lnlike(self, *args):
+        return 0        
 
 class Source(object):
     def __init__(self, mag, e_mag, separation=0., pa=0.,
@@ -449,6 +504,45 @@ class ObservationTree(Node):
             s.remove_children()
             s.add_model(ic, n, i)
 
+    def p2pardict(self, p):
+        """
+        Given leaf labels, turns parameter vector into pardict
+        """
+        d = {}
+        N = self.Nstars
+        i = 0
+        for s in self.systems:
+            age, feh, dist, AV = p[i+N[s]:i+N[s]+4]
+            for j in xrange(N[s]):
+                l = '{}_{}'.format(s,j)
+                mass = p[i+j]
+                d[l] = [mass, age, feh, dist ,AV]
+            i += N[s] + 4
+        return d
+
+
+    @property
+    def Nstars(self):
+        return self.children[0].Nstars    
+
+    @property
+    def systems(self):
+        return self.children[0].systems
+    
+
+    def lnlike(self, p):
+        """
+        takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
+        """
+
+        pardict = self.p2pardict(p)
+
+        lnl = 0
+        for n in self:
+            if n is not self:
+                lnl += n.lnlike(pardict)
+        return lnl
+
 
     def _build_tree(self):
         """Constructs tree from [ordered] list of observations
@@ -461,20 +555,20 @@ class ObservationTree(Node):
         for i,o in enumerate(self._observations):
             self._levels.append([])
 
+            ref_node = None
             for s in o.sources:
-                ref_node = None
-                if s.relative:
-                    ref_node = ObsNode(o.name, o.band,
-                                             (o.sources[0].mag, 
-                                              o.sources[0].e_mag),
-                                             relative=True,
-                                             reference=None)
-                    
-                node = ObsNode(o.name, o.band, 
-                               (s.mag, s.e_mag),
-                               separation=s.separation, pa=s.pa,
-                               relative=s.relative,
-                               reference=ref_node)
+                if s.relative and ref_node is None:
+                    node = ObsNode(o.name, o.band,
+                                       (s.mag, s.e_mag), 
+                                        relative=True,
+                                        reference=None)
+                    ref_node = node
+                else:
+                    node = ObsNode(o.name, o.band, 
+                                   (s.mag, s.e_mag),
+                                   separation=s.separation, pa=s.pa,
+                                   relative=s.relative,
+                                   reference=ref_node)
 
                 # For first level, no need to choose parent
                 if i==0:
