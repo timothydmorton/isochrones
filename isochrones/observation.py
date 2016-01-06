@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import numpy as np
 import logging
+from configobj import ConfigObj
 
 from asciitree import LeftAligned, Traversal
 from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
@@ -25,11 +26,35 @@ class NodeTraversal(Traversal):
     
     def get_text(self, node):
         text = node.label
-        if self.pars is not None and hasattr(node, 'model_mag'):
-            text += '; model={:.2f} ({})'.format(node.model_mag(self.pars),
-                                                 node.lnlike(self.pars))
-        if type(node)==ModelNode:
-            text += ': ({})'.format(self.pars['{}_{}'.format(node.index,node.tag)])
+        if self.pars is not None:
+            if hasattr(node, 'model_mag'):
+                text += '; model={:.2f} ({})'.format(node.model_mag(self.pars),
+                                                     node.lnlike(self.pars))
+            if type(node)==ModelNode:
+                root = node.get_root()
+                if hasattr(root, 'spectroscopy'):
+                    if node.label in root.spectroscopy:
+                        for k,v in root.spectroscopy[node.label].items():
+                            text += ', {}={}'.format(k,v)
+
+                            modval = node.evaluate(self.pars[node.label], k)
+                            lnl = -0.5*(modval - v[0])**2/v[1]**2
+                            text += '; model={} ({})'.format(modval, lnl)
+                text += ': {}'.format(self.pars[node.label])
+
+        else:
+            if type(node)==ModelNode:
+                root = node.get_root()
+                if hasattr(root, 'spectroscopy'):
+                    if node.label in root.spectroscopy:
+                        for k,v in root.spectroscopy[node.label].items():
+                            text += ', {}={}'.format(k,v)
+                #root = node.get_root()
+                #if hasattr(root,'spectroscopy'):
+                #    if node.label in root.spectroscopy:
+                #        for k,v in root.spectroscopy[node.label].items():
+                #            model = node.evaluate(self.pars[node.label], k)
+                #            text += '\n  {}={} (model={})'.format(k,v,model)
         return text
 
 class MyLeftAligned(LeftAligned):
@@ -98,10 +123,13 @@ class Node(object):
         else:
             return self.parent.get_root()
         
-    def print_ascii(self, pars=None):
+    def print_ascii(self, fout=None, pars=None):
         box_tr = MyLeftAligned(pars,draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
-        print(box_tr(self))
-        
+        if fout is None:
+            print(box_tr(self))
+        else: 
+            fout.write(box_tr(self))
+
     @property
     def is_leaf(self):
         return len(self.children)==0
@@ -166,6 +194,11 @@ class Node(object):
     def leaf_labels(self):
         return [l.label for l in self.leaves]
         
+    def get_leaf(self, label):
+        for l in self.leaves:
+            if label==l.label:
+                return l
+
     def print_tree(self):
         print(self.label)
         
@@ -293,14 +326,19 @@ class ObsNode(Node):
         """
         Should only be able to do this to a leaf node.
 
+        Either N and index both integers OR index is 
+        list of length=N
         """
-        existing = self.get_system(index)
-        initial_tag = len(existing) # + chr(65) is 'A' if I want to go back to letters
+        if type(index) in [list,tuple]:
+            if len(index) != N:
+                raise ValueError('If a list, index must be of length N.')
+        else:
+            index = [index]*N
 
-        for i in range(N):            
-            #tag = chr(initial_tag+i)
-            tag = initial_tag + i
-            self.add_child(ModelNode(ic, index=index, tag=tag))
+        for idx in index:
+            existing = self.get_system(idx)
+            tag = len(existing)
+            self.add_child(ModelNode(ic, index=idx, tag=tag))
             
     def model_mag(self, pardict):
         """
@@ -323,10 +361,10 @@ class ObsNode(Node):
         assert len(p) == self.n_params
 
         tot = np.inf
-        print('Building {} mag for {}:'.format(self.band, self))
+        #print('Building {} mag for {}:'.format(self.band, self))
         for i,m in enumerate(self.leaves):
             mag = m.evaluate(p[i*5:(i+1)*5], self.band)
-            print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
+            #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
             tot = addmags(tot, mag)
 
         self._cache_val = tot
@@ -341,6 +379,8 @@ class ObsNode(Node):
         """
 
         mag, dmag = self.value
+        if np.isnan(dmag):
+            return 0
         if self.relative:
             # If this *is* the reference, just return
             if self.reference is None:
@@ -377,7 +417,19 @@ class ModelNode(Node):
             self._ic = self._ic()
         return self._ic        
 
-    def evaluate(self, p, band):
+    def evaluate(self, p, prop):
+        if prop in self.ic.bands:
+            return self.evaluate_mag(p, prop)
+        elif prop=='mass':
+            return p[0]
+        elif prop=='age':
+            return p[1]
+        elif prop=='feh':
+            return p[2]
+        elif prop in ['Teff','logg','radius']:
+            return getattr(self.ic, prop)(*p[:3])
+
+    def evaluate_mag(self, p, band):
         return self.ic.mag[band](*p)
 
     def lnlike(self, *args):
@@ -419,7 +471,7 @@ class Observation(object):
         
     def add_source(self, source):
         """
-        Adds source to observation, keeping sorted order
+        Adds source to observation, keeping sorted order (in separation)
         """
         if not type(source)==Source:
             raise TypeError('Can only add Source object.')
@@ -429,7 +481,8 @@ class Observation(object):
         else:
             ind = 0
             for s in self.sources:
-                if source.mag < s.mag:
+                # Keep sorted order of separation
+                if source.separation < s.separation: 
                     break
                 ind += 1
 
@@ -448,12 +501,17 @@ class ObservationTree(Node):
     and at each stage attaches each source to the most probable
     match from the previous Observation.
     """
-    def __init__(self, observations=None):
+    spec_props = ['Teff', 'logg', 'feh']
+
+    def __init__(self, observations=None, name=None):
         
         if observations is None:
             observations = []
         
-        self.label = 'root'
+        if name is None:
+            self.label = 'root'
+        else:
+            self.label = name
         self.parent = None
 
         self._levels = []
@@ -461,22 +519,36 @@ class ObservationTree(Node):
         self._build_tree()
 
         [self.add_observation(obs) for obs in observations]
+
+        # Spectroscopic properties
+        self.spectroscopy = {}
         
+        # Parallax measurements
+        self.parallax = {}
+
         #likelihood cache
         self._cache_key = None
         self._cache_val = None
 
+    @property
+    def name(self):
+        return self.label
+    
+    def _clear_cache(self):
+        self._cache_key = None
+        self._cache_val = None
+
     @classmethod
-    def from_df(cls, df):
+    def from_df(cls, df, **kwargs):
         """
         DataFrame must have the right columns.
 
         these are: name, band, resolution, mag, e_mag, separation, pa
         """
-        tree = cls()
+        tree = cls(**kwargs)
 
         for (n,b), g in df.groupby(['name','band']):
-            #g.sort('mag', inplace=True)
+            #g.sort('separation', inplace=True) #ensures that the first is reference
             sources = [Source(**s[['mag','e_mag','separation','pa','relative']]) 
                         for _,s in g.iterrows()]
             obs = Observation(n, b, g.resolution.mean(),
@@ -484,6 +556,11 @@ class ObservationTree(Node):
             tree.add_observation(obs)
 
         return tree
+
+    @classmethod
+    def from_ini(cls, filename):
+        config = ConfigObj(filename)
+
 
     def add_observation(self, obs):
         """Adds an observation to observation list, keeping proper order        
@@ -500,7 +577,41 @@ class ObservationTree(Node):
             self._observations.insert(ind, obs)
         
         self._build_tree()
+        self._clear_cache()
         
+    def add_spectroscopy(self, label='0_0', **props):
+        """
+        Adds spectroscopic measurement to particular star(s) (corresponding to individual model node)
+
+        Default 0_0 should be primary star
+
+        legal inputs are 'Teff', 'logg', 'feh', and in form (val, err)
+        """
+        if label not in self.leaf_labels:
+            raise ValueError('No model node named {} (must be in {}). Maybe define models first?'.format(label, self.leaf_labels))
+        for k,v in props.items():
+            if k not in self.spec_props:
+                raise ValueError('Illegal property {} (only {} allowed).'.format(k, self.spec_props))
+            if len(v) != 2:
+                raise ValueError('Must provide (value, uncertainty) for {}.'.format(k))
+
+        if label not in self.spectroscopy:
+            self.spectroscopy[label] = {}
+
+        for k,v in props.items():
+            self.spectroscopy[label][k] = v
+
+        self._clear_cache()
+
+    def add_parallax(self, plax, system=0):
+        if len(plax)!=2:
+            raise ValueError('Must enter (value,uncertainty).')
+        if system not in self.systems:
+            raise ValueError('{} not in systems ({}).'.format(system,self.systems))
+
+        self.parallax[system] = plax
+        self._clear_cache()
+
     def define_models(self, ic, N=1, index=0):
         """
         N, index are either integers or lists of integers.
@@ -510,10 +621,19 @@ class ObservationTree(Node):
 
         If these are lists, then they are defined individually for 
         each star in the final level (highest-resoluion)
+
+        If `index` is a list, then each entry must be either
+        an integer or a list of length `N` (where `N` is the corresponding
+            entry in the `N` list.)  
+
+        This bugs up if you call it multiple times.  If you want
+        to re-do a call to this function, please re-define the tree.
         """
 
         if np.size(N)==1:
             N = (np.ones(len(self._levels[-1]))*N).astype(int)
+            #if np.size(index) > 1:
+            #    index = [index]
         if np.size(index)==1:
             index = (np.ones_like(N)*index).astype(int)
 
@@ -523,6 +643,23 @@ class ObservationTree(Node):
             # Remove any previous model nodes (should do some checks here?)
             s.remove_children()
             s.add_model(ic, n, i)
+
+        # Make sure there are no model-less hanging leaves.
+        self.trim()
+
+    def trim(self):
+        """
+        Trims leaves from tree that are not observed at highest-resolution level
+
+        This is a bit hacky-- what it does is 
+        """
+        # Only allow leaves to stay on list (highest-resolution) level
+        for l in self._levels[-2::-1]:
+            for n in l:
+                if n.is_leaf:
+                    n.parent.remove_child(n.label)
+
+        self._clear_all_leaves() #clears cached list of leaves
 
     def p2pardict(self, p):
         """
@@ -549,6 +686,11 @@ class ObservationTree(Node):
     def systems(self):
         return self.children[0].systems
     
+    def print_ascii(self, fout=None, p=None):
+        pardict = None
+        if p is not None:
+            pardict = self.p2pardict(p)
+        super(ObservationTree, self).print_ascii(fout, pardict)
 
     def lnlike(self, p):
         """
@@ -560,10 +702,24 @@ class ObservationTree(Node):
 
         pardict = self.p2pardict(p)
 
+        # lnlike from photometry
         lnl = 0
         for n in self:
             if n is not self:
                 lnl += n.lnlike(pardict)
+
+        # lnlike from spectroscopy
+        for l in self.spectroscopy:
+            for prop,(val,err) in self.spectroscopy[l].items():
+                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                lnl += -0.5*(val - mod)**2/err**2
+
+        # lnlike from parallax
+        for s,(val,err) in self.parallax.items():
+            dist = pardict['{}_0'.format(s)][3]
+            mod = 1./dist * 1000.
+            lnl += -0.5*(val-mod)**2/err**2
+
         self._cache_val = lnl
         return lnl
 
@@ -584,7 +740,7 @@ class ObservationTree(Node):
                 if s.relative and ref_node is None:
                     node = ObsNode(o.name, o.band,
                                        (s.mag, s.e_mag), 
-                                        relative=True,
+                                        relative=True, 
                                         reference=None)
                     ref_node = node
                 else:
