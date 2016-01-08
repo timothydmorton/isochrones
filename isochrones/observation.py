@@ -696,7 +696,7 @@ class ObservationTree(Node):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
-        if p==self._cache_key:
+        if np.all(p==self._cache_key):
             return self._cache_val
         self._cache_key = p
 
@@ -707,18 +707,29 @@ class ObservationTree(Node):
         for n in self:
             if n is not self:
                 lnl += n.lnlike(pardict)
+            if not np.isfinite(lnl):
+                self._cache_val = -np.inf
+                return -np.inf
 
         # lnlike from spectroscopy
         for l in self.spectroscopy:
             for prop,(val,err) in self.spectroscopy[l].items():
                 mod = self.get_leaf(l).evaluate(pardict[l], prop)
                 lnl += -0.5*(val - mod)**2/err**2
+            if not np.isfinite(lnl):
+                self._cache_val = -np.inf
+                return -np.inf
+
 
         # lnlike from parallax
         for s,(val,err) in self.parallax.items():
             dist = pardict['{}_0'.format(s)][3]
             mod = 1./dist * 1000.
             lnl += -0.5*(val-mod)**2/err**2
+
+        if not np.isfinite(lnl):
+            self._cache_val = -np.inf
+            return -np.inf
 
         self._cache_val = lnl
         return lnl
