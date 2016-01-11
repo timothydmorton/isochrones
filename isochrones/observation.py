@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
+import pandas as pd
 import logging
 from configobj import ConfigObj
 
@@ -561,6 +562,42 @@ class ObservationTree(Node):
     def from_ini(cls, filename):
         config = ConfigObj(filename)
 
+    def to_df(self):
+        """
+        Returns DataFrame with photometry from observations organized.
+        """
+        df = pd.DataFrame()
+        name = []
+        band = []
+        resolution = []
+        mag = []
+        e_mag = []
+        separation = []
+        pa = []
+        relative = []
+        for o in self._observations:
+            for s in o.sources:
+                name.append(o.name)
+                band.append(o.band)
+                resolution.append(o.resolution)
+                mag.append(s.mag)
+                e_mag.append(s.e_mag)
+                separation.append(s.separation)
+                pa.append(s.pa)
+                relative.append(s.relative)
+
+        return pd.DataFrame({'name':name,'band':band,'resolution':resolution,
+                             'mag':mag,'e_mag':e_mag,'separation':separation,
+                             'pa':pa,'relative':relative})
+
+    def save_hdf(self, filename, path=''):
+        """
+        Writes all info necessary to recreate object to HDF file
+        
+        Saves table of photometry in DataFrame
+
+        Saves model specification, spectroscopy, parallax to attrs
+        """
 
     def add_observation(self, obs):
         """Adds an observation to observation list, keeping proper order        
