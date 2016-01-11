@@ -48,13 +48,16 @@ class StarModel(object):
     """
     def __init__(self, ic, obs=None, N=1, index=0,
                  maxAV=1., max_distance=3000.,
-                 min_logg=None, name='', **kwargs):
+                 min_logg=None, name='', use_emcee=False,
+                 **kwargs):
 
         self.maxAV = maxAV
         self.max_distance = max_distance
         self.min_logg = None
         self.name = name
         self._ic = ic
+
+        self.use_emcee = use_emcee
 
         # If obs is not provided, build it
         if obs is None:
@@ -175,8 +178,11 @@ class StarModel(object):
             for j in range(N[s]-1):
                 q = masses[j+1]/masses[0]
                 qmin, qmax = self.bounds('q')
+
+                ## The following would enforce MA > MB > MC, but seems to make things very slow:
                 #if j+1 > 1:
                 #    qmax = masses[j] / masses[0]
+
                 lnp += np.log(self.prior('q', q,
                                          bounds=(qmin,qmax)))
                 if not np.isfinite(lnp):
@@ -260,6 +266,7 @@ class StarModel(object):
                 s = 'binary'
             elif s=='0_0-0_1-0_2':
                 s = 'triple'
+            #s += '-'
             basename = os.path.join('chains',s) 
 
         folder = os.path.abspath(os.path.dirname(basename))
@@ -307,7 +314,7 @@ class StarModel(object):
         #with open(propfile, 'w') as f:
         #    json.dump(self.properties, f, indent=2)
 
-        #self._make_samples()
+        self._make_samples()
 
     @property
     def mnest_analyzer(self):
@@ -434,9 +441,10 @@ class StarModel(object):
 
     def _make_samples(self):
 
-        if False:#not self.use_emcee:
+        if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
-
+            lnprob = chain[:,-1]
+            chain = chain[:,:-1]
         else:
             #select out only walkers with > 0.15 acceptance fraction
             ok = self.sampler.acceptance_fraction > 0.15
