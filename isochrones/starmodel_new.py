@@ -2,9 +2,13 @@ from __future__ import print_function, division
 
 import numpy as np
 import pandas as pd
+import os, os.path, sys, re, glob
+
 import numpy.random as rand
 import logging
+import json
 import emcee
+import pymultinest
 
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
@@ -170,8 +174,11 @@ class StarModel(object):
             # Priors for mass ratios
             for j in range(N[s]-1):
                 q = masses[j+1]/masses[0]
+                qmin, qmax = self.bounds('q')
+                #if j+1 > 1:
+                #    qmax = masses[j] / masses[0]
                 lnp += np.log(self.prior('q', q,
-                            bounds=self.bounds('q')))
+                                         bounds=(qmin,qmax)))
                 if not np.isfinite(lnp):
                     logging.debug('lnp=-inf for q={} (system {})'.format(val,s))
                     return -np.inf
@@ -190,6 +197,136 @@ class StarModel(object):
         for _,n in self.obs.Nstars.items():
             tot += 4+n
         return tot
+
+    def mnest_prior(self, cube, ndim, nparams):
+        i = 0
+        for _,n in self.obs.Nstars.items():
+            minmass, maxmass = self.bounds('mass')
+            for j in xrange(n):
+                cube[i+j] = (maxmass - minmass)*cube[i+j] + minmass
+            
+            for j, par in enumerate(['age','feh','distance','AV']):
+                lo, hi = self.bounds(par)
+                cube[i+n+j] = (hi - lo)*cube[i+n+j] + lo
+            i += 4 + n
+
+    def mnest_loglike(self, cube, ndim, nparams):
+        """loglikelihood function for multinest
+        """
+        return self.lnpost(cube)
+            
+    @property
+    def labelstring(self):
+        s = ''
+        for l in self.obs.leaf_labels:
+            s += l+'-'
+        return s[:-1]
+
+    def fit_multinest(self, n_live_points=1000, basename=None,
+                      verbose=True, refit=False, overwrite=False,
+                      **kwargs):
+        """
+        Fits model using MultiNest, via pymultinest.  
+
+        :param n_live_points:
+            Number of live points to use for MultiNest fit.
+
+        :param basename:
+            Where the MulitNest-generated files will live.  
+            By default this will be in a folder named `chains`
+            in the current working directory.  Calling this 
+            will define a `_mnest_basename` attribute for 
+            this object.
+
+        :param verbose:
+            Whether you want MultiNest to talk to you.
+
+        :param refit, overwrite:
+            Set either of these to true if you want to 
+            delete the MultiNest files associated with the
+            given basename and start over.
+
+        :param **kwargs:
+            Additional keyword arguments will be passed to 
+            :func:`pymultinest.run`.
+
+        """
+
+        if basename is None:
+            s = self.labelstring
+            if s=='0_0':
+                s = 'single'
+            elif s=='0_0-0_1':
+                s = 'binary'
+            elif s=='0_0-0_1-0_2':
+                s = 'triple'
+            basename = os.path.join('chains',s) 
+
+        folder = os.path.abspath(os.path.dirname(basename))
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        #If previous fit exists, see if it's using the same
+        # observed properties
+        prop_nomatch = False
+        propfile = '{}properties.json'.format(basename)
+        
+        """
+        if os.path.exists(propfile):
+            with open(propfile) as f:
+                props = json.load(f)
+            if set(props.keys()) != set(self.properties.keys()):
+                prop_nomatch = True
+            else:
+                for k,v in props.items():
+                    if np.size(v)==2:
+                        if not self.properties[k][0] == v[0] and \
+                                self.properties[k][1] == v[1]:
+                            props_nomatch = True
+                    else:
+                        if not self.properties[k] == v:
+                            props_nomatch = True
+
+        if prop_nomatch and not overwrite:
+            raise ValueError('Properties not same as saved chains ' +
+                            '(basename {}*). '.format(basename) +
+                            'Use overwrite=True to fit.')
+        """
+
+        if refit or overwrite:
+            files = glob.glob('{}*'.format(basename))
+            [os.remove(f) for f in files]
+
+        self._mnest_basename = basename
+
+        pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
+                        n_live_points=n_live_points, outputfiles_basename=basename,
+                        verbose=verbose,
+                        **kwargs)
+
+        #with open(propfile, 'w') as f:
+        #    json.dump(self.properties, f, indent=2)
+
+        #self._make_samples()
+
+    @property
+    def mnest_analyzer(self):
+        """
+        PyMultiNest Analyzer object associated with fit.  
+
+        See PyMultiNest documentation for more.
+        """
+        return pymultinest.Analyzer(self.n_params, self._mnest_basename)
+
+    @property
+    def evidence(self):
+        """
+        Log(evidence) from multinest fit
+        """
+        s = self.mnest_analyzer.get_stats()
+        return (s['global evidence'],s['global evidence error'])
+
+
 
     def emcee_p0(self, nwalkers):
         p0 = []
