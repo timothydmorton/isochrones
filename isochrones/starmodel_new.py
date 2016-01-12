@@ -62,11 +62,11 @@ class StarModel(object):
         # If obs is not provided, build it
         if obs is None:
             self._build_obs(**kwargs)
+            self.obs.define_models(ic, N=N, index=index)
+            self._add_properties(**kwargs)
         else:
             self.obs = obs
 
-        self.obs.define_models(ic, N=N, index=index)
-        self._add_properties(**kwargs)
 
         self._priors = {'mass':salpeter_prior,
                         'feh':local_fehdist,
@@ -517,3 +517,48 @@ class StarModel(object):
         newsamples = samples.iloc[inds]
         newsamples.reset_index(inplace=True)
         return newsamples
+
+        
+
+    def save_hdf(self, filename, path='', overwrite=False, append=False):
+        """Saves object data to HDF file (only works if MCMC is run)
+
+        Samples are saved to /samples location under given path,
+        :class:`ObservationTree` is saved to /obs location under given path. 
+        
+        :param filename:
+            Name of file to save to.  Should be .h5 file.
+
+        :param path: (optional)
+            Path within HDF file structure to save to.
+
+        :param overwrite: (optional)
+            If ``True``, delete any existing file by the same name
+            before writing.
+
+        :param append: (optional)
+            If ``True``, then if a file exists, then just the path
+            within the file will be updated.
+        """
+        if os.path.exists(filename):
+            store = pd.HDFStore(filename)
+            if path in store:
+                store.close()
+                if overwrite:
+                    os.remove(filename)
+                elif not append:
+                    raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
+                else:
+                    store.close()
+
+        if self.samples is not None:
+            self.samples.to_hdf(filename, path+'/samples')
+        else:
+            pd.DataFrame().to_hdf(filename, path+'/samples')
+
+        self.obs.save_hdf(filename, path+'/obs')
+        
+        store = pd.HDFStore(filename)
+        attrs = store.get_storer('{}/samples'.format(path)).attrs
+        
+        attrs.ic_type = type(self.ic)

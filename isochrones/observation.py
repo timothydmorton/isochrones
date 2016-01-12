@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import os, re, sys
 import numpy as np
 import pandas as pd
 import logging
@@ -9,6 +10,8 @@ from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
 
 from itertools import chain, imap, izip, count
 from collections import OrderedDict
+
+from .dartmouth import Dartmouth_Isochrone
 
 class NodeTraversal(Traversal):
     """
@@ -365,6 +368,7 @@ class ObsNode(Node):
         #print('Building {} mag for {}:'.format(self.band, self))
         for i,m in enumerate(self.leaves):
             mag = m.evaluate(p[i*5:(i+1)*5], self.band)
+            logging.debug('{}: mag={}'.format(self,mag))
             #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
             tot = addmags(tot, mag)
 
@@ -429,6 +433,8 @@ class ModelNode(Node):
             return p[2]
         elif prop in ['Teff','logg','radius']:
             return getattr(self.ic, prop)(*p[:3])
+        else:
+            raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
 
     def evaluate_mag(self, p, band):
         return self.ic.mag[band](*p)
@@ -521,6 +527,9 @@ class ObservationTree(Node):
 
         [self.add_observation(obs) for obs in observations]
 
+        self._N = None
+        self._index = None
+
         # Spectroscopic properties
         self.spectroscopy = {}
         
@@ -565,6 +574,9 @@ class ObservationTree(Node):
     def to_df(self):
         """
         Returns DataFrame with photometry from observations organized.
+
+        This DataFrame should be able to be read back in to
+        reconstruct the observation.
         """
         df = pd.DataFrame()
         name = []
@@ -590,7 +602,7 @@ class ObservationTree(Node):
                              'mag':mag,'e_mag':e_mag,'separation':separation,
                              'pa':pa,'relative':relative})
 
-    def save_hdf(self, filename, path=''):
+    def save_hdf(self, filename, path='', overwrite=False, append=False):
         """
         Writes all info necessary to recreate object to HDF file
         
@@ -598,6 +610,51 @@ class ObservationTree(Node):
 
         Saves model specification, spectroscopy, parallax to attrs
         """
+
+        if os.path.exists(filename):
+            store = pd.HDFStore(filename)
+            if path in store:
+                store.close()
+                if overwrite:
+                    os.remove(filename)
+                elif not append:
+                    raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
+            else:
+                store.close()
+
+        df = self.to_df()
+        df.to_hdf(filename, path+'/df')
+        store = pd.HDFStore(filename)
+        attrs = store.get_storer(path+'/df').attrs
+        attrs.spectroscopy = self.spectroscopy
+        attrs.parallax = self.parallax
+        attrs.N = self._N
+        attrs.index = self._index
+        store.close()
+
+    @classmethod
+    def load_hdf(cls, filename, path='', ic=None):
+        """
+        Loads stored ObservationTree from file.
+
+        You can provide the isochrone to use; or it will default to Dartmouth
+        """
+        store = pd.HDFStore(filename)
+        try:
+            samples = store[path+'/df']
+            attrs = store.get_storer(path+'/df').attrs        
+        except:
+            store.close()
+            raise
+        df = store[path+'/df']
+        new = cls.from_df(df)
+        
+        new.define_models(Dartmouth_Isochrone, attrs.N, attrs.index)
+        new.spectroscopy = attrs.spectroscopy
+        new.parallax = attrs.parallax
+        store.close()
+        return new
+
 
     def add_observation(self, obs):
         """Adds an observation to observation list, keeping proper order        
@@ -683,6 +740,9 @@ class ObservationTree(Node):
 
         # Make sure there are no model-less hanging leaves.
         self.trim()
+
+        self._N = N
+        self._index = index
 
     def trim(self):
         """
