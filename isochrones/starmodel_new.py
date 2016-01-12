@@ -8,7 +8,10 @@ import numpy.random as rand
 import logging
 import json
 import emcee
+import corner
 import pymultinest
+
+from configobj import ConfigObj
 
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
@@ -33,12 +36,6 @@ class StarModel(object):
         Number of model stars to assign to each "leaf node" of the 
         :class:`ObservationTree`.    
 
-    :param maxAV: (optional)
-        Maximum allowed extinction (i.e. the extinction @ infinity in direction of star).  Default is 1.
-
-    :param max_distance: (optional)
-        Maximum allowed distance (pc).  Default is 3000.
-
     :param **kwargs:
             Keyword arguments must be properties of given isochrone, e.g., logg,
             feh, Teff, and/or magnitudes.  The values represent measurements of
@@ -47,13 +44,9 @@ class StarModel(object):
             also a valid property, and should be provided in miliarcseconds.        
     """
     def __init__(self, ic, obs=None, N=1, index=0,
-                 maxAV=1., max_distance=3000.,
-                 min_logg=None, name='', use_emcee=False,
+                 name='', use_emcee=False,
                  **kwargs):
 
-        self.maxAV = maxAV
-        self.max_distance = max_distance
-        self.min_logg = None
         self.name = name
         self._ic = ic
 
@@ -78,8 +71,8 @@ class StarModel(object):
                         'feh':None,
                         'age':None,
                         'q':(0.1,1.0),
-                        'distance':(0,self.max_distance),
-                        'AV':(0,self.maxAV)}
+                        'distance':(0,5000.),
+                        'AV':(0,1.)}
 
         self._samples = None
 
@@ -88,6 +81,114 @@ class StarModel(object):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic
+
+    @classmethod
+    def from_ini(cls, ic, folder='.', ini_file='star.ini'):
+        """
+        Initialize a StarModel from a .ini file
+
+        The "classic" format (version <= 0.9) should still work for a single star,
+        where all properties are just listed in the file; e.g.,
+
+            J = 10, 0.05
+            H = 9.5, 0.05
+            K = 9.0, 0.05
+            Teff = 5000, 150
+
+        If multiple stars are observed, please use the `obsfile` keyword,
+        pointing to a file with the summarized photometric observations.
+        In this case, spectroscopic/parallax info should still be included
+        in the .ini file; e.g.,
+
+            obsfile = obs.csv
+            Teff = 5000, 150
+
+        The obsfile should be a comma-separated table with the following columns:
+        `[name, band, resolution, mag, e_mag, separation, pa, relative]`.
+
+          * `name` is the name of instrument
+          * `band` is the photometric bandpass
+          * `resolution` is the approximate spatial resolution of instrument
+          * `mag`, `e_mag` describe magnitude of source (absolute or relative)
+          * `separation`, `pa` describe position of source
+          * `relative`: single-bit flag; if 1 then magnitudes taken with this
+            instrument are assumed to be relative rather than absolute.
+
+        If `obsfile` is provided as above, then also the `N` and `index`
+        parameters may be provided, to specify the relations between the 
+        model stars.  If these are not provided, then `N` will default to `1`
+        (one model star per star observed in highest-resolution observation)
+        and `index` will default to all `0` (all stars physically associated).
+
+        """
+        if not os.path.isabs(ini_file):
+            ini_file = os.path.join(folder,ini_file)
+
+        if type(ic) == type(type):
+            ic = ic()
+
+        logging.debug('Initializing StarModel from {}'.format(ini_file))
+
+        config = ConfigObj(ini_file)
+
+        if 'N' in config:
+            try:
+                N = int(config['N'])
+            except:
+                N = [int(n) for n in config['N']]
+        else:
+            N = 1
+
+        if 'index' in config:
+            try:
+                index = int(config['index'])
+            except:
+                try:
+                    index = [int(i) for i in config['index']]
+                except:
+                    index = [[int(i) for i in inds] for inds in config['index']]
+        else:
+            index = 0
+
+        # Make, e.g., N=2, index=[0,1] work 
+        if type(index)==list:
+            if len(index)==N:
+                index = [index]
+
+        logging.debug('N={}, index={}'.format(N, index))
+
+        if 'obsfile' in config:
+            obsfile = config['obsfile']
+            if not os.path.isabs(obsfile):
+                obsfile = os.path.join(folder, obsfile)
+
+            df = pd.read_csv(obsfile)
+            obs = ObservationTree.from_df(df)
+            obs.define_models(ic, N=N, index=index)
+            for prop in ['Teff','logg','feh']:
+                if prop in config:
+                    val = [float(v) for v in config[prop]]
+                    obs.add_spectroscopy({prop:val})
+            if 'parallax' in config:
+                val = [float(v) for v in config['parallax']]
+                obs.add_parallax(val)
+                
+            new = cls(ic, obs=obs, N=N, index=index)
+
+        else:
+            kwargs = {}
+            for kw in config.keys():
+                if kw in ic.bands or kw in ['Teff','logg','feh','parallax']:
+                    try:
+                        kwargs[kw] = float(config[kw])
+                    except:
+                        kwargs[kw] = (float(config[kw][0]), float(config[kw][1]))
+
+            new = cls(ic, N=N, index=index, **kwargs)
+
+        return new
+            
+        
 
     def bounds(self, prop):
         if self._bounds[prop] is not None:
@@ -104,6 +205,11 @@ class StarModel(object):
         else:
             raise ValueError('Unknown property {}'.format(prop))
         return self._bounds[prop]
+
+    def set_bounds(self, prop, val):
+        if len(val)!=2:
+            raise ValueError('Must provide (min, max)')
+        self._bounds[prop] = val
 
     def _build_obs(self, **kwargs):
         """
@@ -517,8 +623,19 @@ class StarModel(object):
         newsamples = samples.iloc[inds]
         newsamples.reset_index(inplace=True)
         return newsamples
-
         
+    def triangle(self, *args, **kwargs):
+        return self.corner(*args, **kwargs)
+
+    def corner(self, params, query=None, **kwargs):
+        df = self.samples
+        if query is not None:
+            df = df.query(query)
+
+        fig = corner.corner(df[params], labels=params, **kwargs)
+        fig.suptitle(self.name, fontsize=22)
+        return fig
+    
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
@@ -562,3 +679,56 @@ class StarModel(object):
         attrs = store.get_storer('{}/samples'.format(path)).attrs
         
         attrs.ic_type = type(self.ic)
+        attrs.use_emcee = self.use_emcee
+        attrs._mnest_basename = self._mnest_basename
+        
+        attrs._bounds = self._bounds
+        attrs._priors = self._priors
+
+        attrs.name = self.name
+
+    @classmethod
+    def load_hdf(cls, filename, path='', name=None):
+        """
+        A class method to load a saved StarModel from an HDF5 file.
+
+        File must have been created by a call to :func:`StarModel.save_hdf`.
+
+        :param filename:
+            H5 file to load.
+
+        :param path: (optional)
+            Path within HDF file.
+
+        :return:
+            :class:`StarModel` object.
+        """
+        store = pd.HDFStore(filename)
+        try:
+            samples = store[path+'/samples']
+            attrs = store.get_storer(path+'/samples').attrs        
+        except:
+            store.close()
+            raise
+        
+        ic = attrs.ic_type
+        use_emcee = attrs.use_emcee
+        basename = attrs._mnest_basename
+        bounds = attrs._bounds
+        priors = attrs._priors
+
+        if name is None:
+            try:
+                name = attrs.name
+            except:
+                name = ''
+
+        store.close()
+
+        obs = ObservationTree.load_hdf(filename, path+'/obs')
+        
+        mod = cls(ic, obs=obs, 
+                  use_emcee=use_emcee, name=name)
+        mod._samples = samples
+        mod._mnest_basename = basename
+        return mod
