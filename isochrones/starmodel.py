@@ -168,7 +168,7 @@ class StarModel(object):
             for prop in ['Teff','logg','feh']:
                 if prop in config:
                     val = [float(v) for v in config[prop]]
-                    obs.add_spectroscopy({prop:val})
+                    obs.add_spectroscopy(**{prop:val})
             if 'parallax' in config:
                 val = [float(v) for v in config['parallax']]
                 obs.add_parallax(val)
