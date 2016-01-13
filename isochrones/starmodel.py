@@ -643,7 +643,20 @@ class StarModel(object):
         fig = corner.corner(df[params], labels=params, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
-    
+
+    def triangle_physical(self, *args, **kwargs):
+        return self.corner_physical(*args, **kwargs)
+
+    def corner_physical(self, props=['mass','radius','feh','distance'], **kwargs):
+        collective_props = ['feh','age','distance','AV']
+        indiv_props = [p for p in props if p not in collective_props]
+        sys_props = [p for p in props if p in collective_props]
+        
+        props = ['{}_{}'.format(p,l) for p in indiv_props for l in self.obs.leaf_labels]
+        props += ['{}_{}'.format(p,s) for p in sys_props for s in self.obs.systems]
+        
+        return self.corner(props, **kwargs)
+
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
@@ -694,6 +707,7 @@ class StarModel(object):
         attrs._priors = self._priors
 
         attrs.name = self.name
+        store.close()
 
     @classmethod
     def load_hdf(cls, filename, path='', name=None):

@@ -301,7 +301,7 @@ class ObsNode(Node):
         
     @property
     def systems(self):
-        lst = self._Nstars.keys()
+        lst = self.Nstars.keys()
         lst.sort()
         return lst
 
