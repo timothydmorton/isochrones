@@ -694,7 +694,7 @@ class StarModel(object):
         else:
             pd.DataFrame().to_hdf(filename, path+'/samples')
 
-        self.obs.save_hdf(filename, path+'/obs')
+        self.obs.save_hdf(filename, path+'/obs', append=True)
         
         store = pd.HDFStore(filename)
         attrs = store.get_storer('{}/samples'.format(path)).attrs
