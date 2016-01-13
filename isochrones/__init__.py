@@ -7,8 +7,7 @@ except NameError:
 
 if not __ISOCHRONES_SETUP__:
     __all__ = ['dartmouth','basti','padova',
-               'Isochrone', 'StarModel', 'BinaryStarModel',
-               'TripleStarModel']
+               'Isochrone', 'StarModel']
     from .isochrone import Isochrone
-    from .starmodel import StarModel, BinaryStarModel, TripleStarModel
+    from .starmodel import StarModel #, BinaryStarModel, TripleStarModel
      
