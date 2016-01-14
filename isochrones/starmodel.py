@@ -71,7 +71,7 @@ class StarModel(object):
                         'feh':None,
                         'age':None,
                         'q':(0.1,1.0),
-                        'distance':(0,5000.),
+                        'distance':(0,3000.),
                         'AV':(0,1.)}
 
         self._samples = None
