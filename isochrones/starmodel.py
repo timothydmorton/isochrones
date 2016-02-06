@@ -53,6 +53,8 @@ except ImportError:
 from .extinction import EXTINCTION
 from .passbands import WEFF
 
+AV_SIG = 0.1 #Scatter around 1 mag AV/kpc prior
+
 class StarModel(object):
     """An object to represent a star, with observed properties, modeled by an Isochrone
 
@@ -372,6 +374,9 @@ class StarModel(object):
         if np.isnan(AV_lnprior):
             logging.warning('AV prior is nan at {}'.format(AV))
             
+        # Additional prior to make AV roughly correlate w/ distance
+        mean_AV = distance / 1000.
+        AV_lnprior += -0.5*(AV - mean_AV)**2 / AV_SIG**2
 
         lnprior = (mass_lnprior + age_lnprior + feh_lnprior + 
                 distance_lnprior + AV_lnprior)
