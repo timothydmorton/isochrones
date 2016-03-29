@@ -10,13 +10,19 @@ import numpy as np
 import os,sys,re,os.path
 import logging
 
+# Check to see if building on ReadTheDocs
+on_rtd = False
+
 try:
     import pandas as pd
 except ImportError:
+    on_rtd = True
     pd = None
 
-from scipy.interpolate import LinearNDInterpolator as interpnd
-import numpy.random as rand
+
+if not on_rtd:
+    from scipy.interpolate import LinearNDInterpolator as interpnd
+    import numpy.random as rand
 
 try:
     from astropy import constants as const
@@ -30,12 +36,13 @@ except ImportError:
     MSUN = 1.99e33
     RSUN = 6.96e10
     
-import matplotlib.pyplot as plt
+if not on_rtd:
+    import matplotlib.pyplot as plt
 
-try:
-    from plotutils.plotutils import setfig
-except ImportError:
-    setfig = None
+    try:
+        from plotutils.plotutils import setfig
+    except ImportError:
+        setfig = None
 
 from .extinction import EXTINCTION
 

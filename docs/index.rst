@@ -29,7 +29,7 @@ please feel free to contribute.
   New in v0.9, fitting is now done by default using MultiNest, if 
   available on your system via PyMultiNest.  If you wish to take 
   advantage of this (highly recommended) feature, you can follow
-  `these<http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_
+  `these <http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_
   instructions for installing MultiNest and PyMultinest.  If you do 
   not have MultiNest available, the fits should still work using ``emcee``.
 

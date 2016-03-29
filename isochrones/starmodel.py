@@ -6,35 +6,22 @@ import json
 
 from configobj import ConfigObj
 
+on_rtd = False
+
 try:
     import numpy as np
 except ImportError:
+    on_rtd = True
     np = None
 
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
-    
-import numpy.random as rand
-import scipy.optimize
-
-try:
+if not on_rtd:
+    import pandas as pd    
+    import numpy.random as rand
+    import scipy.optimize
     import emcee
-except ImportError:
-    emcee = None
-
-try:
     from plotutils.plotutils import setfig
-except ImportError:
-    setfig = None
-    
-try:
     import matplotlib.pyplot as plt
     from scipy.stats import gaussian_kde
-except ImportError:
-    plt = None
-    gaussian_kde = None
 
 try:
     import triangle
