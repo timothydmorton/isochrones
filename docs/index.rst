@@ -100,7 +100,7 @@ object---or more specifically, it contains both the samples generated
 directly from the chain and the corresponding values of all the model
 properties (e.g. radius, synthetic photometry, etc.) evaluated at each
 chain link.  If you have installed the handy `triangle
-<https://github.com/dfm/triangle.py>`_ module, you can also
+<https://github.com/dfm/corner.py>`_ module, you can also
 visualize the results:
 
 .. code-block:: python
