@@ -15,7 +15,7 @@ except ImportError:
     np = None
 
 if not on_rtd:
-    import pandas as pd    
+    import pandas as pd
     import numpy.random as rand
     import scipy.optimize
     import emcee
@@ -24,7 +24,7 @@ if not on_rtd:
     from scipy.stats import gaussian_kde
 
 try:
-    import triangle
+    import corner
 except ImportError:
     triangle = None
 
@@ -53,7 +53,7 @@ class StarModel(object):
     Note that by default a local metallicity prior, based on SDSS data,
     will be used when :func:`StarModel.fit` is called.
 
-    :param ic: 
+    :param ic:
         :class:`Isochrone` object used to model star.
 
     :param maxAV: (optional)
@@ -61,7 +61,7 @@ class StarModel(object):
 
     :param max_distance: (optional)
         Maximum allowed distance (pc).  Default is 3000.
-    
+
     :param use_emcee: (optional)
         If set to true, then sampling done with emcee rather than MultiNest.
         (not recommended unless you have very precise spectroscopic properties).
@@ -72,10 +72,10 @@ class StarModel(object):
         the star, and must be in (value,error) format. All such keyword
         arguments will be held in ``self.properties``.  ``parallax`` is
         also a valid property, and should be provided in miliarcseconds.
-        
+
     """
     def __init__(self,ic,maxAV=1,max_distance=3000,
-                 use_emcee=False, 
+                 use_emcee=False,
                  min_logg=None, name='',
                  **kwargs):
         self._ic = ic
@@ -93,9 +93,9 @@ class StarModel(object):
             self.use_emcee = True
 
         self.min_logg = min_logg
-            
+
         self.n_params = 5 #mass, feh, age, distance, AV
-        
+
         self._props_cleaned = False
         self._mnest_basename = None
 
@@ -112,7 +112,7 @@ class StarModel(object):
         Initialize a StarModel from a .ini file
 
         File should contain all arguments with which to initialize
-        StarModel.  
+        StarModel.
         """
         if not os.path.isabs(ini_file):
             ini_file = os.path.join(folder,ini_file)
@@ -126,7 +126,7 @@ class StarModel(object):
                 kwargs[kw] = (float(config[kw][0]), float(config[kw][1]))
 
         return cls(ic, **kwargs)
-    
+
     @property
     def mags(self):
         d = {}
@@ -150,7 +150,7 @@ class StarModel(object):
                     continue
                 d[prop] = err
         return d
-    
+
     @property
     def Teff(self):
         if 'Teff' in self.properties:
@@ -202,15 +202,15 @@ class StarModel(object):
         if len(remove) > 0:
             logging.warning('Properties removed from Model because ' +
                             'value is nan or inf: {}'.format(remove))
-        
+
 
 
         self._props_cleaned = True
-    
+
     def add_props(self,**kwargs):
         """
         Adds observable properties to ``self.properties``.
-        
+
         """
         for kw,val in kwargs.iteritems():
             self.properties[kw] = val
@@ -218,23 +218,23 @@ class StarModel(object):
     def remove_props(self,*args):
         """
         Removes desired properties from ``self.properties``.
-        
+
         """
         for arg in args:
             if arg in self.properties:
                 del self.properties[arg]
-    
+
     @property
     def fit_for_distance(self):
         """
         ``True`` if any of the properties are apparent magnitudes.
-        
+
         """
         for prop in self.properties.keys():
             if prop in self.ic.bands:
                 return True
         return False
-            
+
     def loglike(self, *args, **kwargs):
         """For backwards compatibility
         """
@@ -243,20 +243,20 @@ class StarModel(object):
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
-        
-        :param p: 
+
+        :param p:
             mass, log10(age), feh, [distance, A_V (extinction)].
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
-            
+
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
-        
+
         """
 
         if not self._props_cleaned:
             self._clean_props()
-            
+
         if not self.use_emcee:
             fit_for_distance = True
             mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
@@ -314,11 +314,11 @@ class StarModel(object):
         return logl
 
     def lnprior(self, mass, age, feh,
-                distance=None, AV=None, 
+                distance=None, AV=None,
                 use_local_fehprior=True):
         """
         log-prior for model parameters
-        
+
         """
         mass_prior = salpeter_prior(mass)
         if mass_prior==0:
@@ -360,12 +360,12 @@ class StarModel(object):
             AV_lnprior = 0
         if np.isnan(AV_lnprior):
             logging.warning('AV prior is nan at {}'.format(AV))
-            
+
         # Additional prior to make AV roughly correlate w/ distance
         mean_AV = distance / 1000.
         AV_lnprior += -0.5*(AV - mean_AV)**2 / AV_SIG**2
 
-        lnprior = (mass_lnprior + age_lnprior + feh_lnprior + 
+        lnprior = (mass_lnprior + age_lnprior + feh_lnprior +
                 distance_lnprior + AV_lnprior)
 
         return lnprior
@@ -385,8 +385,8 @@ class StarModel(object):
                 mass,age,feh = p
                 dist = None
                 AV = None
-            
-        return (self.lnlike(p) + 
+
+        return (self.lnlike(p) +
                 self.lnprior(mass, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
 
@@ -403,13 +403,13 @@ class StarModel(object):
             list of best-fit parameters: ``[m,age,feh,[distance,A_V]]``.
             Note that distance and A_V values will be meaningless unless
             magnitudes are present in ``self.properties``.
-        
+
         """
         m0,age0,feh0 = self.ic.random_points(nseeds)
         d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nseeds))
         AV0 = rand.uniform(0,self.maxAV,size=nseeds)
 
-        
+
 
         costs = np.zeros(nseeds)
 
@@ -417,10 +417,10 @@ class StarModel(object):
             pfits = np.zeros((nseeds,5))
         else:
             pfits = np.zeros((nseeds,3))
-            
+
         def fn(p): #fmin is a function *minimizer*
             return -1*self.lnpost(p)
-        
+
         for i,m,age,feh,d,AV in zip(range(nseeds),
                                     m0,age0,feh0,d0,AV0):
                 if self.fit_for_distance:
@@ -443,7 +443,7 @@ class StarModel(object):
         cube[2] = (self.ic.maxfeh - self.ic.minfeh)*cube[2] + self.ic.minfeh
         cube[3] = cube[3]*self.max_distance
         cube[4] = cube[4]*self.maxAV
-    
+
     def mnest_loglike(self, cube, ndim, nparams):
         """loglikelihood function for multinest
         """
@@ -453,7 +453,7 @@ class StarModel(object):
         """
         Wrapper for either :func:`fit_multinest` or :func:`fit_mcmc`.
 
-        Default will be to use MultiNest; set `use_emcee` keyword to `True` 
+        Default will be to use MultiNest; set `use_emcee` keyword to `True`
         if you want to use MCMC, or just call :func:`fit_mcmc` directly.
         """
         if self.use_emcee:
@@ -471,28 +471,28 @@ class StarModel(object):
                       verbose=True, refit=False, overwrite=False,
                       **kwargs):
         """
-        Fits model using MultiNest, via pymultinest.  
+        Fits model using MultiNest, via pymultinest.
 
         :param n_live_points:
             Number of live points to use for MultiNest fit.
 
         :param basename:
-            Where the MulitNest-generated files will live.  
+            Where the MulitNest-generated files will live.
             By default this will be in a folder named `chains`
-            in the current working directory.  Calling this 
-            will define a `_mnest_basename` attribute for 
+            in the current working directory.  Calling this
+            will define a `_mnest_basename` attribute for
             this object.
 
         :param verbose:
             Whether you want MultiNest to talk to you.
 
         :param refit, overwrite:
-            Set either of these to true if you want to 
+            Set either of these to true if you want to
             delete the MultiNest files associated with the
             given basename and start over.
 
         :param **kwargs:
-            Additional keyword arguments will be passed to 
+            Additional keyword arguments will be passed to
             :func:`pymultinest.run`.
 
         """
@@ -544,7 +544,7 @@ class StarModel(object):
     @property
     def mnest_analyzer(self):
         """
-        PyMultiNest Analyzer object associated with fit.  
+        PyMultiNest Analyzer object associated with fit.
 
         See PyMultiNest documentation for more.
         """
@@ -586,28 +586,28 @@ class StarModel(object):
             normal burn-in.  Default is `None`, which will be set to `True` if
             fitting for distance (i.e., if there are apparent magnitudes as
             properties of the model), and `False` if not.
-            
+
         :param ninitial: (optional)
             Number of iterations to test walkers for acceptance rate before
             re-initializing.
 
         :param loglike_args:
-            Any arguments to pass to :func:`StarModel.loglike`, such 
+            Any arguments to pass to :func:`StarModel.loglike`, such
             as what priors to use.
 
         :param **kwargs:
             Additional keyword arguments passed to :class:`emcee.EnsembleSampler`
             constructor.
-            
+
         :return:
             :class:`emcee.EnsembleSampler` object.
-            
+
         """
 
         #clear any saved _samples
         if self._samples is not None:
             self._samples = None
-            
+
 
         if self.fit_for_distance:
             npars = 5
@@ -630,7 +630,7 @@ class StarModel(object):
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
-                pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+                pos, prob, state = sampler.run_mcmc(p0, ninitial)
                 wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
                                    (sampler.naccepted/ninitial < 0.4))[0]
                 i=1
@@ -649,18 +649,18 @@ class StarModel(object):
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
             if self.fit_for_distance:
                 p0[:,3] *= (1 + rand.normal(size=nwalkers)*0.5)
-        
+
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
-        
+
         self._sampler = sampler
         return sampler
 
     def mag_plot(self, height=500, pix_width=20, spacing=20,
                  edge=0.1, figsize=(8,6)):
-        
+
         bands = np.array(self.mag_errs.keys())
         weffs = np.array([WEFF[b] for b in bands])
         inds = np.argsort(weffs)
@@ -668,10 +668,10 @@ class StarModel(object):
         weffs = weffs[inds]
 
         q = 0.01
-        minmag = min(np.min([self.samples['{}_mag'.format(b)].quantile(q) 
+        minmag = min(np.min([self.samples['{}_mag'.format(b)].quantile(q)
                              for b in bands]) - edge,
                      np.min([self.properties[b][0] - edge for b in bands]))
-        maxmag = max(np.max([self.samples['{}_mag'.format(b)].quantile(1-q) 
+        maxmag = max(np.max([self.samples['{}_mag'.format(b)].quantile(1-q)
                              for b in bands]) + edge,
                      np.max([self.properties[b][0] + edge for b in bands]))
 
@@ -695,7 +695,7 @@ class StarModel(object):
             vslice += pdf[:, np.newaxis]
 
         extent = [0, image.shape[1], maxmag, minmag]
-        plt.imshow(image, aspect='auto', cmap='binary', 
+        plt.imshow(image, aspect='auto', cmap='binary',
                    extent=extent, origin='lower')
         ax = plt.gca()
         ax.set_xticks(mids)
@@ -707,9 +707,9 @@ class StarModel(object):
 
         for i,(b,m) in enumerate(zip(bands,mids)):
             val, err = self.properties[b]
-            plt.errorbar(m, val, err, marker='o', color='w', 
-                         ms=4, lw=5, mec='w', mew=5)    
-            plt.errorbar(m, val, err, marker='o', color='r', 
+            plt.errorbar(m, val, err, marker='o', color='w',
+                         ms=4, lw=5, mec='w', mew=5)
+            plt.errorbar(m, val, err, marker='o', color='r',
                          ms=4, lw=3, mec='r', mew=3)
 
         plt.title(self.name, fontsize=20)
@@ -734,7 +734,7 @@ class StarModel(object):
         :return:
              * Physical parameters triangle plot (mass, radius, Teff, feh, age, distance)
              * Observed properties triangle plot.
-             
+
         """
         if self.fit_for_distance:
             fig1 = self.triangle(plot_datapoints=False,
@@ -745,7 +745,7 @@ class StarModel(object):
             fig1 = self.triangle(plot_datapoints=False,
                                  params=['mass','radius','Teff','feh','age'],
                                  **kwargs)
-            
+
 
         if basename is not None:
             plt.savefig('{}_physical.{}'.format(basename,format))
@@ -761,7 +761,7 @@ class StarModel(object):
         """
         Makes a nifty corner plot.
 
-        Uses :func:`triangle.corner`.
+        Uses :func:`corner.corner`.
 
         :param params: (optional)
             Names of columns (from :attr:`StarModel.samples`)
@@ -773,18 +773,18 @@ class StarModel(object):
             Optional query on samples.
 
         :param extent: (optional)
-            Will be appropriately passed to :func:`triangle.corner`.
+            Will be appropriately passed to :func:`corner.corner`.
 
         :param **kwargs:
-            Additional keyword arguments passed to :func:`triangle.corner`.
+            Additional keyword arguments passed to :func:`corner.corner`.
 
         :return:
             Figure oject containing corner plot.
-            
+
         """
         if triangle is None:
-            raise ImportError('please run "pip install triangle_plot".')
-        
+            raise ImportError('please run "pip install corner".')
+
         if params is None:
             if self.fit_for_distance:
                 params = ['mass', 'age', 'feh', 'distance', 'AV']
@@ -805,13 +805,13 @@ class StarModel(object):
             if m:
                 if type(self) == BinaryStarModel:
                     b = m.group(1)
-                    values = (df['{}_mag_B'.format(b)] - 
+                    values = (df['{}_mag_B'.format(b)] -
                               df['{}_mag_A'.format(b)])
                     df[par] = values
                 else:
                     remove.append(i)
                     continue
-                    
+
             else:
                 values = df[par]
             qs = np.array([0.5 - 0.5*extent, 0.5 + 0.5*extent])
@@ -823,10 +823,10 @@ class StarModel(object):
                 if kwargs['truths'][i] > maxval:
                     maxval = kwargs['truths'][i] + 0.05*datarange
             extents.append((minval,maxval))
-            
+
         [params.pop(i) for i in remove]
 
-        fig = triangle.corner(df[params], labels=params, 
+        fig = corner.corner(df[params], labels=params,
                                extents=extents, **kwargs)
 
         fig.suptitle(self.name, fontsize=22)
@@ -846,7 +846,7 @@ class StarModel(object):
 
         :return:
             Figure object containing corner plot.
-         
+
         """
         truths = []
         params = []
@@ -866,7 +866,7 @@ class StarModel(object):
                 params.append(p)
                 truths.append(val)
         return self.triangle(params, truths=truths, **kwargs)
-        
+
 
     @property
     def sampler(self):
@@ -911,7 +911,7 @@ class StarModel(object):
 
             lnprob = self.sampler.lnprobability[ok_walkers, :].ravel()
 
-        df = self.ic(mass, age, feh, 
+        df = self.ic(mass, age, feh,
                      distance=distance, AV=AV)
         df['age'] = age
         df['feh'] = feh
@@ -923,7 +923,7 @@ class StarModel(object):
         df['lnprob'] = lnprob
 
         self._samples = df.copy()
-        
+
     @property
     def samples(self):
         """Dataframe with samples drawn from isochrone according to posterior
@@ -932,12 +932,12 @@ class StarModel(object):
         fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
         of the :class:`Isochrone` at each of these sample points---this
         is how chains of physical/observable parameters get produced.
-        
+
         """
         if not hasattr(self,'sampler') and self._samples is None:
             raise AttributeError('Must run MCMC (or load from file) '+
                                  'before accessing samples')
-        
+
         if self._samples is not None:
             df = self._samples
         else:
@@ -980,13 +980,13 @@ class StarModel(object):
         :return:
             :class:`np.ndarray` of desired samples
 
-        :return: 
+        :return:
             Optionally also return summary statistics (median, lo_err, hi_err),
             if ``returns_values == True`` (this is default behavior)
-        
+
         """
         samples = self.samples[prop].values
-        
+
         if return_values:
             sorted = np.sort(samples)
             med = np.median(samples)
@@ -1006,7 +1006,7 @@ class StarModel(object):
 
         :param prop:
             Desired property (must be legit column of samples)
-            
+
         :param fig:
               Argument for :func:`plotutils.setfig` (``None`` or int).
 
@@ -1025,21 +1025,21 @@ class StarModel(object):
                  histtype=histtype,lw=lw,**kwargs)
         plt.xlabel(prop)
         plt.ylabel('Normalized count')
-        
+
         if label:
             med,lo,hi = stats
             plt.annotate('$%.2f^{+%.2f}_{-%.2f}$' % (med,hi,lo),
                          xy=(0.7,0.8),xycoords='axes fraction',fontsize=20)
 
         return fig
-            
+
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
 
         Samples are saved to /samples location under given path,
         and object properties are also attached, so suitable for
         re-loading via :func:`StarModel.load_hdf`.
-        
+
         :param filename:
             Name of file to save to.  Should be .h5 file.
 
@@ -1054,7 +1054,7 @@ class StarModel(object):
             If ``True``, then if a file exists, then just the path
             within the file will be updated.
         """
-        
+
         if os.path.exists(filename):
             store = pd.HDFStore(filename)
             if path in store:
@@ -1102,7 +1102,7 @@ class StarModel(object):
         store = pd.HDFStore(filename)
         try:
             samples = store['{}/samples'.format(path)]
-            attrs = store.get_storer('{}/samples'.format(path)).attrs        
+            attrs = store.get_storer('{}/samples'.format(path)).attrs
         except:
             store.close()
             raise
@@ -1113,7 +1113,7 @@ class StarModel(object):
         ic_type = attrs.ic_type
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
-        
+
         if name is None:
             try:
                 name = attrs.name
@@ -1136,13 +1136,13 @@ class BinaryStarModel(StarModel):
     """
     Object used to fit two stars at the same distance to given observed properties
 
-    Initialize the same way as :class:`StarModel`. 
+    Initialize the same way as :class:`StarModel`.
 
     Difference between this object and a regular :class:`StarModel` is that
     the fit parameters include two masses: ``mass_A`` and ``mass_B`` instead
     of just one.
 
-    Notably, this object can also take additional 
+    Notably, this object can also take additional
     ``delta_mag`` properties, representing contrast measurements of a companion
     star.  These should be called, e.g., ``delta_r``.  This will be an additional
     constraint in the model fitting.  All the other provided apparent magnitudes
@@ -1160,15 +1160,15 @@ class BinaryStarModel(StarModel):
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
-        
-        :param p: 
+
+        :param p:
             mass_A, mass_B, log10(age), feh, [distance, A_V (extinction)].
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
-            
+
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
-        
+
         """
         if not self._props_cleaned:
             self._clean_props()
@@ -1184,7 +1184,7 @@ class BinaryStarModel(StarModel):
             elif len(p)==4:
                 fit_for_distance = False
                 mass_A, mass_B, age, feh = p
-                        
+
         #keep values in range; enforce mass_A > mass_B
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
            or mass_B < self.ic.minmass or mass_B > self.ic.maxmass \
@@ -1201,7 +1201,7 @@ class BinaryStarModel(StarModel):
         if self.min_logg is not None:
             logg = self.ic.logg(mass_A,age,feh)
             if logg < self.min_logg:
-                return -np.inf        
+                return -np.inf
 
         logl = 0
         for prop in self.properties.keys():
@@ -1246,8 +1246,8 @@ class BinaryStarModel(StarModel):
 
 
         return logl
-        
-    def lnprior(self, mass_A, mass_B, age, feh, 
+
+    def lnprior(self, mass_A, mass_B, age, feh,
                 distance=None, AV=None, use_local_fehprior=True):
         lnpr = super(BinaryStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
@@ -1269,10 +1269,10 @@ class BinaryStarModel(StarModel):
                 dist = None
                 AV = None
 
-        return (self.lnlike(p) + 
+        return (self.lnlike(p) +
                 self.lnprior(mass_A, mass_B, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
-        
+
 
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
@@ -1285,7 +1285,7 @@ class BinaryStarModel(StarModel):
             list of best-fit parameters: ``[mA,mB,age,feh,[distance,A_V]]``.
             Note that distance and A_V values will be meaningless unless
             magnitudes are present in ``self.properties``.
-        
+
         """
         mA_0,age0,feh0 = self.ic.random_points(nseeds)
         mB_0,foo1,foo2 = self.ic.random_points(nseeds)
@@ -1296,7 +1296,7 @@ class BinaryStarModel(StarModel):
         d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nseeds))
         AV0 = rand.uniform(0,self.maxAV,size=nseeds)
 
-        
+
 
         costs = np.zeros(nseeds)
 
@@ -1304,10 +1304,10 @@ class BinaryStarModel(StarModel):
             pfits = np.zeros((nseeds,6))
         else:
             pfits = np.zeros((nseeds,4))
-            
+
         def fn(p): #fmin is a function *minimizer*
             return -1*self.lnpost(p)
-        
+
         for i,mA,mB,age,feh,d,AV in zip(range(nseeds),
                                     mA_0,mB_0,age0,feh0,d0,AV0):
                 if self.fit_for_distance:
@@ -1326,7 +1326,7 @@ class BinaryStarModel(StarModel):
         cube[3] = (self.ic.maxfeh - self.ic.minfeh)*cube[3] + self.ic.minfeh
         cube[4] = cube[4]*self.max_distance
         cube[5] = cube[5]*self.maxAV
-        
+
     def fit_multinest(self, basename='chains/binary-', **kwargs):
         super(BinaryStarModel, self).fit_multinest(basename=basename, **kwargs)
 
@@ -1342,7 +1342,7 @@ class BinaryStarModel(StarModel):
         #clear any saved _samples
         if self._samples is not None:
             self._samples = None
-            
+
 
         if self.fit_for_distance:
             npars = 6
@@ -1370,7 +1370,7 @@ class BinaryStarModel(StarModel):
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
-                pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+                pos, prob, state = sampler.run_mcmc(p0, ninitial)
                 wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
                                    (sampler.naccepted/ninitial < 0.4))[0]
                 i=1
@@ -1389,12 +1389,12 @@ class BinaryStarModel(StarModel):
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
             if self.fit_for_distance:
                 p0[:,4] *= (1 + rand.normal(size=nwalkers)*0.5)
-        
+
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
-        
+
         self._sampler = sampler
         return sampler
 
@@ -1416,7 +1416,7 @@ class BinaryStarModel(StarModel):
         :return:
              * Physical parameters triangle plot (mass_A, mass_B, radius, Teff, feh, age, distance)
              * Observed properties triangle plot.
-             
+
         """
         fig1 = self.triangle(plot_datapoints=False,
                             params=['mass_A', 'mass_B','radius','Teff','logg','feh','age',
@@ -1435,7 +1435,7 @@ class BinaryStarModel(StarModel):
         """
         Makes a nifty corner plot.
 
-        Uses :func:`triangle.corner`.
+        Uses :func:`corner.corner`.
 
         :param params: (optional)
             Names of columns (from :attr:`StarModel.samples`)
@@ -1447,14 +1447,14 @@ class BinaryStarModel(StarModel):
             Optional query on samples.
 
         :param extent: (optional)
-            Will be appropriately passed to :func:`triangle.corner`.
+            Will be appropriately passed to :func:`corner.corner`.
 
         :param **kwargs:
-            Additional keyword arguments passed to :func:`triangle.corner`.
+            Additional keyword arguments passed to :func:`corner.corner`.
 
         :return:
             Figure oject containing corner plot.
-            
+
         """
         if params is None:
             params = ['mass_A', 'mass_B', 'age', 'feh', 'distance', 'AV']
@@ -1497,9 +1497,9 @@ class BinaryStarModel(StarModel):
             lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
 
 
-        df = self.ic(mass_A, age, feh, 
+        df = self.ic(mass_A, age, feh,
                        distance=distance, AV=AV)
-        df_B = self.ic(mass_B, age, feh, 
+        df_B = self.ic(mass_B, age, feh,
                        distance=distance, AV=AV)
 
         for col in df_B.columns:
@@ -1543,15 +1543,15 @@ class TripleStarModel(StarModel):
     def lnlike(self, p):
         """Log-likelihood of model at given parameters
 
-        
-        :param p: 
+
+        :param p:
             mass_A, mass_B, mass_C, log10(age), feh, [distance, A_V (extinction)].
             Final two should only be provided if ``self.fit_for_distance``
             is ``True``; that is, apparent magnitudes are provided.
-            
+
         :return:
            log-likelihood.  Will be -np.inf if values out of range.
-        
+
         """
         if not self._props_cleaned:
             self._clean_props()
@@ -1568,7 +1568,7 @@ class TripleStarModel(StarModel):
             elif len(p)==5:
                 fit_for_distance = False
                 mass_A, mass_B, mass_C, age, feh = p
-                        
+
         #keep values in range; enforce mass_A > mass_B > mass_C
         if mass_A < self.ic.minmass or mass_A > self.ic.maxmass \
            or mass_B < self.ic.minmass or mass_B > self.ic.maxmass \
@@ -1598,9 +1598,9 @@ class TripleStarModel(StarModel):
                 continue
             if prop in self.ic.bands:
                 if not fit_for_distance:
-                    raise ValueError('must fit for mass_A, mass_B, mass_C, age, feh, dist,'+ 
+                    raise ValueError('must fit for mass_A, mass_B, mass_C, age, feh, dist,'+
                                      'A_V if apparent magnitudes provided.')
-                mods = self.ic.mag[prop]([mass_A, mass_B, mass_C], 
+                mods = self.ic.mag[prop]([mass_A, mass_B, mass_C],
                                          age, feh) + 5*np.log10(dist) - 5
                 A = AV*EXTINCTION[prop]
                 mods += A
@@ -1627,7 +1627,7 @@ class TripleStarModel(StarModel):
 
         return logl
 
-    def lnprior(self, mass_A, mass_B, mass_C, age, feh, 
+    def lnprior(self, mass_A, mass_B, mass_C, age, feh,
                 distance=None, AV=None, use_local_fehprior=True):
         lnpr = super(TripleStarModel,self).lnprior(mass_A, age, feh, distance, AV,
                                                   use_local_fehprior=use_local_fehprior)
@@ -1641,7 +1641,7 @@ class TripleStarModel(StarModel):
     def lnpost(self, p, use_local_fehprior=True):
         if not self.use_emcee:
             mass_A,mass_B,mass_C,age,feh,dist,AV = (p[0], p[1], p[2],
-                                                    p[3], p[4], p[5], 
+                                                    p[3], p[4], p[5],
                                                     p[6])
         else:
             if len(p)==7:
@@ -1653,10 +1653,10 @@ class TripleStarModel(StarModel):
                 dist = None
                 AV = None
 
-        return (self.lnlike(p) + 
+        return (self.lnlike(p) +
                 self.lnprior(mass_A, mass_B, mass_C, age, feh, dist, AV,
                              use_local_fehprior=use_local_fehprior))
-        
+
     def maxlike(self,nseeds=50):
         """Returns the best-fit parameters, choosing the best of multiple starting guesses
 
@@ -1668,7 +1668,7 @@ class TripleStarModel(StarModel):
             list of best-fit parameters: ``[mA,mB,age,feh,[distance,A_V]]``.
             Note that distance and A_V values will be meaningless unless
             magnitudes are present in ``self.properties``.
-        
+
         """
         mA_0,age0,feh0 = self.ic.random_points(nseeds)
         mB_0,foo1,foo2 = self.ic.random_points(nseeds)
@@ -1679,7 +1679,7 @@ class TripleStarModel(StarModel):
         d0 = 10**(rand.uniform(0,np.log10(self.max_distance),size=nseeds))
         AV0 = rand.uniform(0,self.maxAV,size=nseeds)
 
-        
+
 
         costs = np.zeros(nseeds)
 
@@ -1687,10 +1687,10 @@ class TripleStarModel(StarModel):
             pfits = np.zeros((nseeds,7))
         else:
             pfits = np.zeros((nseeds,5))
-            
+
         def fn(p): #fmin is a function *minimizer*
             return -1*self.lnpost(p)
-        
+
         for i,mA,mB,mC,age,feh,d,AV in zip(range(nseeds),
                                     mA_0,mB_0,mC_0,age0,feh0,d0,AV0):
                 if self.fit_for_distance:
@@ -1702,7 +1702,7 @@ class TripleStarModel(StarModel):
 
         return pfits[np.argmax(costs),:]
 
-            
+
     def mnest_prior(self, cube, ndim, nparams):
         cube[0] = (self.ic.maxmass - self.ic.minmass)*cube[0] + self.ic.minmass
         cube[1] = (cube[0] - self.ic.minmass)*cube[1] + self.ic.minmass
@@ -1711,9 +1711,9 @@ class TripleStarModel(StarModel):
         cube[4] = (self.ic.maxfeh - self.ic.minfeh)*cube[4] + self.ic.minfeh
         cube[5] = cube[5]*self.max_distance
         cube[6] = cube[6]*self.maxAV
-        
+
     def fit_multinest(self, basename='chains/triple-', **kwargs):
-        super(TripleStarModel, self).fit_multinest(basename=basename, **kwargs)    
+        super(TripleStarModel, self).fit_multinest(basename=basename, **kwargs)
 
     def fit_mcmc(self,nwalkers=200,nburn=100,niter=200,
                  p0=None,initial_burn=None,
@@ -1722,13 +1722,13 @@ class TripleStarModel(StarModel):
         """Fits stellar model using MCMC.
 
         See :func:`StarModel.fit_mcmc`.
-            
+
         """
 
         #clear any saved _samples
         if self._samples is not None:
             self._samples = None
-            
+
 
         if self.fit_for_distance:
             npars = 7
@@ -1756,7 +1756,7 @@ class TripleStarModel(StarModel):
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
-                pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+                pos, prob, state = sampler.run_mcmc(p0, ninitial)
                 wokinds = np.where((sampler.naccepted/ninitial > 0.15) &
                                    (sampler.naccepted/ninitial < 0.4))[0]
                 i=1
@@ -1775,12 +1775,12 @@ class TripleStarModel(StarModel):
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
             if self.fit_for_distance:
                 p0[:,5] *= (1 + rand.normal(size=nwalkers)*0.5) #distance
-        
+
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
-        
+
         self._sampler = sampler
         return sampler
 
@@ -1789,10 +1789,10 @@ class TripleStarModel(StarModel):
         """Returns two triangle plots, one with physical params, one observational
 
         :return:
-             * Physical parameters triangle plot (mass_A, mass_B, mass_C, radius, 
+             * Physical parameters triangle plot (mass_A, mass_B, mass_C, radius,
                 Teff, feh, age, distance)
              * Observed properties triangle plot.
-             
+
         """
         fig1 = self.triangle(plot_datapoints=False,
                             params=['mass_A', 'mass_B', 'mass_C', 'radius',
@@ -1813,14 +1813,14 @@ class TripleStarModel(StarModel):
 
         """
         if params is None:
-            params = ['mass_A', 'mass_B', 'mass_C', 
+            params = ['mass_A', 'mass_B', 'mass_C',
                       'age', 'feh', 'distance', 'AV']
 
         super(TripleStarModel, self).triangle(params=params, **kwargs)
 
 
     def _make_samples(self):
-        
+
         if not self.use_emcee:
             chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
 
@@ -1852,14 +1852,14 @@ class TripleStarModel(StarModel):
             else:
                 distance = None
                 AV = 0
-            
+
             lnprob = self.sampler.lnprobability[ok_walkers,:].ravel()
 
-        df = self.ic(mass_A, age, feh, 
+        df = self.ic(mass_A, age, feh,
                        distance=distance, AV=AV)
-        df_B = self.ic(mass_B, age, feh, 
+        df_B = self.ic(mass_B, age, feh,
                        distance=distance, AV=AV)
-        df_C = self.ic(mass_C, age, feh, 
+        df_C = self.ic(mass_C, age, feh,
                        distance=distance, AV=AV)
 
         for col in df_B.columns:
@@ -1903,7 +1903,7 @@ class TripleStarModel(StarModel):
 
 #    def triple_loglike(self, *args, **kwargs):
 #        return TripleStarModel.loglike(self, *args, **kwargs)
-        
+
 
 #### Utility functions #####
 
@@ -1913,7 +1913,7 @@ def addmags(*mags):
     for mag in mags:
         tot += 10**(-0.4*mag)
     return -2.5*np.log10(tot)
-    
+
 def q_prior(q, m=1, gamma=0.3, qmin=0.1):
     """Default prior on mass ratio q ~ q^gamma
     """
@@ -1931,7 +1931,7 @@ def salpeter_prior(m,alpha=-2.35,minmass=0.1,maxmass=10):
 
 def local_fehdist(feh):
     """feh PDF based on local SDSS distribution
-    
+
     From Jo Bovy:
     https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
     2D gaussian fit based on Casagrande (2011)
