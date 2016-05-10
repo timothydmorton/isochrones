@@ -6,15 +6,11 @@ import json
 
 from configobj import ConfigObj
 
-on_rtd = False
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
-try:
-    import numpy as np
-except ImportError:
-    on_rtd = True
-    np = None
 
 if not on_rtd:
+    import numpy as np
     import pandas as pd    
     import numpy.random as rand
     import scipy.optimize
