@@ -11,18 +11,14 @@ import os,sys,re,os.path
 import logging
 
 # Check to see if building on ReadTheDocs
-on_rtd = False
-
-try:
-    import pandas as pd
-except ImportError:
-    on_rtd = True
-    pd = None
-
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
 if not on_rtd:
+    import pandas as pd
     from scipy.interpolate import LinearNDInterpolator as interpnd
     import numpy.random as rand
+else:
+    pd = None
 
 try:
     from astropy import constants as const
