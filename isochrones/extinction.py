@@ -1,4 +1,4 @@
-import os, os.path
+import os, os.path, re
 
 DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
@@ -10,9 +10,9 @@ from .schlafly.extcurve_s16 import extcurve
 FILTERFILE = os.path.join(DATADIR,'filters.txt')
 LAMBDA_EFF = {}
 for line in open(FILTERFILE,'r'):
-    line = line.split()
-    if re.match('#',line):
+    if re.match('#', line):
         continue
+    line = line.split()
     LAMBDA_EFF[line[0]] = float(line[1])
 
 

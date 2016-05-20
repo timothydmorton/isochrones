@@ -12,7 +12,7 @@ except ImportError:
     
 import pickle
 
-from .isochrone import Isochrone
+from ..isochrone import Isochrone
 
 #DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 DATADIR = os.getenv('ISOCHRONES',
@@ -26,49 +26,7 @@ TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))
 MAXAGE = interpnd(MAXAGES['points'], MAXAGES['maxages'])
 
-# Columns in DataFrames that are *not* magnitudes
-COMMON_COLUMNS = ['EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh']
 
-# Default available photometric systems
-PHOT_SYSTEMS = ['SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS']
-
-# Names of bands in each Dartmouth photometric system grid
-PHOT_BANDS = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
-                  UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
-                  WISE=['W4', 'W3', 'W2', 'W1'],
-                  LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
-                  UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
-
-def _band_name(b):
-    """Defines what a "shortcut" band name refers to.  Returns phot_system, band
-    """
-    # Default to SDSS for these
-
-    if b in ['u','g','r','i','z']:
-        sys = 'SDSSugriz'
-        band = 'sdss_{}'.format(b)
-    elif b in ['U','B','V','R','I','J','H','Ks']:
-        sys = 'UBVRIJHKsKp'
-        band = b
-    elif b=='K':
-        sys = 'UBVRIJHKsKp'
-        band = 'Ks'
-    elif b in ['kep','Kepler','Kp']:
-        sys = 'UBVRIJHKsKp'
-        band = 'Kp'
-    elif b in ['W1','W2','W3','W4']:
-        sys = 'WISE'
-        band = b
-    else:
-        m = re.match('(\w+)_([a-zA-Z_]+)',b)
-        if m:
-            if m.group(1) in PHOT_SYSTEMS:
-                sys = m.group(1)
-                band = m.group(2)
-            elif m.group(1)=='UK':
-                sys = 'UKIDSS'
-                band = m.group(2)
-    return sys, band
 
 
 def _download_h5():
