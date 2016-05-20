@@ -6,6 +6,8 @@ DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 #  http://e.schlaf.ly/apored/extcurve.html
 from .schlafly.extcurve_s16 import extcurve
 
+extcurve_0 = extcurve(0.)
+
 #Read data defining effective central wavelengths of filters
 FILTERFILE = os.path.join(DATADIR,'filters.txt')
 LAMBDA_EFF = {}

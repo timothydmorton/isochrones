@@ -37,7 +37,7 @@ try:
 except ImportError:
     setfig = None
 
-from .extinction import EXTINCTION
+from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
 
 class Isochrone(object):
     """
@@ -88,7 +88,7 @@ class Isochrone(object):
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
-                 minage=None, maxage=None):
+                 minage=None, maxage=None, ext_table=False):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -98,6 +98,8 @@ class Isochrone(object):
         self.maxmass = m_act.max()
         self.minfeh = feh.min()
         self.maxfeh = feh.max()
+
+        self.ext_table = ext_table
 
         if minage is not None:
             self.minage = minage
@@ -111,27 +113,20 @@ class Isochrone(object):
             points[:,0] = m_ini
             points[:,1] = age
             points[:,2] = feh
-            self.mass = interpnd(points,m_act)
-            self.tri = self.mass.tri
+            fn = interpnd(points,m_act)
+            self.tri = fn.tri
         else:
             self.tri = tri
             self.mass = interpnd(self.tri,m_act)
 
-        self.logL = interpnd(self.tri,logL)
-        self.logg = interpnd(self.tri,logg)
-        self.logTeff = interpnd(self.tri,np.log10(Teff))
+        self._data = {'mass':m_act,
+                    'logL':logL,
+                    'logg':logg,
+                    'logTeff':np.log10(Teff),
+                    'mags':mags}
+        self._props = ['mass', 'logL', 'logg', 'logTeff']
 
-        def Teff_fn(*pts):
-            return 10**self.logTeff(*pts)
-        self.Teff = Teff_fn
-        
-        def R_fn(*pts):
-            return np.sqrt(G*self.mass(*pts)*MSUN/10**self.logg(*pts))/RSUN
-        self.radius = R_fn
-
-        self.bands = []
-        for band in mags.keys():
-            self.bands.append(band)
+        self.bands = mags.keys()
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
@@ -141,9 +136,44 @@ class Isochrone(object):
 
         self.mag = d
 
+
+    def _prop(self, prop, *args):
+        if prop not in self._props:
+            raise ValueError('Cannot call this function with {}.'.format(prop))
+        attr = '_{}'.format(prop)
+        if not hasattr(self, attr):
+            setattr(self, attr, interpnd(self.tri, self._data[prop]))
+        fn = getattr(self, attr)
+        return fn(*args)
+
+    def mass(self, *args):
+        return self._prop('mass', *args)
+
+    def logL(self, *args):
+        return self._prop('logL', *args)
+
+    def logg(self, *args):
+        return self._prop('logg', *args)
+
+    def logTeff(self, *args):
+        return self._prop('logTeff', *args)
+
+    def radius(self, *args):
+        return np.sqrt(G*self.mass(*args)*MSUN/10**self.logg(*args))/RSUN
+
+    def Teff(self, *args):
+        return 10**self.logTeff(*args)
+
     def _mag_fn(self, band):
-        def fn(mass, age, feh, distance=10, AV=0.0):
-            A = AV*EXTINCTION[band]
+        def fn(mass, age, feh, distance=10, AV=0.0, x_ext=0., ext_table=self.ext_table):
+            if x_ext==0.:
+                ext = extcurve_0
+            else:
+                ext = extcurve(x_ext)
+            if ext_table:
+                A = AV*EXTINCTION[band]
+            else:
+                A = AV*ext(LAMBDA_EFF[band])
             dm = 5*np.log10(distance) - 5
             return self._mag[band](mass, age, feh) + dm + A
         return fn
