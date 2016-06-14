@@ -823,7 +823,7 @@ class StarModel(object):
         [params.pop(i) for i in remove]
 
         fig = corner.corner(df[params], labels=params, 
-                               extents=extents, **kwargs)
+                               range=extents, **kwargs)
 
         fig.suptitle(self.name, fontsize=22)
         return fig
