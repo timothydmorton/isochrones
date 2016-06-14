@@ -778,8 +778,8 @@ class StarModel(object):
             Figure oject containing corner plot.
             
         """
-        if triangle is None:
-            raise ImportError('please run "pip install triangle_plot".')
+        if corner is None:
+            raise ImportError('please run "pip install corner".')
         
         if params is None:
             if self.fit_for_distance:
