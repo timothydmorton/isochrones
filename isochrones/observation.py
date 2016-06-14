@@ -224,14 +224,16 @@ class Node(object):
         return s
     
 class ObsNode(Node):
-    def __init__(self, instrument, band, value,
-                 separation=0., pa=0.,
+    def __init__(self, instrument, band, value, 
+                 resolution,
+                 separation=0., pa=0., 
                  relative=False,
                  reference=None):
 
         self.instrument = instrument
         self.band = band
         self.value = value
+        self.resolution = resolution
         self.relative = relative
         self.reference = reference
         
@@ -266,6 +268,9 @@ class ObsNode(Node):
         ddec = (dec1 - dec0)
         return np.sqrt(dra**2 + ddec**2)
         
+    def _in_same_observation(self, other):
+        return self.instrument==other.instrument and self.band==other.band
+
     @property
     def n_params(self):
         if self._n_params is None:
@@ -313,8 +318,10 @@ class ObsNode(Node):
     
     @property
     def label(self):
-        return '{} {}={} @({:.2f}, {:.0f})'.format(self.instrument, self.band,
-                                self.value, self.separation, self.pa)
+        return '{} {}={} @({:.2f}, {:.0f} [{:.2f}])'.format(self.instrument, 
+                                                           self.band,
+                                self.value, self.separation, self.pa,
+                                                           self.resolution)
 
     def get_system(self, ind):
         system = []
@@ -460,8 +467,7 @@ class Observation(object):
     name: identifying string (typically the instrument)
     band: photometric bandpass
     resolution: *approximate* angular resolution of instrument.
-          Used only to order Observation objects within the 
-          observation tree.
+         used for source matching between observations
     sources: list of Source objects
 
     """
@@ -831,6 +837,65 @@ class ObservationTree(Node):
         self._cache_val = lnl
         return lnl
 
+    def _find_closest(self, n0):
+        """returns the node in the tree that is closest to n0, but not
+          in the same observation
+        """
+        dmin = np.inf
+        nclose = None
+        for n in self:
+            if n is n0:
+                continue
+            try:
+                if n._in_same_observation(n0):
+                    continue
+                d = n.distance(n0)
+                if d < dmin:
+                    nclose = n
+                    dmin = d
+            except AttributeError:
+                pass
+        if nclose is None:
+            nclose = self
+        elif dmin > nclose.resolution:
+            nclose = self
+        return nclose
+
+    def _build_tree_new(self):
+        #reset leaf cache, children
+        self._clear_all_leaves()
+        self.children = []
+        self._levels = []
+
+        for i,o in enumerate(self._observations):
+            ref_node = None
+            for s in o.sources:
+
+                # Construct Node
+                if s.relative and ref_node is None:
+                    node = ObsNode(o.name, o.band,
+                                       (s.mag, s.e_mag), 
+                                        o.resolution,
+                                        relative=True, 
+                                        reference=None)
+                    ref_node = node
+                else:
+                    node = ObsNode(o.name, o.band, 
+                                   (s.mag, s.e_mag),
+                                   o.resolution,
+                                   separation=s.separation, pa=s.pa,
+                                   relative=s.relative,
+                                   reference=ref_node)
+                    
+                # For first level, no need to choose parent
+                if i==0:
+                    parent = self
+                else:
+                    # Find parent (closest node in tree)
+                    parent = self._find_closest(node)
+                        
+                parent.add_child(node)
+
 
     def _build_tree(self):
         """Constructs tree from [ordered] list of observations
@@ -848,12 +913,14 @@ class ObservationTree(Node):
                 if s.relative and ref_node is None:
                     node = ObsNode(o.name, o.band,
                                        (s.mag, s.e_mag), 
+                                        o.resolution,
                                         relative=True, 
                                         reference=None)
                     ref_node = node
                 else:
                     node = ObsNode(o.name, o.band, 
                                    (s.mag, s.e_mag),
+                                   o.resolution,
                                    separation=s.separation, pa=s.pa,
                                    relative=s.relative,
                                    reference=ref_node)
@@ -862,8 +929,9 @@ class ObservationTree(Node):
                 if i==0:
                     parent = self
                 else:
-                    # Loop through nodes of level above, choose
+                    # Loop through nodes of levels above, choose
                     #  parent to be the closest one.
+                    #  If distance is "too far", make a new source 
                     d_min = np.inf
                     for n in self._levels[i-1]:
                         d = node.distance(n)

@@ -23,7 +23,7 @@ DATADIR = os.getenv('ISOCHRONES',
                     os.path.expanduser(os.path.join('~','.isochrones')))
 DATADIR = os.path.join(DATADIR, 'dartmouth')
 if not os.path.exists(DATADIR):
-    os.mkdirs(DATADIR)
+    os.path.mkdirs(DATADIR)
 
 TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
 
