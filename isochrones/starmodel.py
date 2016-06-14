@@ -20,9 +20,9 @@ if not on_rtd:
     from scipy.stats import gaussian_kde
 
 try:
-    import triangle
+    import corner
 except ImportError:
-    triangle = None
+    corner = None
 
 mnest_available = True
 try:
@@ -757,7 +757,7 @@ class StarModel(object):
         """
         Makes a nifty corner plot.
 
-        Uses :func:`triangle.corner`.
+        Uses DFM's :func:`corner.corner` function.
 
         :param params: (optional)
             Names of columns (from :attr:`StarModel.samples`)
@@ -769,10 +769,10 @@ class StarModel(object):
             Optional query on samples.
 
         :param extent: (optional)
-            Will be appropriately passed to :func:`triangle.corner`.
+            Will be appropriately passed to :func:`corner.corner`.
 
         :param **kwargs:
-            Additional keyword arguments passed to :func:`triangle.corner`.
+            Additional keyword arguments passed to :func:`corner.corner`.
 
         :return:
             Figure oject containing corner plot.
@@ -822,7 +822,7 @@ class StarModel(object):
             
         [params.pop(i) for i in remove]
 
-        fig = triangle.corner(df[params], labels=params, 
+        fig = corner.corner(df[params], labels=params, 
                                extents=extents, **kwargs)
 
         fig.suptitle(self.name, fontsize=22)
