@@ -875,7 +875,7 @@ class ObservationTree(Node):
         # If nothing else works
         return self
 
-    def _build_tree_new(self):
+    def _build_tree(self):
         #reset leaf cache, children
         self._clear_all_leaves()
         self.children = []
@@ -910,50 +910,3 @@ class ObservationTree(Node):
                         
                 parent.add_child(node)
 
-
-    def _build_tree(self):
-        """Constructs tree from [ordered] list of observations
-        """
-        #reset leaf cache, children
-        self._clear_all_leaves()
-        self.children = []
-        self._levels = []
-        
-        for i,o in enumerate(self._observations):
-            self._levels.append([])
-
-            ref_node = None
-            for s in o.sources:
-                if s.relative and ref_node is None:
-                    node = ObsNode(o.name, o.band,
-                                       (s.mag, s.e_mag), 
-                                        o.resolution,
-                                        relative=True, 
-                                        reference=None)
-                    ref_node = node
-                else:
-                    node = ObsNode(o.name, o.band, 
-                                   (s.mag, s.e_mag),
-                                   o.resolution,
-                                   separation=s.separation, pa=s.pa,
-                                   relative=s.relative,
-                                   reference=ref_node)
-
-                # For first level, no need to choose parent
-                if i==0:
-                    parent = self
-                else:
-                    # Loop through nodes of levels above, choose
-                    #  parent to be the closest one.
-                    #  If distance is "too far", make a new source 
-                    d_min = np.inf
-                    for n in self._levels[i-1]:
-                        d = node.distance(n)
-                        if d < d_min:
-                            d_min = d
-                            parent = n
-                        
-                parent.add_child(node)
-                self._levels[i].append(node)
-        
-            
