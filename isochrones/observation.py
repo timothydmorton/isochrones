@@ -843,23 +843,37 @@ class ObservationTree(Node):
         """
         dmin = np.inf
         nclose = None
+
+        ds = []
+        nodes = []
+        
+        ds.append(np.inf)
+        nodes.append(self)
+
         for n in self:
             if n is n0:
                 continue
             try:
                 if n._in_same_observation(n0):
                     continue
-                d = n.distance(n0)
-                if d < dmin:
-                    nclose = n
-                    dmin = d
+                ds.append(n.distance(n0))
+                nodes.append(n)
             except AttributeError:
                 pass
-        if nclose is None:
-            nclose = self
-        elif dmin > nclose.resolution:
-            nclose = self
-        return nclose
+
+        inds = np.argsort(ds)
+        ds = [ds[i] for i in inds]
+        nodes = [nodes[i] for i in inds]
+        
+        for d,n in zip(ds, nodes):
+            try:
+                if d < n.resolution:
+                    return n
+            except AttributeError:
+                pass
+
+        # If nothing else works
+        return self
 
     def _build_tree_new(self):
         #reset leaf cache, children
