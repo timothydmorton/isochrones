@@ -170,6 +170,24 @@ class Node(object):
             for c in self.children:
                 leaves += c._get_leaves()
             return leaves
+
+    def select_leaves(self, name):
+        """Returns all leaves under all nodes matching 'name'
+        """
+        if self.is_leaf:
+            if re.search(name, self.label):
+                return [self]
+            else:
+                return []
+        else:
+            leaves = []
+            if re.search(name, self.label):
+                for c in self.children:
+                    leaves += c._get_leaves() #all leaves
+            else:
+                for c in self.children:
+                    leaves += c.select_leaves(name) #only matching ones
+            return leaves
         
     @property
     def leaf_labels(self):
@@ -504,7 +522,6 @@ class ObservationTree(Node):
             self.label = name
         self.parent = None
 
-        self._levels = []
         self._observations = []
         self._build_tree()
 
@@ -856,7 +873,6 @@ class ObservationTree(Node):
         #reset leaf cache, children
         self._clear_all_leaves()
         self.children = []
-        self._levels = []
 
         for i,o in enumerate(self._observations):
             ref_node = None

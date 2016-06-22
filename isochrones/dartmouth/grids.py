@@ -1,4 +1,5 @@
 import os,re
+import numpy as np
 import pandas as pd
 import logging
 
@@ -66,7 +67,11 @@ def get_grid(bands):
         if 'MMo' not in df:
             df[COMMON_COLUMNS] = grids[s][COMMON_COLUMNS]
         col = grids[s][b]
-        df.loc[:, bnd] = col.reset_index()
+        n_nan = np.isnan(col).sum()
+        if n_nan > 0:
+            logging.debug('{} NANs in {} column'.format(n_nan, b))
+        df.loc[:, bnd] = col.values #dunno why it has to be this way; something
+                                    # funny with indexing.
 
     return df
 
