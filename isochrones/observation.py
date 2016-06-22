@@ -12,6 +12,7 @@ from itertools import chain, imap, izip, count
 from collections import OrderedDict
 
 from .dartmouth import Dartmouth_Isochrone
+from .utils import addmags
 
 class NodeTraversal(Traversal):
     """
@@ -69,30 +70,6 @@ class MyLeftAligned(LeftAligned):
         self.pars = pars
         self.traverse = NodeTraversal(pars)
         super(MyLeftAligned,self).__init__(**kwargs)
-    
-def addmags(*mags):
-    """
-    mags is either list of magnitudes or list of (mag, err) pairs
-    """
-    tot = 0
-    uncs = []
-    for mag in mags:
-        try:
-            tot += 10**(-0.4*mag)
-        except:
-            m, dm = mag
-            f = 10**(-0.4*m)
-            tot += f
-            unc = f * (1 - 10**(-0.4*dm))
-            uncs.append(unc)
-    
-    totmag = -2.5*np.log10(tot)
-    if len(uncs) > 0:
-        f_unc = np.sqrt(np.array([u**2 for u in uncs]).sum())
-        return totmag, -2.5*np.log10(1 - f_unc/tot)
-    else:
-        return totmag 
-    
     
 class Node(object):
     def __init__(self, label):

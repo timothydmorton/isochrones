@@ -13,7 +13,8 @@ import pymultinest
 
 from configobj import ConfigObj
 
-from .observation import ObservationTree, Observation, Source, addmags
+from .utils import addmags
+from .observation import ObservationTree, Observation, Source 
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, local_fehdist
 

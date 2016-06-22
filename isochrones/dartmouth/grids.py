@@ -1,5 +1,6 @@
 import os,re
 import pandas as pd
+import logging
 
 # 
 d = os.getenv('ISOCHRONES',
@@ -59,11 +60,13 @@ def get_grid(bands):
     df = pd.DataFrame()
     for bnd in bands:
         s,b = get_band(bnd)
+        logging.debug('loading {} band from {}'.format(b,s))
         if s not in grids:
             grids[s] = pd.read_hdf(os.path.join(DATADIR, '{}.h5'.format(s)))
         if 'MMo' not in df:
-            df[COMMON_COLUMNS] = grids[s][COMMON_COLUMNS]       
-        df[bnd] = grids[s][b]
+            df[COMMON_COLUMNS] = grids[s][COMMON_COLUMNS]
+        col = grids[s][b]
+        df.loc[:, bnd] = col.reset_index()
 
     return df
 
