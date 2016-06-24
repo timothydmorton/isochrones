@@ -172,13 +172,12 @@ class Node(object):
             return leaves
 
     def select_leaves(self, name):
-        """Returns all leaves under all nodes matching 'name'
+        """Returns all leaves under all nodes matching name 
+
         """
+
         if self.is_leaf:
-            if re.search(name, self.label):
-                return [self]
-            else:
-                return []
+            return [self] if re.search(name, self.label) else []
         else:
             leaves = []
             if re.search(name, self.label):
@@ -248,6 +247,11 @@ class ObsNode(Node):
         self._cache_key = None
         self._cache_val = None
         
+    @property
+    def value_str(self):
+        return '({:.2f}, {:.2f})'.format(*self.value)
+    
+
     def distance(self, other):
         """Coordinate distance from another ObsNode
         """
@@ -315,7 +319,7 @@ class ObsNode(Node):
     def label(self):
         return '{} {}={} @({:.2f}, {:.0f} [{:.2f}])'.format(self.instrument, 
                                                            self.band,
-                                self.value, self.separation, self.pa,
+                                self.value_str, self.separation, self.pa,
                                                            self.resolution)
 
     def get_system(self, ind):
@@ -706,15 +710,18 @@ class ObservationTree(Node):
         self.parallax[system] = plax
         self._clear_cache()
 
-    def define_models(self, ic, N=1, index=0):
+    def define_models(self, ic, leaves=None, N=1, index=0):
         """
         N, index are either integers or lists of integers.
 
         N : number of model stars per observed star
         index : index of physical association
 
+        leaves: either a list of leaves, or a pattern by which 
+        the leaves are selected (via `select_leaves`)
+
         If these are lists, then they are defined individually for 
-        each star in the final level (highest-resoluion)
+        each leaf.
 
         If `index` is a list, then each entry must be either
         an integer or a list of length `N` (where `N` is the corresponding
@@ -724,16 +731,23 @@ class ObservationTree(Node):
         to re-do a call to this function, please re-define the tree.
         """
 
-        if np.size(N)==1:
-            N = (np.ones(len(self._levels[-1]))*N).astype(int)
+        self.clear_models()
+
+        if leaves is None:
+            leaves = self._get_leaves()
+        elif type(leaves)==type(''):
+            leaves = self.select_leaves(leaves)
+
+        if np.isscalar(N):
+            N = (np.ones(len(leaves))*N).astype(int)
             #if np.size(index) > 1:
             #    index = [index]
-        if np.size(index)==1:
+        if np.isscalar(index):
             index = (np.ones_like(N)*index).astype(int)
 
         # Add the appropriate number of model nodes to each
         #  star in the highest-resoluion image
-        for s,n,i in zip(self._levels[-1], N, index):
+        for s,n,i in zip(leaves, N, index):
             # Remove any previous model nodes (should do some checks here?)
             s.remove_children()
             s.add_model(ic, n, i)
@@ -744,6 +758,15 @@ class ObservationTree(Node):
         self._N = N
         self._index = index
 
+        self._clear_all_leaves()
+
+    def clear_models(self):
+        for n in self:
+            if isinstance(n, ModelNode):
+                n.parent.remove_child(n.label)
+
+        self._clear_all_leaves()
+
     def trim(self):
         """
         Trims leaves from tree that are not observed at highest-resolution level
@@ -751,6 +774,8 @@ class ObservationTree(Node):
         This is a bit hacky-- what it does is 
         """
         # Only allow leaves to stay on list (highest-resolution) level
+        return
+
         for l in self._levels[-2::-1]:
             for n in l:
                 if n.is_leaf:

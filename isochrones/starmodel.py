@@ -7,9 +7,9 @@ import os, os.path, sys, re, glob
 import numpy.random as rand
 import logging
 import json
-import emcee
+#import emcee
 import corner
-import pymultinest
+#import pymultinest
 
 from configobj import ConfigObj
 
