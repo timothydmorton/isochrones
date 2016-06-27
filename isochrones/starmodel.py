@@ -7,9 +7,9 @@ import os, os.path, sys, re, glob
 import numpy.random as rand
 import logging
 import json
-#import emcee
+import emcee
 import corner
-#import pymultinest
+import pymultinest
 
 from configobj import ConfigObj
 
@@ -207,10 +207,11 @@ class StarModel(object):
             raise ValueError('Unknown property {}'.format(prop))
         return self._bounds[prop]
 
-    def set_bounds(self, prop, val):
-        if len(val)!=2:
-            raise ValueError('Must provide (min, max)')
-        self._bounds[prop] = val
+    def set_bounds(self, **kwargs):
+        for k,v in kwargs.items():
+            if len(v) != 2:
+                raise ValueError('Must provide (min, max)')
+            self._bounds[k] = v
 
     def _build_obs(self, **kwargs):
         """
@@ -293,7 +294,7 @@ class StarModel(object):
                 lnp += np.log(self.prior('q', q,
                                          bounds=(qmin,qmax)))
                 if not np.isfinite(lnp):
-                    logging.debug('lnp=-inf for q={} (system {})'.format(val,s))
+                    logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
                     return -np.inf
 
             i += N[s] + 4
@@ -657,6 +658,12 @@ class StarModel(object):
         props += ['{}_{}'.format(p,s) for p in sys_props for s in self.obs.systems]
         
         return self.corner(props, **kwargs)
+
+    def corner_observed(self, **kwargs):
+        """Makes corner plot for each observed node magnitude
+        """
+        
+
 
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):

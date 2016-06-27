@@ -45,6 +45,9 @@ class NodeTraversal(Traversal):
                             modval = node.evaluate(self.pars[node.label], k)
                             lnl = -0.5*(modval - v[0])**2/v[1]**2
                             text += '; model={} ({})'.format(modval, lnl)
+                    if node.label in root.limits:
+                        for k,v in root.limits[node.label].items():
+                            text += ', {} limits={}'.format(k,v)
                 text += ': {}'.format(self.pars[node.label])
 
         else:
@@ -54,6 +57,9 @@ class NodeTraversal(Traversal):
                     if node.label in root.spectroscopy:
                         for k,v in root.spectroscopy[node.label].items():
                             text += ', {}={}'.format(k,v)
+                    if node.label in root.limits:
+                        for k,v in root.limits[node.label].items():
+                            text += ', {} limits={}'.format(k,v)
                 #root = node.get_root()
                 #if hasattr(root,'spectroscopy'):
                 #    if node.label in root.spectroscopy:
@@ -197,6 +203,12 @@ class Node(object):
             if label==l.label:
                 return l
 
+    def get_obs_nodes(self):
+        return [l for l in self if isinstance(l, ObsNode)]
+
+    def get_model_nodes(self):
+        return [l for l in self._get_leaves() if isinstance(l, ModelNode)]
+
     def print_tree(self):
         print(self.label)
         
@@ -331,7 +343,7 @@ class ObsNode(Node):
             except AttributeError:
                 pass
         return system
-    
+
     def add_model(self, ic, N=1, index=0):
         """
         Should only be able to do this to a leaf node.
@@ -536,6 +548,9 @@ class ObservationTree(Node):
 
         # Spectroscopic properties
         self.spectroscopy = {}
+
+        # Limits (such as minimum on logg)
+        self.limits = {}
         
         # Parallax measurements
         self.parallax = {}
@@ -701,6 +716,38 @@ class ObservationTree(Node):
 
         self._clear_cache()
 
+    def add_limit(self, label='0_0', **props):
+        """Define limits to spectroscopic property of particular stars.
+
+        Usually will be used for 'logg', but 'Teff' and 'feh' will also work.
+
+        In form (min, max): e.g., t.add_limit(logg=(3.0,None))  
+
+        None will be converted to (-)np.inf
+        """
+
+        if label not in self.leaf_labels:
+            raise ValueError('No model node named {} (must be in {}). Maybe define models first?'.format(label, self.leaf_labels))
+        for k,v in props.items():
+            if k not in self.spec_props:
+                raise ValueError('Illegal property {} (only {} allowed).'.format(k, self.spec_props))
+            if len(v) != 2:
+                raise ValueError('Must provide (min, max) for {}. (`None` is allowed value)'.format(k))
+
+        if label not in self.limits:
+            self.limits[label] = {}
+
+        for k,v in props.items():
+            vmin, vmax = v
+            if vmin is None:
+                vmin = -np.inf
+            if vmax is None:
+                vmax = np.inf
+            self.limits[label][k] = (vmin, vmax)
+
+        self._clear_cache()
+
+
     def add_parallax(self, plax, system=0):
         if len(plax)!=2:
             raise ValueError('Must enter (value,uncertainty).')
@@ -795,7 +842,7 @@ class ObservationTree(Node):
             for j in xrange(N[s]):
                 l = '{}_{}'.format(s,j)
                 mass = p[i+j]
-                d[l] = [mass, age, feh, dist ,AV]
+                d[l] = [mass, age, feh, dist, AV]
             i += N[s] + 4
         return d
 
@@ -842,6 +889,13 @@ class ObservationTree(Node):
                 self._cache_val = -np.inf
                 return -np.inf
 
+        # enforce limits
+        for l in self.limits:
+            for prop,(vmin,vmax) in self.limits[l].items():
+                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                if mod < vmin or mod > vmax or not np.isfinite(mod):
+                    self._cache_val = -np.inf
+                    return -np.inf
 
         # lnlike from parallax
         for s,(val,err) in self.parallax.items():
