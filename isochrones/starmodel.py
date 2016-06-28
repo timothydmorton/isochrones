@@ -366,6 +366,10 @@ class StarModel(object):
 
         """
 
+        if basename is not None:
+            if not os.path.isabs(basename):
+                basename = os.path.join('chains',basename)
+
         if basename is None:
             s = self.labelstring
             if s=='0_0':
@@ -657,12 +661,32 @@ class StarModel(object):
         props = ['{}_{}'.format(p,l) for p in indiv_props for l in self.obs.leaf_labels]
         props += ['{}_{}'.format(p,s) for p in sys_props for s in self.obs.systems]
         
-        return self.corner(props, **kwargs)
+        if 'range' not in kwargs:
+            rng = [0.995 for p in props]
+
+        return self.corner(props, range=rng, **kwargs)
 
     def corner_observed(self, **kwargs):
         """Makes corner plot for each observed node magnitude
         """
-        
+        tot_mags = []
+        names = []
+        truths = []
+        rng = []
+        for n in self.obs.get_obs_nodes():
+            labels = [l.label for l in n.get_model_nodes()]
+            band = n.band
+            name = '{} {}'.format(n.instrument, n.band)
+            mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
+            tot_mags.append(addmags(*mags))
+            names.append(name)
+            truths.append(n.value[0])
+            rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)), 
+                        max(truths[-1], np.percentile(tot_mags[-1],99.5))))
+        tot_mags = np.array(tot_mags).T
+
+
+        return corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
 
 
 

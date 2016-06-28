@@ -409,10 +409,16 @@ class ObsNode(Node):
             if self.reference is None:
                 return 0
             mod = self.model_mag(pardict) - self.reference.model_mag(pardict)
+            mag -= self.reference.value[0]
         else:
             mod = self.model_mag(pardict)
 
-        return -0.5*(mag - mod)**2 / dmag**2
+        lnl = -0.5*(mag - mod)**2 / dmag**2
+
+        logging.debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
+                                                                self.band,
+                                                                mag,mod,lnl))
+        return lnl
 
         
 class ModelNode(Node):
