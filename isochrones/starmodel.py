@@ -244,11 +244,11 @@ class StarModel(object):
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
 
-    def lnpost(self, p):
+    def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
         if not np.isfinite(lnpr):
             return lnpr
-        return lnpr + self.lnlike(p)
+        return lnpr + self.lnlike(p, **kwargs)
 
     def lnlike(self, p, **kwargs):
         lnl = self.obs.lnlike(p, **kwargs)
