@@ -172,7 +172,8 @@ class StarModel(object):
         remove = []
         for p in self.properties.keys():
             if not hasattr(self.ic, p) and \
-              p not in self.ic.bands and p not in ['parallax','feh','age','mass_B','mass_C'] and \
+              p not in self.ic.bands and p not in ['parallax','feh','age','AV',
+                                                'mass_B','mass_C'] and \
               not re.search('delta_',p):
                 remove.append(p)
 
@@ -297,6 +298,10 @@ class StarModel(object):
                 continue
             elif prop=='feh':
                 mod = feh
+            elif prop=='AV':
+                mod = AV
+            elif prop=='age':
+                mod = age
             elif prop=='parallax':
                 mod = 1./dist * 1000
             else:
@@ -1227,6 +1232,10 @@ class BinaryStarModel(StarModel):
                 mod = mod_B - mod_A
             elif prop=='feh':
                 mod = feh
+            elif prop=='AV':
+                mod = AV
+            elif prop=='age':
+                mod = age                
             elif prop=='mass_B':
                 mod = mass_B
             elif prop=='parallax':
@@ -1605,6 +1614,10 @@ class TripleStarModel(StarModel):
                 continue
             elif prop=='feh':
                 mod = feh
+            elif prop=='AV':
+                mod = AV
+            elif prop=='age':
+                mod = age
             elif prop=='mass_B':
                 mod = mass_B
             elif prop=='mass_C':
