@@ -110,6 +110,12 @@ class Node(object):
         else:
             return self.parent.get_root()
         
+    def get_ancestors(self):
+        if self.parent.is_root:
+            return []
+        else:
+            return [self.parent] + self.parent.get_ancestors()
+
     def print_ascii(self, fout=None, pars=None):
         box_tr = MyLeftAligned(pars,draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
         if fout is None:
@@ -445,6 +451,16 @@ class ModelNode(Node):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic        
+
+    def get_obs_ancestors(self):
+        nodes = self.get_ancestors()
+        return [n for n in nodes if isinstance(n, ObsNode)]
+
+    @property
+    def contributing_observations(self):
+        """The instrument-band for all the observations feeding into this model node
+        """
+        return ['{}-{}'.format(n.instrument, n.band) for n in self.get_obs_ancestors()]
 
     def evaluate(self, p, prop):
         if prop in self.ic.bands:
