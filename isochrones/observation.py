@@ -307,7 +307,7 @@ class ObsNode(Node):
         """
         if self._Nstars is None:
             N = {}
-            for n in self.leaves:
+            for n in self.get_model_nodes():
                 if n.index not in N:
                     N[n.index] = 1
                 else:
