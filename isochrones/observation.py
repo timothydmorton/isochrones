@@ -14,6 +14,13 @@ from collections import OrderedDict
 from .dartmouth import Dartmouth_Isochrone
 from .utils import addmags
 
+def get_mag_leaf(leaves):
+    label = leaves.label
+    label = label.split('@')[0]
+    label = label.split('(')[1]
+    label = label.split(',')[0]
+    return float(label)
+
 class NodeTraversal(Traversal):
     """
     Custom subclass to traverse tree for ascii printing
@@ -783,7 +790,7 @@ class ObservationTree(Node):
         This bugs up if you call it multiple times.  If you want
         to re-do a call to this function, please re-define the tree.
         """
-
+        
         self.clear_models()
 
         if leaves is None:
@@ -797,6 +804,48 @@ class ObservationTree(Node):
             #    index = [index]
         if np.isscalar(index):
             index = (np.ones_like(N)*index).astype(int)
+        
+        self._N = N
+        self._index = index
+
+        length = len(index)
+        maxVal = max(index)
+        listlist = []
+#only when there is index with multiple occurances
+#assume there is no skipped index
+        if maxVal < length-1:
+            for i in range(0, maxVal+1, 1):
+                count = 0
+                duplicatedIndex = []
+                for j,k in enumerate(index):
+                    if k == i:
+                        count += 1
+                        duplicatedIndex.append(j)
+                    else:
+                        continue
+                if count > 1:
+                    listlist.append(duplicatedIndex)
+
+            maxIndexList = []
+            for item in listlist:
+                maxMag = np.inf
+                maxIndex = -1
+                for i in item:
+                    mag = get_mag_leaf(leaves[i]) 
+                    if mag < maxMag:
+                        maxMag = mag
+                        maxIndex = i
+                maxIndexList.append(maxIndex)
+
+    # force _0 for brightest star in the system
+            maxIndexList = sorted(maxIndexList, reverse=True)
+            for i in maxIndexList:
+                leaves[i].remove_children()
+                leaves[i].add_model(ic, N[i], index[i])
+                leaves.pop(i)
+                np.delete(N,i)
+                N = np.delete(N,i)
+                index = np.delete(index,i)   
 
         # Add the appropriate number of model nodes to each
         #  star in the highest-resoluion image
@@ -807,9 +856,6 @@ class ObservationTree(Node):
 
         # Make sure there are no model-less hanging leaves.
         self.trim()
-
-        self._N = N
-        self._index = index
 
         self._clear_all_leaves()
 
