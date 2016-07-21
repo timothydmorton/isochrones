@@ -463,7 +463,7 @@ class ModelNode(Node):
     def evaluate_mag(self, p, band):
         return self.ic.mag[band](*p)
 
-    def lnlike(self, *args):
+    def lnlike(self, *args, **kwargs):
         return 0        
 
 class Source(object):
@@ -867,11 +867,11 @@ class ObservationTree(Node):
             pardict = self.p2pardict(p)
         super(ObservationTree, self).print_ascii(fout, pardict)
 
-    def lnlike(self, p):
+    def lnlike(self, p, use_cache=True):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
-        if np.all(p==self._cache_key):
+        if np.all(p==self._cache_key) and use_cache:
             return self._cache_val
         self._cache_key = p
 
