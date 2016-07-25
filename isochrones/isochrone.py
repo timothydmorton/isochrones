@@ -182,9 +182,12 @@ class Isochrone(object):
             for band in mags:
                 A = AV*EXTINCTION[band]
                 mags[band] = mags[band] + dm + A
-                
         
-        props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
+        b = np.broadcast(mass, age, feh)
+        age = np.ones(b.shape)*age
+        feh = np.ones(b.shape)*feh
+        
+        props = {'age':age,'feh':feh, 'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        
 
         if not return_df:
@@ -200,6 +203,8 @@ class Isochrone(object):
             try:
                 df = pd.DataFrame(d)
             except ValueError:
+                print(d)
+                raise
                 df = pd.DataFrame(d, index=[0])
             return df
 
