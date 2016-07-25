@@ -203,8 +203,6 @@ class Isochrone(object):
             try:
                 df = pd.DataFrame(d)
             except ValueError:
-                print(d)
-                raise
                 df = pd.DataFrame(d, index=[0])
             return df
 
