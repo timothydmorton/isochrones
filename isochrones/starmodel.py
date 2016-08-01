@@ -11,12 +11,25 @@ import emcee
 import corner
 import pymultinest
 
-from configobj import ConfigObj
+import configobj
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source 
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, local_fehdist
+
+def _parse_config_value(v):
+    try: 
+        val = float(v)
+    except:
+        try:
+            val = [float(x) for x in v]
+        except:
+            val = v
+    #print('{} becomes {}, type={}'.format(v,val,type(val)))
+    return val
+
+
 
 class StarModel(object):
     """
@@ -31,7 +44,8 @@ class StarModel(object):
             bandpass).  This should only happen in the simplest case
         of a single star system---if multiple stars are detected
         in any of the observations being used, an :class:`ObservationTree`
-        should be passed.
+        should be passed.  If `obs` is a string, then it is assumed
+        to be a filename of an obs summary DataFrame.
 
     :param N:
         Number of model stars to assign to each "leaf node" of the 
@@ -58,11 +72,17 @@ class StarModel(object):
             self._build_obs(**kwargs)
             self.obs.define_models(ic, N=N, index=index)
             self._add_properties(**kwargs)
-        else:
-            if len(obs.get_model_nodes())==0:
-                obs.define_models(ic, N=N, index=index)
+        elif isinstance(obs, basestring):
+            df = pd.read_csv(obs)
+            obs = ObservationTree.from_df(df)
+            obs.define_models(ic, N=N, index=index)
             self.obs = obs
-
+            self._add_properties(**kwargs)            
+        else:
+            self.obs = obs
+            if len(self.obs.get_model_nodes())==0:
+                self.obs.define_models(ic, N=N, index=index)
+                self._add_properties(**kwargs)
 
         self._priors = {'mass':salpeter_prior,
                         'feh':local_fehdist,
@@ -77,6 +97,9 @@ class StarModel(object):
                         'distance':(0,3000.),
                         'AV':(0,1.)}
 
+        if 'maxAV' in kwargs:
+            self.set_bounds(AV=(0, kwargs['maxAV']))
+
         self._samples = None
 
     @property
@@ -84,6 +107,7 @@ class StarModel(object):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic
+
 
     @classmethod
     def from_ini(cls, ic, folder='.', ini_file='star.ini'):
@@ -98,10 +122,10 @@ class StarModel(object):
             K = 9.0, 0.05
             Teff = 5000, 150
 
-        If multiple stars are observed, please use the `obsfile` keyword,
-        pointing to a file with the summarized photometric observations.
-        In this case, spectroscopic/parallax info should still be included
-        in the .ini file; e.g.,
+        If there are multiple stars observed, you can either define them in 
+        the ini file, or use the `obsfile` keyword, pointing to a file with 
+        the summarized photometric observations.  In this case, spectroscopic/parallax 
+        info should still be included in the .ini file; e.g.,
 
             obsfile = obs.csv
             Teff = 5000, 150
@@ -117,13 +141,41 @@ class StarModel(object):
           * `relative`: single-bit flag; if 1 then magnitudes taken with this
             instrument are assumed to be relative rather than absolute.
 
-        If `obsfile` is provided as above, then also the `N` and `index`
-        parameters may be provided, to specify the relations between the 
+        If an obsfile is not provided, you can also define all the same information
+        in the ini file, following these rules:
+
+          * Every instrument/survey gets its own [section].  Sections are only
+        created for different photometric observations.
+
+          * if photometry relates to *all* stars in aperture,
+            there is no extra info in the section, just the photometry.  In this case, it is
+            also assumed that the photometry is absolute. (`relative=False`)
+
+          * If 'resolution' is an attribute under a particular survey section (and
+        'relative' is not explicitly stated), then the survey is assumed to have relative 
+        photometry, and to be listing
+        information about companion stars.  In this case, there must be "separation"
+        and "PA" included for each companion.  If there is more than one companion star, 
+        they must be identifed by tag, e.g., separation_1, PA_1, Ks_1, J_1, etc.  The
+        tag can be anything alphanumeric, but it must be consistent within a particular
+        section (instrument).  If there
+        is no tag, there is assumed to be only one companion detected.
+        
+          * If there are no sections, then bands will be interpreted at face value
+        and will all be assumed to apply to all stars modeled.
+        
+          * Default is to model each star in the highest-resolution observation as a 
+        single star, at the same distance/age/feh/AV.
+
+
+        The `N` and `index`
+        parameters may also be provided, to specify the relations between the 
         model stars.  If these are not provided, then `N` will default to `1`
         (one model star per star observed in highest-resolution observation)
         and `index` will default to all `0` (all stars physically associated).
 
         """
+
         if not os.path.isabs(ini_file):
             ini_file = os.path.join(folder,ini_file)
 
@@ -132,66 +184,100 @@ class StarModel(object):
 
         logging.debug('Initializing StarModel from {}'.format(ini_file))
 
-        config = ConfigObj(ini_file)
+        c = configobj.ConfigObj(ini_file)
 
-        if 'N' in config:
-            try:
-                N = int(config['N'])
-            except:
-                N = [int(n) for n in config['N']]
-        else:
-            N = 1
-
-        if 'index' in config:
-            try:
-                index = int(config['index'])
-            except:
-                try:
-                    index = [int(i) for i in config['index']]
-                except:
-                    index = [[int(i) for i in inds] for inds in config['index']]
-        else:
-            index = 0
-
-        # Make, e.g., N=2, index=[0,1] work 
-        if type(index)==list:
-            if len(index)==N:
-                index = [index]
-
-        logging.debug('N={}, index={}'.format(N, index))
-
-        if 'obsfile' in config:
-            obsfile = config['obsfile']
-            if not os.path.isabs(obsfile):
-                obsfile = os.path.join(folder, obsfile)
-
-            df = pd.read_csv(obsfile)
-            obs = ObservationTree.from_df(df)
-            obs.define_models(ic, N=N, index=index)
-            for prop in ['Teff','logg','feh']:
-                if prop in config:
-                    val = [float(v) for v in config[prop]]
-                    obs.add_spectroscopy(**{prop:val})
-            if 'parallax' in config:
-                val = [float(v) for v in config['parallax']]
-                obs.add_parallax(val)
-                
-            new = cls(ic, obs=obs, N=N, index=index)
-
+        if len(c.sections) == 0:
+            kwargs = {k:_parse_config_value(c[k]) for k in c}
+            obs = None
         else:
             kwargs = {}
-            for kw in config.keys():
-                if kw in ic.bands or kw in ['Teff','logg','feh','parallax']:
-                    try:
-                        kwargs[kw] = float(config[kw])
-                    except:
-                        kwargs[kw] = (float(config[kw][0]), float(config[kw][1]))
 
-            new = cls(ic, N=N, index=index, **kwargs)
+            columns = ['name', 'band', 'resolution', 'relative', 'separation', 'pa', 'mag', 'e_mag']
+            df = pd.DataFrame(columns=columns)
+            i = 0
+            for k in c:
+                if type(c[k]) != configobj.Section:
+                    kwargs[k] = _parse_config_value(c[k])
+                else:
+                    instrument = k
+                    
+                    # Set values of 'resolution' and 'relative'
+                    if 'resolution' in c[k]:
+                        resolution = float(c[k]['resolution'])
+                        relative = True
+                    else:
+                        resolution = 4.0 #default
+                        relative = False
+                        
+                    # Overwrite value of 'relative' if it is explicitly set
+                    if 'relative' in c[k]:
+                        relative = c[k]['relative']=='True'
+                        
+                    
+                    # Check if there are multiple stars (defined by whether
+                    # any separations are listed).  
+                    # While we're at it, keep track of tags if they exist,
+                    #  and pull out the names of the bands.
+                    multiple = False
+                    tags = ['']
+                    bands = []
+                    for label in c[k]:
+                        m = re.search('separation(_\w+)?', label)
+                        if m:
+                            multiple = True
+                            if m.group(1) is not None:
+                                if m.group(1) not in tags:
+                                    tags.append(m.group(1))
+                        elif re.search('PA', label) or label in ['resolution', 'relative']:
+                            continue
+                        else:
+                            # At this point, this should be a photometric band
+                            m = re.search('([a-zA-Z]+)(_\w+)?', label)
+                            b = m.group(1)
+                            if b not in bands:
+                                bands.append(b)
+                    
+                    # For each band and each star, create a row 
+                    for b in bands:
+                        for tag in tags:
+                            row = {}
+                            row['name'] = instrument
+                            row['band'] = b
+                            row['resolution'] = resolution
+                            row['relative'] = relative
+                            if 'separation{}'.format(tag) in c[k]:
+                                row['separation'] = c[k]['separation{}'.format(tag)]
+                                row['pa'] = c[k]['PA{}'.format(tag)]
+                            else:
+                                row['separation'] = 0.
+                                row['pa'] = 0.
+                            mag, e_mag = c[k]['{}{}'.format(b,tag)]
+                            row['mag'] = mag
+                            row['e_mag'] = e_mag
+                            df = df.append(pd.DataFrame(row, index=[i]))
+                            i += 1
+                            
+                        # put the reference star in w/ mag=0
+                        if relative:
+                            row = {}
+                            row['name'] = instrument
+                            row['band'] = b
+                            row['resolution'] = resolution
+                            row['relative'] = relative
+                            row['separation'] = 0.
+                            row['pa'] = 0.
+                            row['mag'] = 0.
+                            row['e_mag'] = 0.01
+                            df = df.append(pd.DataFrame(row, index=[i]))
+                            i += 1
+                                
+            obs = ObservationTree.from_df(df)
 
+        if 'obsfile' in c:
+            obs = c['obsfile']
+
+        new = StarModel(ic, obs=obs, **kwargs)
         return new
-            
-        
 
     def bounds(self, prop):
         if self._bounds[prop] is not None:
@@ -242,7 +328,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
-            elif k not in self.ic.bands:
+            elif k in ['Teff','logg','feh']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
 
