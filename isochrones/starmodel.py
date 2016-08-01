@@ -59,6 +59,8 @@ class StarModel(object):
             self.obs.define_models(ic, N=N, index=index)
             self._add_properties(**kwargs)
         else:
+            if len(obs.get_model_nodes())==0:
+                obs.define_models(ic, N=N, index=index)
             self.obs = obs
 
 

@@ -274,10 +274,12 @@ class ObsNode(Node):
         """Coordinate distance from another ObsNode
         """
         r0, pa0 = (self.separation, self.pa)
+        #logging.debug('r0={}, pa0={} (from {})'.format(r0, pa0, self))
         ra0 = r0*np.sin(pa0*np.pi/180)
         dec0 = r0*np.cos(pa0*np.pi/180)
         
         r1, pa1 = (other.separation, other.pa)
+        #logging.debug('r1={}, pa1={} (from {})'.format(r0, pa0, other))
         ra1 = r1*np.sin(pa1*np.pi/180)
         dec1 = r1*np.cos(pa1*np.pi/180)
 
@@ -485,12 +487,12 @@ class ModelNode(Node):
 class Source(object):
     def __init__(self, mag, e_mag, separation=0., pa=0.,
                 relative=False, reference=False):
-        self.mag = mag
-        self.e_mag = e_mag
-        self.separation = separation
-        self.pa = pa
-        self.relative = relative
-        self.reference = reference
+        self.mag = float(mag)
+        self.e_mag = float(e_mag)
+        self.separation = float(separation)
+        self.pa = float(pa)
+        self.relative = bool(relative)
+        self.reference = bool(reference)
 
 
 class Observation(object):
@@ -808,11 +810,14 @@ class ObservationTree(Node):
             leaves = self.select_leaves(leaves)
 
         if np.isscalar(N):
-            N = (np.ones(len(leaves))*N).astype(int)
+            N = (np.ones(len(leaves))*N)
             #if np.size(index) > 1:
             #    index = [index]
+        N = np.array(N).astype(int)
+
         if np.isscalar(index):
-            index = (np.ones_like(N)*index).astype(int)
+            index = (np.ones_like(N)*index)
+        index = np.array(index).astype(int)
 
         # Add the appropriate number of model nodes to each
         #  star in the highest-resoluion image
@@ -821,13 +826,41 @@ class ObservationTree(Node):
             s.remove_children()
             s.add_model(ic, n, i)
 
-        # Make sure there are no model-less hanging leaves.
-        self.trim()
+        # For each system, make sure tag _0 is the brightest.
+        self._fix_labels()
 
         self._N = N
         self._index = index
 
         self._clear_all_leaves()
+
+    def _fix_labels(self):
+        """For each system, make sure tag _0 is the brightest
+        """
+        for s in self.systems:
+            mag0 = np.inf
+            n0 = None
+            for n in self.get_system(s):
+                mag, _ = n.parent.value
+                if mag < mag0:
+                     mag0 = mag
+                     n0 = n
+
+            # If brightest is not tag _0, then switch them.
+            if n0.tag != 0:
+                n_other = self.get_leaf('{}_{}'.format(s,0))        
+                n_other.tag = n0.tag
+                n0.tag = 0
+
+    def get_system(self, ind):
+        system = []
+        for l in self.leaves:
+            try:
+                if l.index==ind:
+                    system.append(l)
+            except AttributeError:
+                pass
+        return system
 
     def clear_models(self):
         for n in self:
