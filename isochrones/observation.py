@@ -722,7 +722,7 @@ class ObservationTree(Node):
         df = store[path+'/df']
         new = cls.from_df(df)
         
-        new.define_models(Dartmouth_Isochrone, attrs.N, attrs.index)
+        new.define_models(Dartmouth_Isochrone, N=attrs.N, index=attrs.index)
         new.spectroscopy = attrs.spectroscopy
         new.parallax = attrs.parallax
         store.close()
