@@ -770,6 +770,8 @@ class StarModel(object):
             if n.relative:
                 name = '{} $\Delta${}'.format(n.instrument, n.band)
                 ref = n.reference
+                if ref is None:
+                    continue
                 ref_labels = [l.label for l in ref.get_model_nodes()]
                 ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
                 tot_ref_mag = addmags(*ref_mags)
