@@ -236,21 +236,11 @@ class Node(object):
         return s
     
 class ObsNode(Node):
-    def __init__(self, instrument, band, value, 
-                 resolution,
-                 separation=0., pa=0., 
-                 relative=False,
-                 reference=None):
+    def __init__(self, observation, source, ref_node=None):
 
-        self.instrument = instrument
-        self.band = band
-        self.value = value
-        self.resolution = resolution
-        self.relative = relative
-        self.reference = reference
-        
-        self.separation = separation
-        self.pa = pa
+        self.observation = observation
+        self.source = source
+        self.reference = ref_node
         
         self.children = []
         self.parent = None
@@ -264,6 +254,35 @@ class ObsNode(Node):
         #for model_mag caching
         self._cache_key = None
         self._cache_val = None    
+
+    @property
+    def instrument(self):
+        return self.observation.name
+    
+    @property
+    def band(self):
+        return self.observation.band
+
+    @property
+    def value(self):
+        return (self.source.mag, self.source.e_mag)
+    
+    @property
+    def resolution(self):
+        return self.observation.resolution
+    
+    @property
+    def relative(self):
+        return self.source.relative
+    
+    @property
+    def separation(self):
+        return self.source.separation
+    
+    @property
+    def pa(self):
+        return self.source.pa
+    
 
     @property
     def value_str(self):
@@ -490,13 +509,13 @@ class ModelNode(Node):
 
 class Source(object):
     def __init__(self, mag, e_mag, separation=0., pa=0.,
-                relative=False, reference=False):
+                relative=False, is_reference=False):
         self.mag = float(mag)
         self.e_mag = float(e_mag)
         self.separation = float(separation)
         self.pa = float(pa)
         self.relative = bool(relative)
-        self.reference = bool(reference)
+        self.is_reference = bool(is_reference)
 
     def __str__(self):
         return '({}, {}) @({}, {})'.format(self.mag, self.e_mag,
@@ -521,31 +540,28 @@ class Observation(object):
         self.name = name
         self.band = band
         self.resolution = resolution
-        self.sources = []
-        if sources is None:
-            sources = []
-        for s in sources:
-            self.add_source(s)
-        
-    def add_source(self, source):
-        """
-        Adds source to observation, keeping sorted order (in separation)
-        """
-        if not type(source)==Source:
-            raise TypeError('Can only add Source object.')
+        if not np.all(type(s)==Source for s in sources):
+            raise ValueError('Source list must be all Source objects.')
+        self.sources = sources
+        self.relative = relative
 
-        if len(self.sources)==0:
-            self.sources.append(source)
-        else:
-            ind = 0
-            for s in self.sources:
-                # Keep sorted order of separation
-                if source.separation < s.separation: 
-                    break
-                ind += 1
+        self._set_reference()
 
-            self.sources.insert(ind, source)
-        
+    @property
+    def brightest(self):
+        mag0 = np.inf
+        s0 = None
+        for s in self.sources:
+            if s.mag < mag0:
+                mag0 = s.mag
+                s0 = s
+        return s
+
+    def _set_reference(self):
+        """If relative, make sure reference node is set to brightest.
+        """
+        self.brightest.is_reference = True
+
     def __str__(self):
         return '{}-{}'.format(self.name, self.band)
     
@@ -1032,25 +1048,16 @@ class ObservationTree(Node):
         self.children = []
 
         for i,o in enumerate(self._observations):
-            ref_node = None
+            s0 = o.brightest
+            ref_node = ObsNode(o, s0)
             for s in o.sources:
-
-                # Construct Node
-                if s.relative and ref_node is None:
-                    node = ObsNode(o.name, o.band,
-                                       (s.mag, s.e_mag), 
-                                        o.resolution,
-                                        relative=True, 
-                                        reference=None)
-                    ref_node = node
+                if s.relative and not s.is_reference:
+                    node = ObsNode(o, s, ref_node=ref_node)
+                elif s.relative and s.is_reference:
+                    node = ref_node
                 else:
-                    node = ObsNode(o.name, o.band, 
-                                   (s.mag, s.e_mag),
-                                   o.resolution,
-                                   separation=s.separation, pa=s.pa,
-                                   relative=s.relative,
-                                   reference=ref_node)
-                    
+                    node = ObsNode(o, s)
+                
                 # For first level, no need to choose parent
                 if i==0:
                     parent = self
