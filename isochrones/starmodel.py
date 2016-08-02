@@ -764,11 +764,23 @@ class StarModel(object):
         for n in self.obs.get_obs_nodes():
             labels = [l.label for l in n.get_model_nodes()]
             band = n.band
-            name = '{} {}'.format(n.instrument, n.band)
             mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
-            tot_mags.append(addmags(*mags))
+            tot_mag = addmags(*mags)
+
+            if n.relative:
+                name = '{} $\Delta${}'.format(n.instrument, n.band)
+                ref = n.reference
+                ref_labels = [l.label for l in ref.get_model_nodes()]
+                ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
+                tot_ref_mag = addmags(*ref_mags)
+                tot_mags.append(tot_mag - tot_ref_mag)
+                truths.append(n.value[0] - ref.value[0])
+            else:
+                name = '{} {}'.format(n.instrument, n.band)
+                tot_mags.append(tot_mag)
+                truths.append(n.value[0])
+
             names.append(name)
-            truths.append(n.value[0])
             rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)), 
                         max(truths[-1], np.percentile(tot_mags[-1],99.5))))
         tot_mags = np.array(tot_mags).T

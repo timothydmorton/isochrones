@@ -263,8 +263,8 @@ class ObsNode(Node):
 
         #for model_mag caching
         self._cache_key = None
-        self._cache_val = None
-        
+        self._cache_val = None    
+
     @property
     def value_str(self):
         return '({:.2f}, {:.2f})'.format(*self.value)
@@ -341,6 +341,10 @@ class ObsNode(Node):
                                                            self.band,
                                 self.value_str, self.separation, self.pa,
                                                            self.resolution)
+
+    @property
+    def obsname(self):
+        return '{}-{}'.format(self.instrument, self.band)    
 
     def get_system(self, ind):
         system = []
@@ -462,7 +466,7 @@ class ModelNode(Node):
     def contributing_observations(self):
         """The instrument-band for all the observations feeding into this model node
         """
-        return ['{}-{}'.format(n.instrument, n.band) for n in self.get_obs_ancestors()]
+        return [n.obsname for n in self.get_obs_ancestors()]
 
     def evaluate(self, p, prop):
         if prop in self.ic.bands:
@@ -494,6 +498,12 @@ class Source(object):
         self.relative = bool(relative)
         self.reference = bool(reference)
 
+    def __str__(self):
+        return '({}, {}) @({}, {})'.format(self.mag, self.e_mag,
+                                            self.separation, self.pa)
+
+    def __repr__(self):
+        return self.__str__()
 
 class Observation(object):
     """
@@ -607,6 +617,10 @@ class ObservationTree(Node):
             obs = Observation(n, b, g.resolution.mean(),
                               sources=sources, relative=g.relative.any())
             tree.add_observation(obs)
+
+        # For all relative mags, set reference to be brightest 
+
+
 
         return tree
 
@@ -861,6 +875,15 @@ class ObservationTree(Node):
             except AttributeError:
                 pass
         return system
+
+    @property    
+    def observations(self):
+        return self._observations
+
+    def select_observations(self, name):
+        """Returns nodes whose instrument-band matches 'name'
+        """
+        return [n for n in self.get_obs_nodes() if n.obsname==name]
 
     def clear_models(self):
         for n in self:
