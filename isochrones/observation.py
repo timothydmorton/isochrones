@@ -356,8 +356,12 @@ class ObsNode(Node):
     
     @property
     def label(self):
+        if self.source.relative:
+            band_str = 'delta-{}'.format(self.band)
+        else:
+            band_str = self.band
         return '{} {}={} @({:.2f}, {:.0f} [{:.2f}])'.format(self.instrument, 
-                                                           self.band,
+                                                           band_str,
                                 self.value_str, self.separation, self.pa,
                                                            self.resolution)
 
