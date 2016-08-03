@@ -546,11 +546,35 @@ class Observation(object):
         self.resolution = resolution
         if not np.all(type(s)==Source for s in sources):
             raise ValueError('Source list must be all Source objects.')
-        self.sources = sources
-        self.relative = relative
 
+        self.sources = []
+        if sources is None:
+            sources = []
+        for s in sources:
+            self.add_source(s)
+
+        self.relative = relative
         self._set_reference()
 
+    def add_source(self, source):
+        """
+        Adds source to observation, keeping sorted order (in separation)
+        """
+        if not type(source)==Source:
+            raise TypeError('Can only add Source object.')
+
+        if len(self.sources)==0:
+            self.sources.append(source)
+        else:
+            ind = 0
+            for s in self.sources:
+                # Keep sorted order of separation
+                if source.separation < s.separation: 
+                    break
+                ind += 1
+
+            self.sources.insert(ind, source)
+            
     @property
     def brightest(self):
         mag0 = np.inf
@@ -843,6 +867,10 @@ class ObservationTree(Node):
         elif type(leaves)==type(''):
             leaves = self.select_leaves(leaves)
 
+        # Sort leaves by distance, to ensure system 0 will be assigned
+        # to the main reference star.
+
+
         if np.isscalar(N):
             N = (np.ones(len(leaves))*N)
             #if np.size(index) > 1:
@@ -869,7 +897,8 @@ class ObservationTree(Node):
         self._clear_all_leaves()
 
     def _fix_labels(self):
-        """For each system, make sure tag _0 is the brightest
+        """For each system, make sure tag _0 is the brightest, and make sure 
+        system 0 contains the brightest star in the highest-resolution image
         """
         for s in self.systems:
             mag0 = np.inf
@@ -885,6 +914,8 @@ class ObservationTree(Node):
                 n_other = self.get_leaf('{}_{}'.format(s,0))        
                 n_other.tag = n0.tag
                 n0.tag = 0
+
+
 
     def get_system(self, ind):
         system = []
