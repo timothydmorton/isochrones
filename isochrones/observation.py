@@ -574,7 +574,7 @@ class Observation(object):
                 ind += 1
 
             self.sources.insert(ind, source)
-            
+
     @property
     def brightest(self):
         mag0 = np.inf
@@ -583,7 +583,7 @@ class Observation(object):
             if s.mag < mag0:
                 mag0 = s.mag
                 s0 = s
-        return s
+        return s0
 
     def _set_reference(self):
         """If relative, make sure reference node is set to brightest.
