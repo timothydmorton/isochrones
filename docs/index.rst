@@ -88,10 +88,35 @@ the following:
     Teff = (5770, 80)
     logg = (4.44, 0.08)
     feh = (0.00, 0.10)
-    
+
+    # StarModel needs at least one apparent mag
+    V=(5.0,0.1)   
+
     dar = Dartmouth_Isochrone()
 
-    model  = StarModel(dar, Teff=Teff, logg=logg, feh=feh)
+    model  = StarModel(dar, Teff=Teff, logg=logg, feh=feh, V=V)
+    model.fit()
+
+
+Adding in a Parallax
+--------------------
+
+
+.. code-block:: python
+
+    #spectroscopic properties (value, uncertainty)
+    Teff = (5770, 80)
+    logg = (4.44, 0.08)
+    feh = (0.00, 0.10)
+    V=(5.0,0.1)
+    parallax=(100,1)
+    maxAV = 0.01
+    dar = Dartmouth_Isochrone()
+    
+    model  = StarModel(
+        dar, Teff=Teff, feh=feh, logg=logg, V=V, parallax=parallax, maxAV=maxAV
+	)
+
     model.fit()
 
 The model now has a ``samples`` property that contains all of the
