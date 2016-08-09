@@ -219,7 +219,7 @@ class StarModel(object):
                     # While we're at it, keep track of tags if they exist,
                     #  and pull out the names of the bands.
                     multiple = False
-                    tags = ['']
+                    tags = []
                     bands = []
                     for label in c[k]:
                         m = re.search('separation(_\w+)?', label)
@@ -236,8 +236,10 @@ class StarModel(object):
                             b = m.group(1)
                             if b not in bands:
                                 bands.append(b)
-                    
+
                     # For each band and each star, create a row 
+                    if len(tags)==0:
+                        tags = ['']
                     for b in bands:
                         for tag in tags:
                             row = {}
