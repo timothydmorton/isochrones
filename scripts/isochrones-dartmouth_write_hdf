@@ -9,9 +9,10 @@ import os, re, sys
 import glob
 
 from isochrones.config import ISOCHRONES 
+DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
 
 def get_filenames(phot, afe='afep0', y=''):
-    return glob.glob('{3}/dartmouth/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,ISOCHRONES))
+    return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,DATADIR))
 
 def get_feh(filename):
     m = re.search('feh([mp])(\d+)afe', filename)
@@ -55,7 +56,7 @@ if __name__=='__main__':
     phot = sys.argv[1]
     df = df_all(phot)
 
-    h5file = os.path.join('{}.h5'.format(phot))
+    h5file = os.path.join(DATADIR,'{}.h5'.format(phot))
     df.to_hdf(h5file,'df')
     print('{} written.'.format(h5file))
               
