@@ -17,11 +17,9 @@ else:
 import pickle
 
 from ..isochrone import Isochrone
-
+from ..config import ISOCHRONES
 #DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-DATADIR = os.getenv('ISOCHRONES',
-                    os.path.expanduser(os.path.join('~','.isochrones')))
-DATADIR = os.path.join(DATADIR, 'dartmouth')
+DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
 if not os.path.exists(DATADIR):
     os.path.mkdirs(DATADIR)
 

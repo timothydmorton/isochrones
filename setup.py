@@ -39,7 +39,9 @@ setup(name = "isochrones",
     scripts = ['scripts/starfit',
                'scripts/batch_starfit',
                'scripts/starmodel_select',
-               'scripts/starfit-summarize'],
+               'scripts/starfit-summarize',
+               'scripts/isochrones-dartmouth_write_hdf',
+               'scripts/isochrones-dartmouth_write_tri'],
     classifiers=[
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Science/Research',
@@ -47,8 +49,8 @@ setup(name = "isochrones",
       'Programming Language :: Python',
       'Topic :: Scientific/Engineering :: Astronomy'
       ],
-    install_requires=['plotutils','pandas>=0.14','astropy>=0.3','emcee>=2.0',
-                      'numpy>=1.9', 'tables>=3.0', 'triangle_plot',
+    install_requires=['pandas>=0.14','astropy>=0.3','emcee>=2.0',
+                      'numpy>=1.9', 'tables>=3.0',
                       'asciitree', 'corner'],
     zip_safe=False
 ) 

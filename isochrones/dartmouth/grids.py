@@ -3,10 +3,9 @@ import numpy as np
 import pandas as pd
 import logging
 
+from ..config import ISOCHRONES
 # 
-d = os.getenv('ISOCHRONES',
-                    os.path.expanduser(os.path.join('~','.isochrones')))
-DATADIR = os.path.join(d,'dartmouth')
+DATADIR = os.path.join(ISOCHRONES,'dartmouth')
 
 # Columns in DataFrames that are *not* magnitudes
 COMMON_COLUMNS = ['EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh']
