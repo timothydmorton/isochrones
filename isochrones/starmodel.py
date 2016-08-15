@@ -361,10 +361,11 @@ class StarModel(object):
             AV_lnprior = 0
         if np.isnan(AV_lnprior):
             logging.warning('AV prior is nan at {}'.format(AV))
-            
-        # Additional prior to make AV roughly correlate w/ distance
-        mean_AV = distance / 1000.
-        AV_lnprior += -0.5*(AV - mean_AV)**2 / AV_SIG**2
+
+        if AV is not None:
+            # Additional prior to make AV roughly correlate w/ distance
+            mean_AV = distance / 1000.
+            AV_lnprior += -0.5*(AV - mean_AV)**2 / AV_SIG**2
 
         lnprior = (mass_lnprior + age_lnprior + feh_lnprior + 
                 distance_lnprior + AV_lnprior)
@@ -376,7 +377,11 @@ class StarModel(object):
         log-posterior of model at given parameters
         """
         if not self.use_emcee:
-            mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
+            try:
+                mass, age, feh, dist, AV = (p[0], p[1], p[2], p[3], p[4])
+            except IndexError:
+                mass, age, feh = (p[0], p[1], p[2])
+                dist, AV = None, None
         else:
             if len(p)==5:
                 fit_for_distance = True
