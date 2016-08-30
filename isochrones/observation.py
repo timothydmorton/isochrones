@@ -212,8 +212,26 @@ class Node(object):
     def get_obs_nodes(self):
         return [l for l in self if isinstance(l, ObsNode)]
 
+    def get_obs_leaves(self):
+        """Returns the last obs nodes that are leaves
+        """
+        obs_leaves = []
+        for n in self:
+            if n.is_leaf:
+                if isinstance(n, ModelNode):
+                    l = n.parent
+                else:
+                    l = n
+            if l not in obs_leaves:
+                obs_leaves.append(l)
+        return obs_leaves
+
     def get_model_nodes(self):
         return [l for l in self._get_leaves() if isinstance(l, ModelNode)]
+
+    @property
+    def N_model_nodes(self):
+        return len(self.get_model_nodes())
 
     def print_tree(self):
         print(self.label)

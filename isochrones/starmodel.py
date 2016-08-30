@@ -3,6 +3,8 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 import os, os.path, sys, re, glob
+import itertools
+from copy import deepcopy
 
 import numpy.random as rand
 import logging
@@ -421,10 +423,7 @@ class StarModel(object):
             
     @property
     def labelstring(self):
-        s = ''
-        for l in self.obs.leaf_labels:
-            s += l+'-'
-        return s[:-1]
+        return '--'.join(['-'.join([n.label for n in l.children]) for l in self.obs.get_obs_leaves()])
 
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
@@ -890,3 +889,59 @@ class StarModel(object):
         mod._samples = samples
         mod._mnest_basename = basename
         return mod
+
+class StarModelGroup(object):
+    """A collection of StarModel objects with different model node specifications
+
+    Pass a single StarModel, and model nodes will be cleared and replaced with
+    different variants.
+    """
+    def __init__(self, base_model, max_multiples=1, max_stars=2):
+        base_model.obs.clear_models()
+        self.base_model = base_model
+        self.max_multiples = max_multiples
+        self.max_stars = max_stars
+
+        self.models = []
+        for N, index in self.model_options:
+            mod = deepcopy(self.base_model)
+            mod.obs.define_models(self.ic, N=N, index=index)
+            self.models.append(mod)
+
+    @property
+    def ic(self):
+        return self.base_model.ic
+
+    @property
+    def N_stars(self):
+        return len(self.base_model.obs.leaves)
+
+    @property
+    def N_options(self):
+        return N_options(self.N_stars, max_multiples=self.max_multiples,
+                         max_stars=self.max_stars)
+
+    @property
+    def index_options(self):
+        return index_options(self.N_stars)
+
+    @property
+    def model_options(self):
+        return [(N, index) for N in self.N_options for index in self.index_options]
+
+########## Utility functions ###############
+
+def N_options(N_stars, max_multiples=1, max_stars=2):
+    return [N for N in itertools.product(np.arange(max_stars) + 1, repeat=N_stars) 
+            if (np.array(N)>1).sum() <= max_multiples]
+
+def index_options(N_stars):
+    if N_stars==1:
+        return [0]
+    
+    options = []
+    for ind in itertools.product(xrange(N_stars), repeat=N_stars):
+        diffs = np.array(ind[1:]) - np.array(ind[:-1])
+        if ind[0]==0 and diffs.max()<=1:
+            options.append(ind)
+    return options
