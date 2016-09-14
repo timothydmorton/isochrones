@@ -12,7 +12,7 @@ from itertools import chain, imap, izip, count
 from collections import OrderedDict
 
 from .dartmouth import Dartmouth_Isochrone
-from .utils import addmags
+from .utils import addmags, distance
 
 class NodeTraversal(Traversal):
     """
@@ -212,6 +212,11 @@ class Node(object):
     def get_obs_nodes(self):
         return [l for l in self if isinstance(l, ObsNode)]
 
+    @property
+    def obs_leaf_nodes(self):
+        return self.get_obs_leaves()
+    
+
     def get_obs_leaves(self):
         """Returns the last obs nodes that are leaves
         """
@@ -310,6 +315,8 @@ class ObsNode(Node):
     def distance(self, other):
         """Coordinate distance from another ObsNode
         """
+        return distance((self.separation, self.pa), (other.separation, other.pa))
+        
         r0, pa0 = (self.separation, self.pa)
         #logging.debug('r0={}, pa0={} (from {})'.format(r0, pa0, self))
         ra0 = r0*np.sin(pa0*np.pi/180)
@@ -546,6 +553,19 @@ class Source(object):
     def __repr__(self):
         return self.__str__()
 
+class Star(object):
+    """Theoretical counterpart of Source. 
+    """
+    def __init__(self, pars, separation, pa):
+        self.pars = pars
+        self.separation = separation
+        self.pa = pa        
+        
+    def distance(self, other):
+        return distance((self.separation, self.pa),
+                        (other.separation, other.pa))
+
+
 class Observation(object):
     """
     Contains relevant information about imaging observation
@@ -562,8 +582,9 @@ class Observation(object):
         self.name = name
         self.band = band
         self.resolution = resolution
-        if not np.all(type(s)==Source for s in sources):
-            raise ValueError('Source list must be all Source objects.')
+        if sources is not None:
+            if not np.all(type(s)==Source for s in sources):
+                raise ValueError('Source list must be all Source objects.')
 
         self.sources = []
         if sources is None:
@@ -572,6 +593,35 @@ class Observation(object):
             self.add_source(s)
 
         self.relative = relative
+        self._set_reference()
+
+    def observe(self, stars, unc, ic=None):
+        """Creates and adds appropriate synthetic Source objects for list of stars (max 2 for now)
+        """
+        if ic is None:
+            ic = Dartmouth_Isochrone()
+
+        if len(stars) > 2:
+            raise NotImplementedError('No support yet for > 2 synthetic stars')
+            
+        mags = [ic(*s.pars)['{}_mag'.format(self.band)].values[0] for s in stars]
+
+        d = stars[0].distance(stars[1])
+        
+        if d < self.resolution:
+            mag = addmags(*mags) + unc*np.random.randn()
+            sources = [Source(mag, unc, stars[0].separation, stars[0].pa, 
+                           relative=self.relative)]
+        else:
+            mags = np.array([m + unc*np.random.randn() for m in mags])
+            if self.relative:
+                mags -= mags.min()
+            sources = [Source(m, unc, s.separation, s.pa, relative=self.relative)
+                        for m,s in zip(mags, stars)]
+        
+        for s in sources:
+            self.add_source(s)
+
         self._set_reference()
 
     def add_source(self, source):
@@ -593,6 +643,8 @@ class Observation(object):
 
             self.sources.insert(ind, source)
 
+        #self._set_reference()
+
     @property
     def brightest(self):
         mag0 = np.inf
@@ -606,7 +658,8 @@ class Observation(object):
     def _set_reference(self):
         """If relative, make sure reference node is set to brightest.
         """
-        self.brightest.is_reference = True
+        if len(self.sources) > 0:
+            self.brightest.is_reference = True
 
     def __str__(self):
         return '{}-{}'.format(self.name, self.band)
@@ -1119,4 +1172,8 @@ class ObservationTree(Node):
                     parent = self._find_closest(node)
                         
                 parent.add_child(node)
+
+    @classmethod
+    def synthetic(cls, stars, surveys):
+        pass
 

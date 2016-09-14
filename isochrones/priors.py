@@ -28,18 +28,30 @@ def q_prior(q, m=1, gamma=0.3, bounds=(0.1,1)):
     """Default prior on mass ratio q ~ q^gamma
     """
     qmin, qmax = bounds
-    if q < qmin or q > qmax:
-        return 0
+    try:
+        if q < qmin or q > qmax:
+            return 0
+    except ValueError:
+        pass
+
     C = 1/(1/(gamma+1)*(1 - qmin**(gamma+1)))
-    return C*q**gamma
+    result = C*q**gamma
+    if np.size(result) > 1:
+        result[(q < qmin) | (q > qmax)] = 0
+    return result
 
 def salpeter_prior(m,alpha=-2.35, bounds=(0.1,10)):
     minmass, maxmass = bounds
     C = (1+alpha)/(maxmass**(1+alpha)-minmass**(1+alpha))
-    if m < minmass or m > maxmass:
-        return 0
-    else:
-        return C*m**(alpha)
+    try:
+        if m < minmass or m > maxmass:
+            return 0
+        else:   
+            return C*m**(alpha)
+    except ValueError:
+        result = C*m**(alpha)
+        result[(m < minmass) | (m > maxmass)] = 0
+        return result
 
 def local_fehdist(feh, bounds=None):
     """feh PDF based on local SDSS distribution

@@ -7,6 +7,7 @@ import itertools
 from copy import deepcopy
 
 import numpy.random as rand
+from scipy.stats import gaussian_kde
 import logging
 import json
 import emcee
@@ -14,6 +15,7 @@ import corner
 import pymultinest
 
 import configobj
+from astropy.coordinates import SkyCoord
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source 
@@ -62,9 +64,18 @@ class StarModel(object):
     """
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
+                 RA=None, dec=None, coords=None,
                  **kwargs):
 
         self.name = name
+
+        if coords is None:
+            if RA is not None and dec is not None:
+                try: 
+                    coords = SkyCoord(RA, dec)
+                except:
+                    coords = SkyCoord(float(RA), float(dec), unit='deg')
+        self.coords = coords
         self._ic = ic
 
         self.use_emcee = use_emcee
@@ -187,6 +198,9 @@ class StarModel(object):
         logging.debug('Initializing StarModel from {}'.format(ini_file))
 
         c = configobj.ConfigObj(ini_file)
+
+        #RA = c.get('RA')
+        #dec = c.get('dec')
 
         if len(c.sections) == 0:
             kwargs = {k:_parse_config_value(c[k]) for k in c}
@@ -792,7 +806,6 @@ class StarModel(object):
         return corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
 
 
-
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
 
@@ -897,8 +910,9 @@ class StarModelGroup(object):
     different variants.
     """
     def __init__(self, base_model, max_multiples=1, max_stars=2):
-        base_model.obs.clear_models()
-        self.base_model = base_model
+        
+        self.base_model = deepcopy(base_model)
+        self.base_model.obs.clear_models()
         self.max_multiples = max_multiples
         self.max_stars = max_stars
 
