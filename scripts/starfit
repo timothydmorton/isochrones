@@ -143,7 +143,7 @@ if __name__=='__main__':
                             props['N'] = nstars[mult]
 
                         mod = StarModel(ichrone, use_emcee=args.emcee, **props)
-                        chaindir = os.path.abspath(os.path.join(folder, chains))
+                        chaindir = os.path.abspath(os.path.join(folder, 'chains'))
                         mod.fit(basename=os.path.join(chaindir, '{}-'.format(folder,mult)),
                                 verbose=args.verbose, overwrite=args.overwrite)
 
