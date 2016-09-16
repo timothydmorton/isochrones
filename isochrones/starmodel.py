@@ -762,8 +762,11 @@ class StarModel(object):
     def triangle_physical(self, *args, **kwargs):
         return self.corner_physical(*args, **kwargs)
 
-    def corner_plots(self, **kwargs):
-        return self.corner_physical(**kwargs), self.corner_observed(**kwargs)
+    def corner_plots(self, basename, **kwargs):
+        fig1, fig2 = self.corner_physical(**kwargs), self.corner_observed(**kwargs)
+        fig1.savefig(basename + '_physical.png')
+        fig2.savefig(basename + '_observed.png')
+        return fig1, fig2
 
     def corner_physical(self, props=['mass','radius','feh','age','distance','AV'], **kwargs):
         collective_props = ['feh','age','distance','AV']
