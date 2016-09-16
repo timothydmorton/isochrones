@@ -781,6 +781,9 @@ class StarModel(object):
 
         return self.corner(props, range=rng, **kwargs)
 
+    def mag_plot(self, *args, **kwargs):
+        pass
+
     def corner_observed(self, **kwargs):
         """Makes corner plot for each observed node magnitude
         """
