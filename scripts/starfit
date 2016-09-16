@@ -22,7 +22,7 @@ import time
 from configobj import ConfigObj
 import argparse
 
-from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
+from isochrones.starmodel import StarModel
 
 def initLogging(filename, logger):
     if logger == None:
@@ -86,15 +86,14 @@ if __name__=='__main__':
     else:
         multiplicities = ['single']
     
-    Models = {'single':StarModel,
-              'binary':BinaryStarModel,
-              'triple':TripleStarModel}
+    nstars = {'single':1,
+              'binary':2,
+              'triple':3}
 
     logger = None #dummy
     
     for i,folder in enumerate(args.folders):
         for mult in multiplicities:
-            Model = Models[mult]
             model_filename = '{}_starmodel_{}.h5'.format(args.models, mult)
 
 
@@ -109,8 +108,8 @@ if __name__=='__main__':
                 start = time.time()
                 if args.plot_only:
                     try:
-                        mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
-                                             name=name)
+                        mod = StarModel.load_hdf('{}/{}'.format(folder,model_filename), 
+                                               name=name)
                     except:
                         pass
                 else:
@@ -118,7 +117,7 @@ if __name__=='__main__':
                     fit_model = True
                     
                     try:
-                        mod = Model.load_hdf('{}/{}'.format(folder,model_filename), 
+                        mod = StarModel.load_hdf('{}/{}'.format(folder,model_filename), 
                                              name=name)
                         fit_model = False
                     except:
@@ -130,15 +129,20 @@ if __name__=='__main__':
 
                         props = {}
                         for kw in config.keys():
+                            if kw=='name':
+                                continue
                             try:
                                 props[kw] = float(config[kw])
                             except:
                                 props[kw] = (float(config[kw][0]), float(config[kw][1]))
 
+                        if 'name' not in props:
+                            props['name'] = name
 
-                        use_local_fehprior = not args.no_local_fehprior
-                        mod = Model(ichrone, use_emcee=args.emcee, name=name,
-                                    **props)
+                        if 'N' not in props:
+                            props['N'] = nstars[mult]
+
+                        mod = StarModel(ichrone, use_emcee=args.emcee, **props)
                         mod.fit(basename='{}/chains/{}-'.format(folder,mult),
                                 verbose=args.verbose, overwrite=args.overwrite)
 
@@ -146,25 +150,25 @@ if __name__=='__main__':
                     else:
                         logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
 
-                # Only make triangle plots if they are older 
+                # Only make corner plots if they are older 
                 #  than the starmodel hdf file
-                make_triangles = False
+                make_corners = False
                 for x in ['physical', 'observed']:
                     f = os.path.join(folder, 
-                                     '{}_triangle_{}_{}.png'.format(args.models, mult, x))
+                                     '{}_corner_{}_{}.png'.format(args.models, mult, x))
                     if not os.path.exists(f):
-                        make_triangles = True
+                        make_corners = True
                         break
                     else:
                         t_mod = os.path.getmtime(os.path.join(folder,model_filename))
                         t_plot = os.path.getmtime(f)
                         if t_mod > t_plot:
-                            make_triangles=True
+                            make_corners=True
 
-                if make_triangles or args.plot_only:
-                    triangle_base = os.path.join(folder, '{}_triangle_{}'.format(args.models, 
+                if make_corners or args.plot_only:
+                    corner_base = os.path.join(folder, '{}_corner_{}'.format(args.models, 
                                                                                  mult))
-                    fig1,fig2 = mod.triangle_plots(triangle_base)
+                    fig1,fig2 = mod.corner_plots(corner_base)
 
 
                 # Make mag plot if necessary.

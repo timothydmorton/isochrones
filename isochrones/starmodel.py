@@ -439,6 +439,12 @@ class StarModel(object):
     def labelstring(self):
         return '--'.join(['-'.join([n.label for n in l.children]) for l in self.obs.get_obs_leaves()])
 
+    def fit(self, **kwargs):
+        if self.use_emcee:
+            return self.fit_mcmc(**kwargs)
+        else:
+            return self.fit_multinest(**kwargs)
+
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
                       **kwargs):
@@ -756,7 +762,10 @@ class StarModel(object):
     def triangle_physical(self, *args, **kwargs):
         return self.corner_physical(*args, **kwargs)
 
-    def corner_physical(self, props=['mass','radius','feh','distance'], **kwargs):
+    def corner_plots(self, **kwargs):
+        return self.corner_physical(**kwargs), self.corner_observed(**kwargs)
+
+    def corner_physical(self, props=['mass','radius','feh','age','distance','AV'], **kwargs):
         collective_props = ['feh','age','distance','AV']
         indiv_props = [p for p in props if p not in collective_props]
         sys_props = [p for p in props if p in collective_props]
@@ -910,7 +919,7 @@ class StarModelGroup(object):
     different variants.
     """
     def __init__(self, base_model, max_multiples=1, max_stars=2):
-        
+
         self.base_model = deepcopy(base_model)
         self.base_model.obs.clear_models()
         self.max_multiples = max_multiples
