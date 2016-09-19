@@ -143,9 +143,10 @@ if __name__=='__main__':
                             props['N'] = nstars[mult]
 
                         mod = StarModel(ichrone, use_emcee=args.emcee, **props)
-                        chaindir = os.path.abspath(os.path.join(folder, 'chains'))
-                        mod.fit(basename=os.path.join(chaindir, '{}-'.format(folder,mult)),
-                                verbose=args.verbose, overwrite=args.overwrite)
+                        #chaindir = os.path.abspath(os.path.join(folder, 'chains'))
+                        #mod.fit(basename=os.path.join(chaindir, '{}-'.format(folder,mult)),
+                        #        verbose=args.verbose, overwrite=args.overwrite)
+                        mod.fit(verbose=args.verbose, overwrite=args.overwrite)
 
                         mod.save_hdf(os.path.join(folder, model_filename))
                     else:
