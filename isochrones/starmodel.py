@@ -467,7 +467,7 @@ class StarModel(object):
             elif s=='0_0-0_1-0_2':
                 s = 'triple'
 
-            self._mnest_basename = os.path.join('chains', s) 
+            self._mnest_basename = os.path.join('chains', s+'-') 
 
         return os.path.join(self.directory, self._mnest_basename)
 
@@ -513,6 +513,8 @@ class StarModel(object):
             self.mnest_basename = basename
 
         basename = self.mnest_basename
+        if verbose:
+
 
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):

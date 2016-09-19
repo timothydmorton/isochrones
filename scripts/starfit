@@ -125,27 +125,7 @@ if __name__=='__main__':
 
                     if fit_model or args.overwrite:
                         ini_file = os.path.join(folder, 'star.ini')
-                        config = ConfigObj(ini_file)
-
-                        props = {}
-                        for kw in config.keys():
-                            if kw=='name':
-                                continue
-                            try:
-                                props[kw] = float(config[kw])
-                            except:
-                                props[kw] = (float(config[kw][0]), float(config[kw][1]))
-
-                        if 'name' not in props:
-                            props['name'] = name
-
-                        if 'N' not in props:
-                            props['N'] = nstars[mult]
-
-                        mod = StarModel(ichrone, use_emcee=args.emcee, **props)
-                        #chaindir = os.path.abspath(os.path.join(folder, 'chains'))
-                        #mod.fit(basename=os.path.join(chaindir, '{}-'.format(folder,mult)),
-                        #        verbose=args.verbose, overwrite=args.overwrite)
+                        mod = StarModel.from_ini(ichrone, folder, use_emcee=args.emcee)
                         mod.fit(verbose=args.verbose, overwrite=args.overwrite)
 
                         mod.save_hdf(os.path.join(folder, model_filename))
