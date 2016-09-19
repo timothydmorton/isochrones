@@ -113,7 +113,12 @@ class StarModel(object):
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
 
+        self._directory = '.'
         self._samples = None
+
+    @property
+    def directory(self):
+        return self._directory
 
     @property
     def ic(self):
@@ -121,9 +126,8 @@ class StarModel(object):
             self._ic = self._ic()
         return self._ic
 
-
     @classmethod
-    def from_ini(cls, ic, folder='.', ini_file='star.ini'):
+    def from_ini(cls, ic, folder='.', ini_file='star.ini', **kwargs):
         """
         Initialize a StarModel from a .ini file
 
@@ -203,10 +207,10 @@ class StarModel(object):
         #dec = c.get('dec')
 
         if len(c.sections) == 0:
-            kwargs = {k:_parse_config_value(c[k]) for k in c}
+            for k in c:
+                kwargs[k] = _parse_config_value(c[k])
             obs = None
         else:
-            kwargs = {}
 
             columns = ['name', 'band', 'resolution', 'relative', 'separation', 'pa', 'mag', 'e_mag']
             df = pd.DataFrame(columns=columns)
@@ -294,7 +298,11 @@ class StarModel(object):
         if 'obsfile' in c:
             obs = c['obsfile']
 
+        logging.debug('Obs is {}'.format(obs))
+
         new = StarModel(ic, obs=obs, **kwargs)
+        new._directory = os.path.abspath(folder)
+
         return new
 
     def bounds(self, prop):
@@ -328,14 +336,17 @@ class StarModel(object):
 
         Creates self.obs
         """
+        logging.debug('Building ObservationTree...')
         tree = ObservationTree()
         for k,v in kwargs.items():
             if k in self.ic.bands:
                 if np.size(v) != 2:
                     logging.warning('{}={} ignored.'.format(k,v))
                     continue
-                o = Observation('',k,99) #bogus resolution=99
-                o.add_source(Source(v[0],v[1]))
+                o = Observation('', k, 99) #bogus resolution=99
+                s = Source(v[0], v[1])
+                o.add_source(s)
+                logging.debug('Adding {} ({})'.format(s,o))
                 tree.add_observation(o)
         self.obs = tree
 
@@ -445,8 +456,31 @@ class StarModel(object):
         else:
             return self.fit_multinest(**kwargs)
 
+    @property
+    def mnest_basename(self):
+        if not hasattr(self, '_mnest_basename'):
+            s = self.labelstring
+            if s=='0_0':
+                s = 'single'
+            elif s=='0_0-0_1':
+                s = 'binary'
+            elif s=='0_0-0_1-0_2':
+                s = 'triple'
+
+            self._mnest_basename = os.path.join('chains', s) 
+
+        return os.path.join(self.directory, self._mnest_basename)
+
+    @mnest_basename.setter
+    def mnest_basename(self, basename):
+        if os.path.isabs(basename):
+            self._mnest_basename = basename
+        else:
+            self._mnest_basename = os.path.join('chains', basename)
+
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
+                      test=False,
                       **kwargs):
         """
         Fits model using MultiNest, via pymultinest.  
@@ -476,19 +510,9 @@ class StarModel(object):
         """
 
         if basename is not None:
-            if not os.path.isabs(basename):
-                basename = os.path.join('chains',basename)
+            self.mnest_basename = basename
 
-        if basename is None:
-            s = self.labelstring
-            if s=='0_0':
-                s = 'single'
-            elif s=='0_0-0_1':
-                s = 'binary'
-            elif s=='0_0-0_1-0_2':
-                s = 'triple'
-            #s += '-'
-            basename = os.path.join('chains',s) 
+        basename = self.mnest_basename
 
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):
@@ -525,17 +549,23 @@ class StarModel(object):
             files = glob.glob('{}*'.format(basename))
             [os.remove(f) for f in files]
 
-        self._mnest_basename = basename
+        mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=basename,
+                        verbose=verbose)
 
-        pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
-                        n_live_points=n_live_points, outputfiles_basename=basename,
-                        verbose=verbose,
-                        **kwargs)
+        for k,v in kwargs.items():
+            mnest_kwargs[k] = v
 
-        #with open(propfile, 'w') as f:
-        #    json.dump(self.properties, f, indent=2)
+        if test:
+            print('pymultinest.run() with the following kwargs: {}'.format(mnest_kwargs))
+        else:
 
-        self._make_samples()
+            pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
+                            **mnest_kwargs)
+
+            #with open(propfile, 'w') as f:
+            #    json.dump(self.properties, f, indent=2)
+
+            self._make_samples()
 
     @property
     def mnest_analyzer(self):
@@ -916,6 +946,7 @@ class StarModel(object):
                   use_emcee=use_emcee, name=name)
         mod._samples = samples
         mod._mnest_basename = basename
+        mod._directory = os.path.dirname(filename)
         return mod
 
 class StarModelGroup(object):
