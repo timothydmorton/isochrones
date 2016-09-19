@@ -514,7 +514,7 @@ class StarModel(object):
 
         basename = self.mnest_basename
         if verbose:
-
+            logging.info('MultiNest basename: '.format(basename))
 
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):
