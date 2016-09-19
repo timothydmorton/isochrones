@@ -6,11 +6,7 @@ import logging
 
 import argparse
 
-from isochrones import StarModel, BinaryStarModel, TripleStarModel
-
-Model = {'single':StarModel,
-         'binary':BinaryStarModel,
-         'triple':TripleStarModel}
+from isochrones import StarModel
 
 if __name__=='__main__':
 
@@ -36,7 +32,7 @@ if __name__=='__main__':
             m = re.search('{}_starmodel_(\w+)\.h5'.format(args.models), sm)
             if m:
                 name = m.group(1)
-                model = Model[name].load_hdf(sm)
+                model = StarModel.load_hdf(sm)
                 evidences.append(model.evidence)
 
         evidences = np.array(evidences)
