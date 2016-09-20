@@ -469,7 +469,10 @@ class StarModel(object):
 
             self._mnest_basename = os.path.join('chains', s+'-') 
 
-        return os.path.join(self.directory, self._mnest_basename)
+        if os.path.isabs(self._mnest_basename):
+            return self._mnest_basename
+        else:
+            return os.path.join(self.directory, self._mnest_basename)
 
     @mnest_basename.setter
     def mnest_basename(self, basename):
@@ -695,7 +698,7 @@ class StarModel(object):
     def _make_samples(self):
 
         if not self.use_emcee:
-            chain = np.loadtxt('{}post_equal_weights.dat'.format(self._mnest_basename))
+            chain = np.loadtxt('{}post_equal_weights.dat'.format(self.mnest_basename))
             lnprob = chain[:,-1]
             chain = chain[:,:-1]
         else:
