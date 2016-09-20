@@ -125,7 +125,10 @@ if __name__=='__main__':
 
                     if fit_model or args.overwrite:
                         ini_file = os.path.join(folder, 'star.ini')
-                        mod = StarModel.from_ini(ichrone, folder, use_emcee=args.emcee)
+                        c = ConfigObj(ini_file)
+                        N = nstars[mult] if 'N' not in c else None
+
+                        mod = StarModel.from_ini(ichrone, folder, use_emcee=args.emcee, N=N)
                         mod.fit(verbose=args.verbose, overwrite=args.overwrite)
 
                         mod.save_hdf(os.path.join(folder, model_filename))
