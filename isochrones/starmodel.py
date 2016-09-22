@@ -252,14 +252,16 @@ class StarModel(object):
                             continue
                         else:
                             # At this point, this should be a photometric band
-                            m = re.search('([a-zA-Z]+)(_\w+)?', label)
+                            m = re.search('([a-zA-Z0-9]+)(_\w+)?', label)
                             b = m.group(1)
                             if b not in bands:
                                 bands.append(b)
 
+                    # If a blank tags needs to be created, do so 
+                    if len(tags)==0 or bands[0] in c[k]:
+                        tags.append('')
+
                     # For each band and each star, create a row 
-                    if len(tags)==0:
-                        tags = ['']
                     for b in bands:
                         for tag in tags:
                             row = {}
