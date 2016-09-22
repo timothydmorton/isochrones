@@ -1050,7 +1050,7 @@ class ObservationTree(Node):
 
     @property
     def Nstars(self):
-        return sum([c.Nstars for c in self.children])
+        return {k:v for d in [c.Nstars for c in self.children] for k,v in d.items()}
 
     @property
     def systems(self):
