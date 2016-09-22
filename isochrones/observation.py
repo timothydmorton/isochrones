@@ -1050,7 +1050,16 @@ class ObservationTree(Node):
 
     @property
     def Nstars(self):
-        return {k:v for d in [c.Nstars for c in self.children] for k,v in d.items()}
+        if self._Nstars is None:
+            N = {}
+            for n in self.get_model_nodes():
+                if n.index not in N:
+                    N[n.index] = 1
+                else:
+                    N[n.index] += 1
+            self._Nstars = N
+
+        return self._Nstars
 
     @property
     def systems(self):
