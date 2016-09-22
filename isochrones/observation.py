@@ -705,6 +705,9 @@ class ObservationTree(Node):
         # Parallax measurements
         self.parallax = {}
 
+        # This will be calculated and set at first access
+        self._Nstars = None
+
         #likelihood cache
         self._cache_key = None
         self._cache_val = None
