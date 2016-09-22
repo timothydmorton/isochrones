@@ -1050,6 +1050,16 @@ class ObservationTree(Node):
             i += N[s] + 4
         return d
 
+    @property
+    def param_description(self):
+        N = self.Nstars
+        pars = []
+        for s in self.systems:
+            for j in xrange(N[s]):
+                pars.append('mass_{}_{}'.format(s,j))
+            for p in ['age', 'feh', 'distance', 'AV']:
+                pars.append('{}_{}'.format(p,s))
+        return pars
 
     @property
     def Nstars(self):
@@ -1066,7 +1076,9 @@ class ObservationTree(Node):
 
     @property
     def systems(self):
-        return list(chain(*[c.systems for c in self.children]))
+        # fix this! make sure it is unique!!!
+        lst = list(chain(*[c.systems for c in self.children]))
+        return sorted(set(lst))
     
     def print_ascii(self, fout=None, p=None):
         pardict = None
