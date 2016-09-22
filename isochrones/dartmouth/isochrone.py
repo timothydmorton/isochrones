@@ -87,7 +87,7 @@ class Dartmouth_Isochrone(Isochrone):
     """
     def __init__(self,bands=['g','r','i','z',
                              'J','H','K',
-                             'W1','W2','Kepler'], **kwargs): # minage=9 removed
+                             'W1','W2','W3','Kepler'], **kwargs): # minage=9 removed
         df = get_grid(bands)
 
         global TRI
