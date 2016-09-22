@@ -366,7 +366,17 @@ class ObsNode(Node):
                     N[n.index] += 1
             self._Nstars = N
         return self._Nstars
+    
+    def _recalc_Nstars(self):
+        N = {}
+        for n in self.get_model_nodes():
+            if n.index not in N:
+                N[n.index] = 1
+            else:
+                N[n.index] += 1
+        self._Nstars = N
         
+
     @property
     def systems(self):
         lst = self.Nstars.keys()
