@@ -6,16 +6,32 @@ import numpy as np
 import pandas as pd
 from configobj import ConfigObj, Section
 
+class EmptyQueryError(ValueError):
+    pass
+
 class VizierCatalog(object):
     def __init__(self, query):
         self.query = query
         self._table = None
         self._query_coords = None
         self._coords = None
+        self._empty = False
+
+    def __repr__(self):
+        return '{0}({1})'.format(type(self), repr(self.query))
+
+    def __str__(self):
+        return '{} Query of {}'.format(self.name, self.query)
 
     def _run_query(self):
-        self._table = Vizier.query_region(self.query_coords, radius=self.query.radius,
-                                    catalog=self.vizier_name)[0]
+        if self._empty:
+            raise EmptyQueryError('{} is empty!'.format(self))            
+        try:
+            self._table = Vizier.query_region(self.query_coords, radius=self.query.radius,
+                                        catalog=self.vizier_name)[0]
+        except IndexError:
+            self._empty = True
+            raise EmptyQueryError('{} returns empty!'.format(self))
         self._coords = SkyCoord(self._table['_RAJ2000'], self._table['_DEJ2000'], unit='deg')
         self._table['PA'] = self.coords.position_angle(self.query_coords).deg
         #self._table['separation'] = self.coords.separation(self.query_coords).arcsec
@@ -69,6 +85,9 @@ class VizierCatalog(object):
         else:
             row = self.closest
 
+        if not hasattr(self, 'conversions'):
+            convert = False
+
         if convert:
             bands = self.conversions 
         else:
@@ -105,7 +124,7 @@ class Tycho2(VizierCatalog):
         """
         http://www.aerith.net/astro/color_conversion.html
         """
-        mags = self.get_photometry(brightest=brightest)
+        mags = self.get_photometry(brightest=brightest, convert=False)
         VT, dVT = mags['VT']
         BT, dBT = mags['BT']
         if (-0.25 < BT - VT < 2.0):
@@ -123,7 +142,7 @@ class Tycho2(VizierCatalog):
         return V, dV
 
     def BmV(self, brightest=False):
-        mags = self.get_photometry(brightest=brightest)
+        mags = self.get_photometry(brightest=brightest, convert=False)
         VT, dVT = mags['VT']
         BT, dBT = mags['BT']
         if 0.5 < (BT-VT) < 2.0:
@@ -166,7 +185,7 @@ class WISE(VizierCatalog):
 class Query(object):
     """ RA/dec in decimal degrees, pmra, pmdec in mas
     """
-    def __init__(self, ra, dec, pmra=0., pmdec=0., epoch=2015, radius=5*u.arcsec):
+    def __init__(self, ra, dec, pmra=0., pmdec=0., epoch=2000., radius=5*u.arcsec):
         self.ra = ra
         self.dec = dec
         self.pmra = pmra
@@ -179,6 +198,13 @@ class Query(object):
             self.radius = radius
 
         self._coords = None
+
+    def __str__(self):
+        return '({0.ra}, {0.dec}), pm=({0.pmra}, {0.pmdec}), epoch={0.epoch}, radius={0.radius}'.format(self)
+
+    def __repr__(self):
+        return ('Query(ra={0.ra}, dec={0.dec}, pmra={0.pmra}, '.format(self) + 
+                'pmdec={0.pmdec}, epoch={0.epoch}, radius={0.radius})'.format(self))
 
     @property
     def coords(self):
