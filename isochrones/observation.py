@@ -1166,7 +1166,7 @@ class ObservationTree(Node):
         
         for d,n in zip(ds, nodes):
             try:
-                if d < n.resolution:
+                if d < n.resolution or n.resolution==-1:
                     return n
             except AttributeError:
                 pass
