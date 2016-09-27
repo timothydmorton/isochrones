@@ -423,12 +423,12 @@ class ObsNode(Node):
             tag = len(existing)
             self.add_child(ModelNode(ic, index=idx, tag=tag))
             
-    def model_mag(self, pardict):
+    def model_mag(self, pardict, use_cache=True):
         """
         pardict is a dictionary of parameters for all leaves
         gets converted back to traditional parameter vector
         """
-        if pardict == self._cache_key:
+        if pardict == self._cache_key and use_cache:
             #print('{}: using cached'.format(self))
             return self._cache_val
 
@@ -454,7 +454,7 @@ class ObsNode(Node):
         self._cache_val = tot
         return tot
 
-    def lnlike(self, pardict):
+    def lnlike(self, pardict, use_cache=True):
         """
         returns log-likelihood of this observation
 
@@ -469,10 +469,11 @@ class ObsNode(Node):
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = self.model_mag(pardict) - self.reference.model_mag(pardict)
+            mod = (self.model_mag(pardict, use_cache=use_cache) - 
+                   self.reference.model_mag(pardict, use_cache=use_cache))
             mag -= self.reference.value[0]
         else:
-            mod = self.model_mag(pardict)
+            mod = self.model_mag(pardict, use_cache=use_cache)
 
         lnl = -0.5*(mag - mod)**2 / dmag**2
 
@@ -1100,7 +1101,7 @@ class ObservationTree(Node):
         lnl = 0
         for n in self:
             if n is not self:
-                lnl += n.lnlike(pardict)
+                lnl += n.lnlike(pardict, use_cache=use_cache)
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
                 return -np.inf

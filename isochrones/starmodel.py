@@ -363,6 +363,10 @@ class StarModel(object):
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
 
+    @property
+    def param_description(self):
+        return self.obs.param_description
+
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
         if not np.isfinite(lnpr):
