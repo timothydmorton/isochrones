@@ -85,7 +85,7 @@ class Dartmouth_Isochrone(Isochrone):
         List of desired photometric bands. 
 
     """
-    def __init__(self,bands=['g','r','i','z',
+    def __init__(self,bands=['B','V','g','r','i','z',
                              'J','H','K',
                              'W1','W2','W3','Kepler'], **kwargs): # minage=9 removed
         df = get_grid(bands)

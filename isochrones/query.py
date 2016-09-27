@@ -180,7 +180,7 @@ class WISE(VizierCatalog):
     vizier_name = 'allwise'
     epoch = 2000
     bands = {'W1mag':'W1', 'W2mag':'W2', 
-             'W3mag':'W3', 'W4mag':'W4'}
+             'W3mag':'W3'} # W4 left out.
 
 class Query(object):
     """ RA/dec in decimal degrees, pmra, pmdec in mas
