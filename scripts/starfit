@@ -129,8 +129,11 @@ if __name__=='__main__':
                         N = nstars[mult] if 'N' not in c else None
 
                         mod = StarModel.from_ini(ichrone, folder, use_emcee=args.emcee, N=N)
-                        mod.obs.print_ascii()
-                        
+                        try:
+                            mod.obs.print_ascii()
+                        except:
+                            pass
+
                         mod.fit(verbose=args.verbose, overwrite=args.overwrite)
 
                         mod.save_hdf(os.path.join(folder, model_filename))
