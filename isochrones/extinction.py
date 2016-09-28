@@ -59,10 +59,14 @@ def get_AV_infinity(ra,dec,frame='icrs'):
         '%3A'+'%i' % ram + '%3A' + '%05.2f' % ras + '&lat=%s' % decsign + '%i' % abs(decd) + '%3A' + '%i' % abs(decm) + '%3A' + '%05.2f' % abs(decs) + \
         '&pa=0.0&out_csys=Equatorial&out_equinox=J2000.0'
 
+    AV = None
     for line in urllib.request.urlopen(url).readlines():
         m = re.search('^Landolt V \(0.54\)\s+(\d\.\d+)', line)
         if m:
             AV = (float(m.group(1)))  
             break
+        
+    if AV is None:
+        raise RuntimeError('AV query fails!  URL is {}'.format(url))
         
     return AV
