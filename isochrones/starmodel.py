@@ -464,6 +464,8 @@ class StarModel(object):
 
     @property
     def mnest_basename(self):
+        """Full path to basename
+        """
         if not hasattr(self, '_mnest_basename'):
             s = self.labelstring
             if s=='0_0':
@@ -518,7 +520,7 @@ class StarModel(object):
 
         """
 
-        if basename is not None:
+        if basename is not None: #Should this even be allowed?
             self.mnest_basename = basename
 
         basename = self.mnest_basename
@@ -528,6 +530,7 @@ class StarModel(object):
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):
             os.makedirs(folder)
+
 
         #If previous fit exists, see if it's using the same
         # observed properties
@@ -560,7 +563,9 @@ class StarModel(object):
             files = glob.glob('{}*'.format(basename))
             [os.remove(f) for f in files]
 
-        mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=basename,
+        short_basename = self._mnest_basename
+
+        mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
                         verbose=verbose)
 
         for k,v in kwargs.items():
@@ -569,7 +574,7 @@ class StarModel(object):
         if test:
             print('pymultinest.run() with the following kwargs: {}'.format(mnest_kwargs))
         else:
-
+            os.chdir(os.path.join(folder, '..'))
             pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
                             **mnest_kwargs)
 
@@ -585,7 +590,7 @@ class StarModel(object):
 
         See PyMultiNest documentation for more.
         """
-        return pymultinest.Analyzer(self.n_params, self._mnest_basename)
+        return pymultinest.Analyzer(self.n_params, self.mnest_basename)
 
     @property
     def evidence(self):
