@@ -574,10 +574,11 @@ class StarModel(object):
         if test:
             print('pymultinest.run() with the following kwargs: {}'.format(mnest_kwargs))
         else:
+            wd = os.getcwd()
             os.chdir(os.path.join(folder, '..'))
             pymultinest.run(self.mnest_loglike, self.mnest_prior, self.n_params,
                             **mnest_kwargs)
-
+            os.chdir(wd)
             #with open(propfile, 'w') as f:
             #    json.dump(self.properties, f, indent=2)
 
