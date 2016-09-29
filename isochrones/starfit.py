@@ -26,8 +26,20 @@ def initLogging(filename, logger):
     logger.addHandler(sh)
     return logger
 
+def get_ichrone(models):
+    if models=='dartmouth':
+        from isochrones.dartmouth import Dartmouth_Isochrone
+        ichrone = Dartmouth_Isochrone()
+    elif models=='padova':
+        from isochrones.padova import Padova_Isochrone
+        ichrone = Padova_Isochrone()
+    elif models=='basti':
+        from isochrones.basti import Basti_Isochrone
+        ichrone = Basti_Isochrone()
+    else:
+        raise ValueError('Unknown stellar models: {}'.format(args.models))
 
-def starfit(folder, multiplicities=['single'], models='dartmouth',
+def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
             logger=None):
     """ Runs starfit routine for a given folder.
@@ -35,6 +47,9 @@ def starfit(folder, multiplicities=['single'], models='dartmouth',
     nstars = {'single':1,
               'binary':2,
               'triple':3}
+
+    if ichrone is None:
+        ichrone = get_ichrone(models)
 
     for mult in multiplicities:
         print('{} starfit...'.format(mult))
