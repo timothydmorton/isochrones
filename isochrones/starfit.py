@@ -36,6 +36,7 @@ def starfit(folder, multiplicities=['single'], models='dartmouth',
               'triple':3}
 
     for mult in multiplicities:
+        print('{} starfit...'.format(mult))
         model_filename = '{}_starmodel_{}.h5'.format(models, mult)
 
         #initialize logger for folder

@@ -73,9 +73,9 @@ if __name__=='__main__':
     logger = None #dummy
     
     for i,folder in enumerate(args.folders):
-        print('{} of {}: {} ({})'.format(i+1, len(args.folders), folder, mult))
+        print('{} of {}: {}'.format(i+1, len(args.folders), folder))
         logger = starfit(folder, multiplicities=multiplicities, models=args.models,
                         use_emcee=args.emcee, plot_only=plot_only, overwrite=args.overwrite,
                         verbose=args.verbose, logger=logger)
-        
+
 
