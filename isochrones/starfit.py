@@ -60,7 +60,7 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
         logger = initLogging(logfile, logger)
 
         name = os.path.basename(os.path.abspath(folder))
-
+        mod = None
         try:
             start = time.time()
             if plot_only:
@@ -146,4 +146,4 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
             logger.error('{} starfit calculation failed for {}.'.format(mult,folder),
                          exc_info=True)
 
-    return logger
+    return mod, logger
