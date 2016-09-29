@@ -4,6 +4,7 @@ import os, os.path, re, sys
 import logging
 import time
 
+from configobj import ConfigObj
 from .starmodel import StarModel
 
 
