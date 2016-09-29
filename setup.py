@@ -9,25 +9,6 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-# Inject version from 'git describe' into __init__.py
-try:
-    vsn = sp.check_output(['git','describe']).strip()
-
-    fh, abs_path = mkstemp()
-    initfile = os.path.join('isochrones','__init__.py')
-    with open(abs_path, 'w') as new_file:
-        with open(initfile) as old_file:
-            for line in old_file:
-                if re.match('__version__', line):
-                    new_file.write("__version__ = '{}'\n".format(vsn))
-                else:
-                    new_file.write(line)
-    os.close(fh)
-    os.remove(initfile)
-    shutil.move(abs_path, initfile)
-except:
-    raise
-
 # Hackishly inject a constant into builtins to enable importing of the
 # package before the library is built.
 import sys

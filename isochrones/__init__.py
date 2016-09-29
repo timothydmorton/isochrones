@@ -1,4 +1,4 @@
-__version__ = '0.9.0-150-g2f34c34'
+__version__ = '0.9.0'
 
 try:
     __ISOCHRONES_SETUP__
