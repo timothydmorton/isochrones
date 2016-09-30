@@ -23,6 +23,12 @@ import argparse
 
 from isochrones.starfit import starfit
 
+has_tgastars = True
+try:
+    from tgastars.starfit import tgas_starfit
+except ImportError:
+    has_tgastars = False
+
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='Fit physical properties of a star conditioned on observed quantities.')
@@ -37,6 +43,7 @@ if __name__=='__main__':
     parser.add_argument('--plot_only', action='store_true')
     parser.add_argument('-o','--overwrite', action='store_true')
     parser.add_argument('-v','--verbose', action='store_true')
+    parser.add_argument('--gaia', action='store_true')
 
     args = parser.parse_args()
 
@@ -70,11 +77,13 @@ if __name__=='__main__':
               'binary':2,
               'triple':3}
 
+    starfit_fn = tgas_starfit if args.gaia else starfit
+
     logger = None #dummy
     
     for i,folder in enumerate(args.folders):
         print('{} of {}: {}'.format(i+1, len(args.folders), folder))
-        mode, logger = starfit(folder, multiplicities=multiplicities, ichrone=ichrone, models=args.models,
+        mod, logger = starfit_fn(folder, multiplicities=multiplicities, ichrone=ichrone, models=args.models,
                         use_emcee=args.emcee, plot_only=args.plot_only, overwrite=args.overwrite,
                         verbose=args.verbose, logger=logger)
 

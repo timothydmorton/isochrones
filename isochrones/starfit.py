@@ -41,12 +41,17 @@ def get_ichrone(models):
 
 def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
-            logger=None):
+            logger=None, starmodel_type=None):
     """ Runs starfit routine for a given folder.
     """
     nstars = {'single':1,
               'binary':2,
               'triple':3}
+
+    if starmodel_type is None:
+        Mod = StarModel
+    else:
+        Mod = starmodel_type
 
     if ichrone is None:
         ichrone = get_ichrone(models)
@@ -65,7 +70,7 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
             start = time.time()
             if plot_only:
                 try:
-                    mod = StarModel.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
                                            name=name)
                 except:
                     pass
@@ -74,7 +79,7 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
                 fit_model = True
                 
                 try:
-                    mod = StarModel.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
                                          name=name)
                     fit_model = False
                 except:
@@ -85,7 +90,7 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
                     c = ConfigObj(ini_file)
                     N = nstars[mult] if 'N' not in c else None
 
-                    mod = StarModel.from_ini(ichrone, folder, use_emcee=use_emcee, N=N)
+                    mod = Mod.from_ini(ichrone, folder, use_emcee=use_emcee, N=N)
                     try:
                         mod.obs.print_ascii()
                     except:
