@@ -10,12 +10,16 @@ class EmptyQueryError(ValueError):
     pass
 
 class VizierCatalog(object):
-    def __init__(self, query):
+    """ 
+    """
+    def __init__(self, query, cache=False, brightest=False):
         self.query = query
+        self.cache = cache
         self._table = None
         self._query_coords = None
         self._coords = None
         self._empty = False
+        self.brightest = False
 
     def __repr__(self):
         return '{0}({1})'.format(type(self), repr(self.query))
@@ -28,7 +32,7 @@ class VizierCatalog(object):
             raise EmptyQueryError('{} is empty!'.format(self))            
         try:
             self._table = Vizier.query_region(self.query_coords, radius=self.query.radius,
-                                        catalog=self.vizier_name)[0]
+                                        catalog=self.vizier_name, cache=self.cache)[0]
         except IndexError:
             self._empty = True
             raise EmptyQueryError('{} returns empty!'.format(self))
@@ -73,7 +77,15 @@ class VizierCatalog(object):
         band = self.bands.keys()[0]
         df = self.df.sort_values(by=band)
         return df.iloc[0]
-    
+
+    def get_id(self, brightest=False):
+        if brightest:
+            row = self.brightest
+        else:
+            row = self.closest
+
+        return row[self.id_column]
+
     def get_photometry(self, brightest=False,
                     min_unc=0.02, convert=True):
         """Returns dictionary of photometry of closest match
@@ -112,6 +124,7 @@ class TwoMASS(VizierCatalog):
     bands = {'Jmag':'J', 
              'Hmag':'H', 
              'Kmag':'K'}
+    id_column = '_2MASS'
 
 class Tycho2(VizierCatalog):
     name = 'Tycho2'
@@ -119,6 +132,18 @@ class Tycho2(VizierCatalog):
     epoch = 2000
     bands = {'BTmag':'BT', 'VTmag':'VT'}
     conversions = ['B','V']
+
+
+    def get_id(self, brightest=False):
+        if brightest:
+            row = self.brightest
+        else:
+            row = self.closest
+
+        return '{}-{}-{}'.format(row['TYC1'],
+                                 row['TYC2'],
+                                 row['TYC3'])
+
 
     def V(self, brightest=False):
         """
@@ -181,6 +206,7 @@ class WISE(VizierCatalog):
     epoch = 2000
     bands = {'W1mag':'W1', 'W2mag':'W2', 
              'W3mag':'W3'} # W4 left out.
+    id_column = 'AllWISE'
 
 class Query(object):
     """ RA/dec in decimal degrees, pmra, pmdec in mas
