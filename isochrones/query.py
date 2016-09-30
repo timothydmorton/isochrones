@@ -12,14 +12,13 @@ class EmptyQueryError(ValueError):
 class VizierCatalog(object):
     """ 
     """
-    def __init__(self, query, cache=False, brightest=False):
+    def __init__(self, query, cache=False):
         self.query = query
         self.cache = cache
         self._table = None
         self._query_coords = None
         self._coords = None
         self._empty = False
-        self.brightest = False
 
     def __repr__(self):
         return '{0}({1})'.format(type(self), repr(self.query))
