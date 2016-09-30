@@ -55,7 +55,7 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
 
     if ichrone is None:
         ichrone = get_ichrone(models)
-
+    print('Fitting {}'.format(folder))
     for mult in multiplicities:
         print('{} starfit...'.format(mult))
         model_filename = '{}_starmodel_{}.h5'.format(models, mult)
