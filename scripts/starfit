@@ -47,6 +47,10 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
+    if args.gaia and not has_tgastars:
+        print('You must install the tgastars package to run in Gaia mode.')
+        sys.exit()
+
     try:
         import pymultinest
     except ImportError:
