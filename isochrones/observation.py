@@ -801,13 +801,14 @@ class ObservationTree(Node):
 
         df = self.to_df()
         df.to_hdf(filename, path+'/df')
-        store = pd.HDFStore(filename)
-        attrs = store.get_storer(path+'/df').attrs
-        attrs.spectroscopy = self.spectroscopy
-        attrs.parallax = self.parallax
-        attrs.N = self._N
-        attrs.index = self._index
-        store.close()
+        with pd.HDFStore(filename) as store:
+            # store = pd.HDFStore(filename)
+            attrs = store.get_storer(path+'/df').attrs
+            attrs.spectroscopy = self.spectroscopy
+            attrs.parallax = self.parallax
+            attrs.N = self._N
+            attrs.index = self._index
+            store.close()
 
     @classmethod
     def load_hdf(cls, filename, path='', ic=None):

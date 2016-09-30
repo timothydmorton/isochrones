@@ -906,18 +906,19 @@ class StarModel(object):
 
         self.obs.save_hdf(filename, path+'/obs', append=True)
         
-        store = pd.HDFStore(filename)
-        attrs = store.get_storer('{}/samples'.format(path)).attrs
-        
-        attrs.ic_type = type(self.ic)
-        attrs.use_emcee = self.use_emcee
-        attrs._mnest_basename = self._mnest_basename
-        
-        attrs._bounds = self._bounds
-        attrs._priors = self._priors
+        with pd.HDFStore(filename) as store:
+            # store = pd.HDFStore(filename)
+            attrs = store.get_storer('{}/samples'.format(path)).attrs
+            
+            attrs.ic_type = type(self.ic)
+            attrs.use_emcee = self.use_emcee
+            attrs._mnest_basename = self._mnest_basename
+            
+            attrs._bounds = self._bounds
+            attrs._priors = self._priors
 
-        attrs.name = self.name
-        store.close()
+            attrs.name = self.name
+            store.close()
 
     @classmethod
     def load_hdf(cls, filename, path='', name=None):
