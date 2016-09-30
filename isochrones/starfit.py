@@ -4,6 +4,8 @@ import os, os.path, re, sys
 import logging
 import time
 
+import tables
+
 from configobj import ConfigObj
 from .starmodel import StarModel
 
@@ -97,7 +99,6 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
                         pass
 
                     mod.fit(verbose=verbose, overwrite=overwrite)
-
                     mod.save_hdf(os.path.join(folder, model_filename))
                 else:
                     logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
@@ -150,5 +151,9 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
         except:
             logger.error('{} starfit calculation failed for {}.'.format(mult,folder),
                          exc_info=True)
+
+    # Don't know why this is necessary?  Haven't been able to track down where file gets left open.
+    # But this is necessary to avoid building up of open files.
+    tables.file._open_files.close_all()
 
     return mod, logger
