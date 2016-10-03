@@ -248,7 +248,8 @@ class StarModel(object):
                             if m.group(1) is not None:
                                 if m.group(1) not in tags:
                                     tags.append(m.group(1))
-                        elif re.search('PA', label) or label in ['resolution', 'relative', 'id']:
+                        elif re.search('PA', label) or re.search('id', label) or \
+                                label in ['resolution', 'relative']:
                             continue
                         else:
                             # At this point, this should be a photometric band
