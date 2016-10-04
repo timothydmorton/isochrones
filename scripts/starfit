@@ -45,6 +45,7 @@ if __name__=='__main__':
     parser.add_argument('-v','--verbose', action='store_true')
     parser.add_argument('--gaia', action='store_true')
     parser.add_argument('--write_ini', action='store_true')
+    parser.add_argument('--rootdir', type=str, default=None)
 
     args = parser.parse_args()
 
@@ -93,7 +94,8 @@ if __name__=='__main__':
                         verbose=args.verbose, logger=logger)
         if args.gaia:
             kwargs['write_ini'] = args.write_ini
-            
+            kwargs['rootdir'] = args.rootdir
+
         mod, logger = starfit_fn(folder, **kwargs)
 
 
