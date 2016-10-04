@@ -31,6 +31,10 @@ def test_dartmouth_basic(bands=['z', 'B', 'W3', 'LSST_r', 'J', 'UK_J']):
     for b in bands:
         dar.mag[b](*args)
 
+def test_spec():
+    mod = StarModel(DAR, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
+    assert np.isfinite(mod.lnlike([1.0, 9.6, 0.1, 200, 0.2]))
+
 # def test_afe():
 #     dar = Dartmouth_Isochrone(afe='afem2')
 #     dar.radius(1, 9.4, 0.0)

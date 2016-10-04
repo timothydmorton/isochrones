@@ -125,7 +125,7 @@ class Node(object):
 
     @property
     def is_leaf(self):
-        return len(self.children)==0
+        return len(self.children)==0 and not self.is_root
 
     def _clear_leaves(self):
         self._leaves = None
@@ -482,6 +482,36 @@ class ObsNode(Node):
                                                                 mag,mod,lnl))
         return lnl
 
+class DummyObsNode(ObsNode):
+    def __init__(self, *args, **kwargs):
+        self.observation = None
+        self.source = None
+        self.reference = None
+        
+        self.children = []
+        self.parent = None
+        self._leaves = None
+        
+        #indices of underlying models, defining physical systems        
+        self._inds = None 
+        self._n_params = None
+        self._Nstars = None
+
+        #for model_mag caching
+        self._cache_key = None
+        self._cache_val = None    
+
+    @property
+    def label(self):
+        return '[dummy]'
+
+    @property
+    def value(self):
+        return None, None
+
+    def lnlike(self, *args, **kwargs):
+        return 0
+
         
 class ModelNode(Node):
     """
@@ -674,7 +704,9 @@ class ObservationTree(Node):
     
     Organizes Observations from smallest to largest resolution,
     and at each stage attaches each source to the most probable
-    match from the previous Observation.
+    match from the previous Observation.  Admittedly somewhat hack-y,
+    but should *usually* do the right thing.  Check out `obs.print_ascii()`
+    to visualize what this has done.
     """
     spec_props = ['Teff', 'logg', 'feh']
 
@@ -1199,6 +1231,11 @@ class ObservationTree(Node):
                     parent = self._find_closest(node)
                         
                 parent.add_child(node)
+
+        # If after all this, there are no `ObsNode` nodes,
+        # then add a dummy.
+        if len(self.get_obs_nodes())==0:
+            self.add_child(DummyObsNode())
 
     @classmethod
     def synthetic(cls, stars, surveys):

@@ -352,6 +352,7 @@ class StarModel(object):
                 o.add_source(s)
                 logging.debug('Adding {} ({})'.format(s,o))
                 tree.add_observation(o)
+
         self.obs = tree
 
     def _add_properties(self, **kwargs):
