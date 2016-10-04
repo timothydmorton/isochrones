@@ -75,7 +75,6 @@ import hashlib
 
 from .grids import get_grid
 
-
 TRI = None
 
 class Dartmouth_Isochrone(Isochrone):
@@ -87,8 +86,12 @@ class Dartmouth_Isochrone(Isochrone):
     """
     def __init__(self,bands=['B','V','g','r','i','z',
                              'J','H','K',
-                             'W1','W2','W3','Kepler'], **kwargs): # minage=9 removed
-        df = get_grid(bands)
+                             'W1','W2','W3','Kepler'], 
+                 afe='afep0', y='', **kwargs): # minage=9 removed
+        if afe != 'afep0' and y != '':
+            raise NotImplementedError('Model grids not prepared for non-solar [alpha/Fe] or y')
+
+        df = get_grid(bands, afe=afe, y=y)
 
         global TRI
 

@@ -39,11 +39,14 @@ def get_band(b):
         sys = 'WISE'
         band = b
     else:
-        m = re.match('(\w+)_([a-zA-Z_]+)',b)
+        m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
         if m:
             if m.group(1) in PHOT_SYSTEMS:
                 sys = m.group(1)
-                band = m.group(2)
+                if sys=='LSST':
+                    band = b
+                else:
+                    band = m.group(2)
             elif m.group(1) in ['UK','UKIRT']:
                 sys = 'UKIDSS'
                 band = m.group(2)

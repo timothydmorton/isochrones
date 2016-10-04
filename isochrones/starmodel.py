@@ -277,9 +277,9 @@ class StarModel(object):
                                 row['separation'] = 0.
                                 row['pa'] = 0.
                             mag, e_mag = c[k]['{}{}'.format(b,tag)]
-                            row['mag'] = mag
-                            row['e_mag'] = e_mag
-                            if not np.isnan(mag) and not np.isnan(e_mag):
+                            row['mag'] = float(mag)
+                            row['e_mag'] = float(e_mag)
+                            if not np.isnan(row['mag']) and not np.isnan(row['e_mag']):
                                 df = df.append(pd.DataFrame(row, index=[i]))
                                 i += 1
                             
@@ -712,9 +712,14 @@ class StarModel(object):
     def _make_samples(self):
 
         if not self.use_emcee:
-            chain = np.loadtxt('{}post_equal_weights.dat'.format(self.mnest_basename))
-            lnprob = chain[:,-1]
-            chain = chain[:,:-1]
+            filename = '{}post_equal_weights.dat'.format(self.mnest_basename)
+            try:
+                chain = np.loadtxt(filename)
+                lnprob = chain[:,-1]
+                chain = chain[:,:-1]
+            except:
+                logging.error('Error loading chains from {}'.format(filename))
+                raise
         else:
             #select out only walkers with > 0.15 acceptance fraction
             ok = self.sampler.acceptance_fraction > 0.15

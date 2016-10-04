@@ -1,4 +1,7 @@
 import os, re, glob
+import tarfile
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -7,6 +10,11 @@ from ..config import ISOCHRONES
 DATADIR = os.path.join(ISOCHRONES,'dartmouth')
 
 def get_filenames(phot, afe='afep0', y=''):
+    if not os.path.exists(os.path.join(DATADIR, 'isochrones', phot)):
+        with tarfile.open(os.path.join(DATADIR, '{}.tgz'.format(phot))) as tar:
+            logging.info('Extracting {}.tgz...'.format(phot))
+            tar.extractall(DATADIR)
+
     return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,DATADIR))
 
 def get_feh(filename):
@@ -48,7 +56,7 @@ def df_all(phot, afe='afep0', y=''):
     
 def hdf_filename(phot, afe='afep0', y=''):
     afe_str = '_{}'.format(afe) if afe!='afep0' else ''
-    return os.path.join(DATADIR,'{}{}.h5'.format(phot, afe, y))
+    return os.path.join(DATADIR,'{}{}.h5'.format(phot, afe_str, y))
 
 def get_hdf(phot, afe='afep0', y=''):
     h5file = hdf_filename(phot, afe=afe, y=y)

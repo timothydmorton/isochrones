@@ -18,9 +18,18 @@ z 8922.9
 W1 33200
 W2 45700
 W3 120000
+# UKIRT (Z and Y from inspecting http://www.ukidss.org/technical/instrument/filters.html)
+UKIRT_Z 8760.0
+UKIRT_Y 10200.0
 UKIRT_J 12482.9
 UKIRT_H 16588.4
 UKIRT_K 21897.7
+UK_Z 8760.0
+UK_Y 10200.0
+UK_J 12482.9
+UK_H 16588.4
+UK_K 21897.7
+# LSST
 LSST_u 3693.2
 LSST_g 4797.3 
 LSST_r 6195.8

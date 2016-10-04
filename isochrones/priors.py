@@ -60,7 +60,9 @@ def local_fehdist(feh, bounds=None):
     https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
     2D gaussian fit based on Casagrande (2011)
     """
+    norm = 2.5066282746310007 # integral of the below from -np.inf to np.inf
+    
     fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
         +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
 
-    return fehdist
+    return fehdist/norm
