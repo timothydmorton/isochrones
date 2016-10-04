@@ -3,9 +3,6 @@ import numpy as np
 import pandas as pd
 import logging
 
-from ..config import ISOCHRONES
-# 
-
 from .fileutils import get_hdf
 
 # Columns in DataFrames that are *not* magnitudes

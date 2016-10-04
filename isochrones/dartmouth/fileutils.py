@@ -2,6 +2,8 @@ import os, re, glob
 import numpy as np
 import pandas as pd
 
+from ..config import ISOCHRONES
+
 DATADIR = os.path.join(ISOCHRONES,'dartmouth')
 
 def get_filenames(phot, afe='afep0', y=''):
