@@ -5,7 +5,8 @@ import logging
 
 from ..config import ISOCHRONES
 # 
-DATADIR = os.path.join(ISOCHRONES,'dartmouth')
+
+from .fileutils import get_hdf
 
 # Columns in DataFrames that are *not* magnitudes
 COMMON_COLUMNS = ['EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh']
@@ -22,9 +23,9 @@ PHOT_BANDS = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
 
 def get_band(b):
     """Defines what a "shortcut" band name refers to.  Returns phot_system, band
+
     """
     # Default to SDSS for these
-
     if b in ['u','g','r','i','z']:
         sys = 'SDSSugriz'
         band = 'sdss_{}'.format(b)
@@ -51,7 +52,7 @@ def get_band(b):
                 band = m.group(2)
     return sys, band
 
-def get_grid(bands):
+def get_grid(bands, afe='afep0', y=''):
     """Returns stellar model grid with desired bandpasses and with standard column names
     
     bands must be iterable, and are parsed according to :func:``get_band``
@@ -62,7 +63,7 @@ def get_grid(bands):
         s,b = get_band(bnd)
         logging.debug('loading {} band from {}'.format(b,s))
         if s not in grids:
-            grids[s] = pd.read_hdf(os.path.join(DATADIR, '{}.h5'.format(s)))
+            grids[s] = get_hdf(s, afe=afe, y=y)
         if 'MMo' not in df:
             df[COMMON_COLUMNS] = grids[s][COMMON_COLUMNS]
         col = grids[s][b]
