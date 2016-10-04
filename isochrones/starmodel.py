@@ -279,8 +279,9 @@ class StarModel(object):
                             mag, e_mag = c[k]['{}{}'.format(b,tag)]
                             row['mag'] = mag
                             row['e_mag'] = e_mag
-                            df = df.append(pd.DataFrame(row, index=[i]))
-                            i += 1
+                            if not np.isnan(mag) and not np.isnan(e_mag):
+                                df = df.append(pd.DataFrame(row, index=[i]))
+                                i += 1
                             
                         # put the reference star in w/ mag=0
                         if relative:
