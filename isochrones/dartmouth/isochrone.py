@@ -19,11 +19,11 @@ import pickle
 from ..isochrone import Isochrone
 from ..config import ISOCHRONES
 #DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
-if not os.path.exists(DATADIR):
-    os.path.mkdirs(DATADIR)
+# DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
+# if not os.path.exists(DATADIR):
+#     os.mkdirs(DATADIR)
 
-TRI_FILE = '{}/dartmouth.tri'.format(DATADIR)
+TRI_FILE = '{}/dartmouth.tri'.format(ISOCHRONES)
 
 if not on_rtd:
     MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))

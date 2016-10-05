@@ -6,14 +6,29 @@ import numpy as np
 import pandas as pd
 
 from ..config import ISOCHRONES
-
 DATADIR = os.path.join(ISOCHRONES,'dartmouth')
+
+def extract_master_tarball():
+    """Unpack tarball of tarballs
+    """
+    with tarfile.open(os.path.join(ISOCHRONES, 'dartmouth.tgz')) as tar:
+        logging.info('Extracting dartmouth.tgz...')
+        tar.extractall(ISOCHRONES)
+
+def phot_tarball_file(phot):
+    return os.path.join(DATADIR, '{}.tgz'.format(phot))
+
+def extract_phot_tarball(phot):
+    phot_tarball = phot_tarball_file(phot)
+    with tarfile.open(phot_tarball) as tar:
+        logging.info('Extracting {}.tgz...'.format(phot))
+        tar.extractall(DATADIR)
 
 def get_filenames(phot, afe='afep0', y=''):
     if not os.path.exists(os.path.join(DATADIR, 'isochrones', phot)):
-        with tarfile.open(os.path.join(DATADIR, '{}.tgz'.format(phot))) as tar:
-            logging.info('Extracting {}.tgz...'.format(phot))
-            tar.extractall(DATADIR)
+        if not os.path.exists(phot_tarball_file(phot)):
+            extract_master_tarball()
+        extract_phot_tarball(phot)
 
     return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,DATADIR))
 
@@ -68,7 +83,6 @@ def get_hdf(phot, afe='afep0', y=''):
 
 def write_hdf(phot, afe='afep0', y=''):
     df = df_all(phot, afe=afe, y=y)   
-
     h5file = hdf_filename(phot, afe=afe, y=y)
     df.to_hdf(h5file,'df')
     print('{} written.'.format(h5file))
