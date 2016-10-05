@@ -8,6 +8,27 @@ import pandas as pd
 from ..config import ISOCHRONES
 DATADIR = os.path.join(ISOCHRONES,'dartmouth')
 
+def download_grids(record=159426, overwrite=True):
+    tarball_path = os.path.join(ISOCHRONES, 'dartmouth.tgz')
+    tarball_url = 'https://zenodo.org/record/{}/files/dartmouth.tgz'.format(record)
+
+    tri_path = os.path.join(ISOCHRONES, 'dartmouth.tri')
+    tri_url = 'https://zenodo.org/record/{}/files/dartmouth.tri'.format(record)
+
+    from six.moves import urllib
+    print('Downloading Dartmouth stellar model data (should happen only once)...')
+
+    paths = [tarball_path, tri_path]
+    urls = [tarball_url, tri_url]
+    for path, url in zip(paths, urls):
+        if os.path.exists(path):
+            if overwrite:
+                os.remove(path)
+            else:
+                continue
+        urllib.request.urlretrieve(url, path)
+
+
 def extract_master_tarball():
     """Unpack tarball of tarballs
     """

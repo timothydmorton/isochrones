@@ -18,10 +18,6 @@ import pickle
 
 from ..isochrone import Isochrone
 from ..config import ISOCHRONES
-#DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-# DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
-# if not os.path.exists(DATADIR):
-#     os.mkdirs(DATADIR)
 
 TRI_FILE = '{}/dartmouth.tri'.format(ISOCHRONES)
 
@@ -29,48 +25,16 @@ if not on_rtd:
     MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))
     MAXAGE = interpnd(MAXAGES['points'], MAXAGES['maxages'])
 
+    # Download data if you need to.
+    if not os.path.exists(TRI_FILE):
+        from .fileutils import download_grids
+        download_grids()
 
-# Update the following when new files are posted
-def _download_h5():
-    """
-    Downloads HDF5 file containing Dartmouth grids from Zenodo.
-    """
-    #url = 'http://zenodo.org/record/12800/files/dartmouth.h5'
-    url = 'http://zenodo.org/record/15843/files/dartmouth.h5'
-    from six.moves import urllib
-    print('Downloading Dartmouth stellar model data (should happen only once)...')
-    if os.path.exists(MASTERFILE):
-        os.remove(MASTERFILE)
-    urllib.request.urlretrieve(url,MASTERFILE)
-
-def _download_tri():
-    """
-    Downloads pre-computed triangulation for Dartmouth grids from Zenodo.
-    """
-    #url = 'http://zenodo.org/record/12800/files/dartmouth.tri'
-    #url = 'http://zenodo.org/record/15843/files/dartmouth.tri'
-    url = 'http://zenodo.org/record/17627/files/dartmouth.tri'
-    from six.moves import urllib
-    print('Downloading Dartmouth isochrone pre-computed triangulation (should happen only once...)')
-    if os.path.exists(TRI_FILE):
-        os.remove(TRI_FILE)
-    urllib.request.urlretrieve(url,TRI_FILE)
-
-#if not os.path.exists(TRI_FILE):
-#    _download_tri()
-
-#Check to see if you have the right dataframe and tri file
-import hashlib
-
-#DF_SHASUM = '0515e83521f03cfe3ab8bafcb9c8187a90fd50c7'
-#TRI_SHASUM = 'e05a06c799abae3d526ac83ceeea5e6df691a16d'
-
-#if hashlib.sha1(open(MASTERFILE, 'rb').read()).hexdigest() != DF_SHASUM:
-#    raise ImportError('You have a wrong/corrupted/outdated Dartmouth DataFrame!' + 
-#                      ' Delete {} and try re-importing to download afresh.'.format(MASTERFILE))
-#if hashlib.sha1(open(TRI_FILE, 'rb').read()).hexdigest() != TRI_SHASUM:
-#    raise ImportError('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
-#                      ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
+    #Check to see if you have the right tri file
+    import hashlib
+    if hashlib.md5(open(TRI_FILE,'rb').read()).hexdigest() != '477f5b835c0e805810a3154922eeb3d6':
+        raise ImportError('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
+                          ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 
 
 from .grids import get_grid
