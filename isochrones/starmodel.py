@@ -20,7 +20,7 @@ from astropy.coordinates import SkyCoord
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source 
 from .priors import age_prior, distance_prior, AV_prior, q_prior
-from .priors import salpeter_prior, local_fehdist
+from .priors import salpeter_prior, feh_prior
 
 def _parse_config_value(v):
     try: 
@@ -98,7 +98,7 @@ class StarModel(object):
                 self._add_properties(**kwargs)
 
         self._priors = {'mass':salpeter_prior,
-                        'feh':local_fehdist,
+                        'feh':feh_prior,
                         'q':q_prior,
                         'age':age_prior,
                         'distance':distance_prior,

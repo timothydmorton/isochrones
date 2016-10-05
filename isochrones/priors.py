@@ -53,16 +53,18 @@ def salpeter_prior(m,alpha=-2.35, bounds=(0.1,10)):
         result[(m < minmass) | (m > maxmass)] = 0
         return result
 
-def local_fehdist(feh, bounds=None):
+def feh_prior(feh, bounds=None, halo_fraction=0.001):
     """feh PDF based on local SDSS distribution
     
     From Jo Bovy:
     https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
     2D gaussian fit based on Casagrande (2011)
     """
-    norm = 2.5066282746310007 # integral of the below from -np.inf to np.inf
-    
-    fehdist= 0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
-        +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.)
+    disk_norm = 2.5066282746310007 # integral of the below from -np.inf to np.inf
+    disk_fehdist = 1./disk_norm * (0.8/0.15*np.exp(-0.5*(feh-0.016)**2./0.15**2.)\
+                   +0.2/0.22*np.exp(-0.5*(feh+0.15)**2./0.22**2.))
 
-    return fehdist/norm
+    halo_mu, halo_sig = -1.5, 0.4
+    halo_fehdist = 1./np.sqrt(2*np.pi*halo_sig**2) * np.exp(-0.5*(feh-halo_mu)**2/halo_sig**2)
+
+    return halo_fraction * halo_fehdist + (1 - halo_fraction)*disk_fehdist
