@@ -28,9 +28,9 @@ def test_q():
     _check_integral(salpeter_prior, bounds)    
 
 def test_feh():
-    from isochrones.priors import local_fehdist
+    from isochrones.priors import feh_prior
     bounds = -np.inf, np.inf
-    _check_integral(local_fehdist, bounds)    
+    _check_integral(feh_prior, bounds) 
 
 def _check_integral(pr_fn, bounds):
     def fn(x):

@@ -86,7 +86,7 @@ def test_ini3():
 def test_ini3_2():
     """ A close resolved triple (unresolved in KIC, TwoMASS)
 
-    modeled as a physically associated triple
+    modeled as a physically associated binary plus non-associated single
     """
     mod = StarModel.from_ini(Dartmouth_Isochrone, folder=os.path.join(FOLDER, 'star3'),
                             index=[0,0,1])
@@ -100,7 +100,7 @@ def test_ini3_2():
 ############
 def _fit_mnest(mod):
     basename = '{}/{}-'.format(chainsdir,np.random.randint(1000000))
-    mod.fit_multinest(n_live_points=10, max_iter=200,basename=basename,
+    mod.fit_multinest(n_live_points=5, max_iter=50,basename=basename,
             verbose=False)
     foo = mod.mnest_analyzer
     files = glob.glob('{}*'.format(basename))

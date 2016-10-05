@@ -716,8 +716,12 @@ class StarModel(object):
             filename = '{}post_equal_weights.dat'.format(self.mnest_basename)
             try:
                 chain = np.loadtxt(filename)
-                lnprob = chain[:,-1]
-                chain = chain[:,:-1]
+                try:
+                    lnprob = chain[:,-1]
+                    chain = chain[:,:-1]
+                except IndexError:
+                    lnprob = np.array([chain[-1]])
+                    chain = np.array([chain[:-1]])
             except:
                 logging.error('Error loading chains from {}'.format(filename))
                 raise
