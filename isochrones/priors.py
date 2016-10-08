@@ -8,7 +8,7 @@ def age_prior(age, bounds=(9,10.15)):
     minage, maxage = bounds
     if age < minage or age > maxage:
         return 0
-    return age * (2/(maxage**2-minage**2))
+    return np.log(10) * 10**age / (10**maxage - 10**minage)
 
 def distance_prior(distance, bounds=(0,3000)):
     """
