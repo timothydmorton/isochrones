@@ -119,8 +119,13 @@ class MIST_Isochrone(Isochrone):
                                 self.ages, self.fehs, self.grid_Ns)
 
         except:
-            # The below actually should be broadcast properly
-            return interp_values(np.atleast_1d(mass), np.atleast_1d(age), 
-                                np.atleast_1d(feh), icol,
+            # First, broadcast to common shape.
+            b = np.broadcast(mass, age, feh)
+            mass = np.resize(mass, b.shape)
+            age = np.resize(age, b.shape)
+            feh = np.resize(feh, b.shape)
+
+            # Then pass to helper function
+            return interp_values(mass, age, feh, icol,
                                 self.grid, self.mass_col,
                                 self.ages, self.fehs, self.grid_Ns)
