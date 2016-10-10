@@ -18,6 +18,15 @@ from ..extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
 from ..isochrone import Isochrone
 from .utils import interp_value, interp_values
 
+class MagFunction(object):
+    def __init__(self, ic, band, icol):
+        self.ic = ic
+        self.band = band
+        self.icol = icol
+
+    def __call__(self, mass, age, feh):
+        return self.ic.interp_value(mass, age, feh, self.icol)
+
 class MIST_Isochrone(Isochrone):
     
     def __init__(self, df, ext_table=False):
@@ -43,7 +52,7 @@ class MIST_Isochrone(Isochrone):
 
         self.bands = ['u','g','r','i','z']
         self._mag_cols = {'u':7, 'g':8, 'r':9, 'i':10, 'z':11}
-        self._mag = {b:lambda m,a,f : self.interp_value(m,a,f,icol=i) 
+        self._mag = {b: MagFunction(self, b, i)
                             for b,i in self._mag_cols.items()}
         self.mag = {b:self._mag_fn(b) for b in self.bands}
 
@@ -56,16 +65,16 @@ class MIST_Isochrone(Isochrone):
         self.maxfeh = self.fehs.max()
 
     def logTeff(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, icol=3)
+        return self.interp_value(mass, age, feh, 3)
 
     def logg(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, icol=4)
+        return self.interp_value(mass, age, feh, 4)
 
     def logL(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, icol=5)
+        return self.interp_value(mass, age, feh, 5)
 
     def Z_surf(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, icol=6)
+        return self.interp_value(mass, age, feh, 6)
 
     def radius(self, *args):
         return np.sqrt(G*self.mass(*args)*MSUN/10**self.logg(*args))/RSUN
@@ -75,21 +84,6 @@ class MIST_Isochrone(Isochrone):
 
     def mass(self, *args):
         return args[0]
-
-    def _mag_fn(self, band):
-        def fn(mass, age, feh, distance=10, AV=0.0, x_ext=0., ext_table=self.ext_table):
-            if x_ext==0.:
-                ext = extcurve_0
-            else:
-                ext = extcurve(x_ext)
-            if ext_table:
-                A = AV*EXTINCTION[band]
-            else:
-                A = AV*ext(LAMBDA_EFF[band])
-            dm = 5*np.log10(distance) - 5
-            return self._mag[band](mass, age, feh) + dm + A
-        return fn
-
 
     @property
     def grid(self):
@@ -118,7 +112,7 @@ class MIST_Isochrone(Isochrone):
         self._grid = data
         self._grid_Ns = lens
                 
-    def interp_value(self, mass, age, feh, icol=4): # 4 is log_g
+    def interp_value(self, mass, age, feh, icol): # 4 is log_g
         try:
             return interp_value(mass, age, feh, icol,
                                 self.grid, self.mass_col,
