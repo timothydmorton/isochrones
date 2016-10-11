@@ -37,7 +37,7 @@ if not on_rtd:
                           ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 
 
-from .grids import ModelGrid
+from .grids import DartmouthModelGrid
 
 TRI = None
 
@@ -55,7 +55,7 @@ class Dartmouth_Isochrone(Isochrone):
         if afe != 'afep0' and y != '':
             raise NotImplementedError('Model grids not prepared for non-solar [alpha/Fe] or y')
 
-        df = ModelGrid(bands, afe=afe, y=y).df
+        df = DartmouthModelGrid(bands, afe=afe, y=y).df
         # df = get_grid(bands, afe=afe, y=y)
 
         global TRI
