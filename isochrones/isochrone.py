@@ -463,7 +463,7 @@ class MagFunction(object):
         mag = self.ic.interp_value(mass, age, feh, self.icol)
         return mag + dm + A
 
-class LargeIsochrone(Isochrone):
+class AltIsochrone(Isochrone):
     """Alternative isochrone implementation for large grids
 
     "large" means too large for Delaunay triangulation, as implemented in 
@@ -478,13 +478,14 @@ class LargeIsochrone(Isochrone):
     logg_col = 4
     logL_col = 5
 
-    def __init__(self, bands, x_ext=0., ext_table=False):
+    def __init__(self, bands, x_ext=0., ext_table=False, debug=False):
         # df should be indexed by [feh, age]
 
         self.df = self.modelgrid(bands).df
         self.bands = bands
         self.x_ext = 0.
         self.ext_table = ext_table
+        self.debug = debug
 
         self.Ncols = self.df.shape[1]
     
@@ -573,7 +574,7 @@ class LargeIsochrone(Isochrone):
         try:
             return interp_value(float(mass), float(age), float(feh), icol,
                                 self.grid, self.mass_col,
-                                self.ages, self.fehs, self.grid_Ns)
+                                self.ages, self.fehs, self.grid_Ns, self.debug)
 
         except:
             # First, broadcast to common shape.

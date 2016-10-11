@@ -1,8 +1,8 @@
 
-from ..isochrone_new import LargeIsochrone
+from ..isochrone import AltIsochrone
 from .grid import MISTModelGrid
 
-class MIST_Isochrone(LargeIsochrone):
+class MIST_Isochrone(AltIsochrone):
     name = 'mist'
     age_col = 1
     feh_col = 7

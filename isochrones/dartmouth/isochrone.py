@@ -16,7 +16,7 @@ else:
     
 import pickle
 
-from ..isochrone_new import Isochrone
+from ..isochrone import Isochrone, AltIsochrone
 from ..config import ISOCHRONES
 
 TRI_FILE = '{}/dartmouth.tri'.format(ISOCHRONES)
@@ -37,7 +37,7 @@ if not on_rtd:
                           ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 
 
-from .grids import DartmouthModelGrid
+from .grid import DartmouthModelGrid
 
 TRI = None
 
@@ -48,6 +48,7 @@ class Dartmouth_Isochrone(Isochrone):
         List of desired photometric bands. 
 
     """
+    name = 'dartmouth'
     def __init__(self,bands=['B','V','g','r','i','z',
                              'J','H','K',
                              'W1','W2','W3','Kepler'], 
@@ -73,8 +74,8 @@ class Dartmouth_Isochrone(Isochrone):
         
         mags = {b:df[b].values for b in bands}
 
-        Isochrone.__init__(self,df['MMo'].values,np.log10(df['age'].values*1e9),
-                           df['feh'].values,df['MMo'].values,df['LogLLo'].values,
+        Isochrone.__init__(self,df['MMo'].values, df['age'].values,
+                           df['feh'].values,df['MMo'].values, df['LogLLo'].values,
                            10**df['LogTeff'].values,df['LogG'].values,mags,tri=TRI, 
                            **kwargs)
 
@@ -83,6 +84,17 @@ class Dartmouth_Isochrone(Isochrone):
         maxage = MAXAGE(m, feh) * np.ones_like(m)
         return minage,maxage
         
+
+class AltDartmouth_Isochrone(AltIsochrone):
+    name = 'dartmouth'
+    age_col = 5
+    feh_col = 6
+    mass_col = 1
+    loggTeff_col = 2
+    logg_col = 3
+    logL_col = 4
+    modelgrid = DartmouthModelGrid
+
 
 #### Old utility function.  this needs to be updated.
 

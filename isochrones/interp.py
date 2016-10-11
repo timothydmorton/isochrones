@@ -156,7 +156,7 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
 
 #@jit(nopython=True)
 def interp_value(mass, age, feh, icol, 
-                 grid, mass_col, ages, fehs, grid_Ns):
+                 grid, mass_col, ages, fehs, grid_Ns, debug):
                  # return_box):
     """mass, age, feh are *single values* at which values are desired
 
@@ -233,8 +233,8 @@ def interp_value(mass, age, feh, icol,
     pts[7, 2] = fehs[i_f]
     vals[7] = grid[i_f, i_a, imass-1, icol]
     
-    # if return_box:
-    #     return pts, vals
-    # else:
-    return interp_box(mass, age, feh, pts, vals)
+    if debug:
+         return pts, vals
+    else:
+        return interp_box(mass, age, feh, pts, vals)
 
