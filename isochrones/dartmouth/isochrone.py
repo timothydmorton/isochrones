@@ -16,7 +16,7 @@ else:
     
 import pickle
 
-from ..isochrone import Isochrone
+from ..isochrone_new import Isochrone
 from ..config import ISOCHRONES
 
 TRI_FILE = '{}/dartmouth.tri'.format(ISOCHRONES)

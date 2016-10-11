@@ -1,22 +1,10 @@
-from __future__ import division,print_function
-
-__author__ = 'Timothy D. Morton <tim.morton@gmail.com>'
-"""
-
-
-"""
-
+import os, re, sys
+import pandas as pd
 import numpy as np
-import os,sys,re,os.path
-import logging
-
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
 
 from scipy.interpolate import LinearNDInterpolator as interpnd
 import numpy.random as rand
+import matplotlib.pyplot as plt
 
 try:
     from astropy import constants as const
@@ -29,19 +17,18 @@ except ImportError:
     G = 6.67e-11
     MSUN = 1.99e33
     RSUN = 6.96e10
-    
-import matplotlib.pyplot as plt
 
-try:
-    from plotutils.plotutils import setfig
-except ImportError:
-    setfig = None
 
 from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
+#from ..isochrone import Isochrone
+from .config import ISOCHRONES
+from .interp import interp_value, interp_values
+from .grid import ModelGrid
+
 
 class Isochrone(object):
     """
-    Generic isochrone class. Everything is a function of mass, log(age), Fe/H.
+    Basic isochrone class. Everything is a function of mass, log(age), Fe/H.
 
     Can be instantiated directly, but will typically be used with a pre-defined
     subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  All parameters
@@ -136,7 +123,6 @@ class Isochrone(object):
 
         self.mag = d
 
-
     def _prop(self, prop, *args):
         if prop not in self._props:
             raise ValueError('Cannot call this function with {}.'.format(prop))
@@ -177,6 +163,7 @@ class Isochrone(object):
             dm = 5*np.log10(distance) - 5
             return self._mag[band](mass, age, feh) + dm + A
         return fn
+
 
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
@@ -407,6 +394,8 @@ class Isochrone(object):
             and feh values
             within allowed ranges.  Used, e.g., to initialize random walkers for
             :class:`StarModel` fits.
+
+        ### Should change this to drawing from priors!
         """
         if minmass is None:
             minmass = self.minmass
@@ -436,3 +425,165 @@ class Isochrone(object):
             bad = np.isnan(Rs)
             nbad = bad.sum()
         return ms,ages,fehs
+
+
+class MagFunction(object):
+    def __init__(self, ic, band, icol):
+        self.ic = ic
+        self.band = band
+        self.icol = icol
+        self.x_ext = ic.x_ext
+        self.ext_table = ic.ext_table
+
+        if self.x_ext==0.:
+            ext = extcurve_0
+        else:
+            ext = extcurve(x_ext)
+        if self.ext_table:
+            self.AAV = EXTINCTION[self.band]
+        else:
+            self.AAV = ext(LAMBDA_EFF[self.band])        
+
+    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None, ext_table=False):
+        if x_ext is not None:
+            if x_ext==0.:
+                ext = extcurve_0
+            else:
+                ext = extcurve(x_ext)
+
+            if ext_table:
+                AAV = EXTINCTION[self.band]
+            else:
+                AAV = ext(LAMBDA_EFF[self.band])        
+        else:
+            AAV = self.AAV
+
+        A = AV*AAV
+        dm = 5*np.log10(distance) - 5
+        mag = self.ic.interp_value(mass, age, feh, self.icol)
+        return mag + dm + A
+
+class LargeIsochrone(Isochrone):
+    """Alternative isochrone implementation for large grids
+
+    "large" means too large for Delaunay triangulation, as implemented in 
+    :class:`Isochrone`.
+    """
+    name = 'default'
+    modelgrid = ModelGrid
+    age_col = 1
+    feh_col = 7
+    mass_col = 2
+    loggTeff_col = 3
+    logg_col = 4
+    logL_col = 5
+
+    def __init__(self, bands, x_ext=0., ext_table=False):
+        # df should be indexed by [feh, age]
+
+        self.df = self.modelgrid(bands).df
+        self.bands = bands
+        self.x_ext = 0.
+        self.ext_table = ext_table
+
+        self.Ncols = self.df.shape[1]
+    
+        self.fehs = self.df.iloc[:, self.feh_col].unique()
+        self.ages = self.df.iloc[:, self.age_col].unique()
+        self.Nfeh = len(self.fehs)
+        self.Nage = len(self.ages)
+    
+        n_common_cols = len(self.modelgrid.common_columns)
+        self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
+        # self._mag_cols = {'u':7, 'g':8, 'r':9, 'i':10, 'z':11}
+        self.mag = {b: MagFunction(self, b, i)
+                            for b,i in self._mag_cols.items()}
+        # self.mag = {b:self._mag_fn(b) for b in self.bands}
+
+        #organized array
+        self._grid = None
+        self._grid_Ns = None
+        
+
+    
+        self.minage = self.ages.min()
+        self.maxage = self.ages.max()
+        self.minmass = self.df.iloc[:, self.mass_col].min()
+        self.maxmass = self.df.iloc[:, self.mass_col].max()
+        self.minfeh = self.fehs.min()
+        self.maxfeh = self.fehs.max()
+
+    def logTeff(self, mass, age, feh):
+        return self.interp_value(mass, age, feh, self.loggTeff_col)
+
+    def logg(self, mass, age, feh):
+        return self.interp_value(mass, age, feh, self.logg_col)
+
+    def logL(self, mass, age, feh):
+        return self.interp_value(mass, age, feh, self.logL_col)
+
+    def radius(self, *args):
+        return np.sqrt(G*self.mass(*args)*MSUN/10**self.logg(*args))/RSUN
+
+    def Teff(self, *args):
+        return 10**self.logTeff(*args)
+
+    def mass(self, *args):
+        return args[0]
+
+    @property
+    def grid(self):
+        if self._grid is None:
+            self._make_grid()
+        return self._grid
+    
+    @property
+    def grid_Ns(self):
+        if self._grid_Ns is None:
+            self._make_grid()
+        return self._grid_Ns
+        
+    @property
+    def _npz_filename(self):
+        return os.path.join(ISOCHRONES, self.name, '{}.npz'.format('-'.join(self.bands)))   
+
+    def _make_grid(self, recalc=False):
+        # Read from file if available.
+        if os.path.exists(self._npz_filename) and not recalc:
+            d = np.load(self._npz_filename)
+            self._grid = d['grid']
+            self._grid_Ns = d['grid_Ns']
+        else:
+            df_list = [[self.df.ix[f,a] for f in self.fehs] for a in self.ages]
+            lens = np.array([[len(df_list[i][j]) for j in range(self.Nfeh)] 
+                             for i in range(self.Nage)]).T #just because
+            data = np.zeros((self.Nfeh, self.Nage, lens.max(), self.Ncols))
+
+            for i in range(self.Nage):
+                for j in range(self.Nfeh):
+                    N = lens[j,i]
+                    data[j, i, :N, :] = df_list[i][j].values
+                    data[j, i, N:, :] = np.nan
+
+            np.savez(self._npz_filename, grid=data, grid_Ns=lens)
+            self._grid = data
+            self._grid_Ns = lens
+                
+    def interp_value(self, mass, age, feh, icol): # 4 is log_g
+        try:
+            return interp_value(float(mass), float(age), float(feh), icol,
+                                self.grid, self.mass_col,
+                                self.ages, self.fehs, self.grid_Ns)
+
+        except:
+            # First, broadcast to common shape.
+            b = np.broadcast(mass, age, feh)
+            mass = np.resize(mass, b.shape).astype(float)
+            age = np.resize(age, b.shape).astype(float)
+            feh = np.resize(feh, b.shape).astype(float)
+
+            # Then pass to helper function
+            return interp_values(mass, age, feh, icol,
+                                self.grid, self.mass_col,
+                                self.ages, self.fehs, self.grid_Ns)
+

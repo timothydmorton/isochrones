@@ -91,6 +91,9 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
 
         ifeh = searchsorted(fehs, Nfeh, feh)
         iage = searchsorted(ages, Nage, age)
+        if ifeh==0 or iage==0 or ifeh==Nfeh or iage==Nage:
+            results[i] = np.nan
+            continue
 
         pts = np.zeros((8,3))
         vals = np.zeros(8)
@@ -172,6 +175,8 @@ def interp_value(mass, age, feh, icol,
 
     ifeh = searchsorted(fehs, Nfeh, feh)
     iage = searchsorted(ages, Nage, age)
+    if ifeh==0 or iage==0 or ifeh==Nfeh or iage==Nage:
+        return np.nan
 
     pts = np.zeros((8,3))
     vals = np.zeros(8)
