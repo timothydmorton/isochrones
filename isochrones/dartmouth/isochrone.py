@@ -16,7 +16,7 @@ else:
     
 import pickle
 
-from ..isochrone import Isochrone, AltIsochrone
+from ..isochrone import Isochrone, FastIsochrone
 from ..config import ISOCHRONES
 
 TRI_FILE = '{}/dartmouth.tri'.format(ISOCHRONES)
@@ -87,7 +87,7 @@ class Dartmouth_Isochrone(Isochrone):
         return minage,maxage
         
 
-class AltDartmouth_Isochrone(AltIsochrone):
+class Dartmouth_FastIsochrone(FastIsochrone):
     name = 'dartmouth'
     age_col = 5
     feh_col = 6

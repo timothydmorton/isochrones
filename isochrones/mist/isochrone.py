@@ -1,8 +1,8 @@
 
-from ..isochrone import AltIsochrone
+from ..isochrone import FastIsochrone
 from .grid import MISTModelGrid
 
-class MIST_Isochrone(AltIsochrone):
+class MIST_Isochrone(FastIsochrone):
     name = 'mist'
     age_col = 1
     feh_col = 7

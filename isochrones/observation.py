@@ -447,7 +447,7 @@ class ObsNode(Node):
         #print('Building {} mag for {}:'.format(self.band, self))
         for i,m in enumerate(self.leaves):
             mag = m.evaluate(p[i*5:(i+1)*5], self.band)
-            logging.debug('{}: mag={}'.format(self,mag))
+            # logging.debug('{}: mag={}'.format(self,mag))
             #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
             tot = addmags(tot, mag)
 

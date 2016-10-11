@@ -203,12 +203,14 @@ class Isochrone(object):
         Teffs = self.Teff(*args)*1
         if bands is None:
             bands = self.bands
-        mags = {band:1*self.mag[band](*args) for band in bands}
         if distance is not None:
-            dm = 5*np.log10(distance) - 5
-            for band in mags:
-                A = AV*EXTINCTION[band]
-                mags[band] = mags[band] + dm + A
+            args += (distance, AV)
+        mags = {band:1*self.mag[band](*args) for band in bands}
+        # if distance is not None:
+        #     dm = 5*np.log10(distance) - 5
+        #     for band in mags:
+        #         A = AV*EXTINCTION[band]
+        #         mags[band] = mags[band] + dm + A
                 
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
@@ -463,20 +465,30 @@ class MagFunction(object):
         mag = self.ic.interp_value(mass, age, feh, self.icol)
         return mag + dm + A
 
-class AltIsochrone(Isochrone):
-    """Alternative isochrone implementation for large grids
+class FastIsochrone(Isochrone):
+    """Alternative isochrone implementation for large grids, faster likelihoods
 
-    "large" means too large for Delaunay triangulation, as implemented in 
-    :class:`Isochrone`.
+    This implementation allows faster point interpolations than 
+    the triangulation method in the base :class:`Isochrone` class;
+    however, for simulating large populations (passing arrays of parameters
+    at a time), the base :class:`Isochrone` is still faster.  This is 
+    also the go-to implementation for grids that are too large to make the 
+    Delaunay method feasible (e.g., significantly over 100,000 points in the grid.)
+
+    However, edge effects might be a bit more problematic here than in the base class,
+    meaning fitting very evolved stars might be an issue. Also, don't trust this subclass 
+    for the :function:`Isochrone.agerange` function, for the same reason.
+
+    Subclasses must set the appropriate attributes, and then things should work.
     """
     name = 'default'
     modelgrid = ModelGrid
-    age_col = 1
-    feh_col = 7
-    mass_col = 2
-    loggTeff_col = 3
-    logg_col = 4
-    logL_col = 5
+    age_col = None
+    feh_col = None
+    mass_col = None
+    loggTeff_col = None
+    logg_col = None
+    logL_col = None
     default_bands = ['g']
 
     def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False):
