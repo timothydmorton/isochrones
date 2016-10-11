@@ -27,12 +27,14 @@ if not on_rtd:
 
     # Download data if you need to.
     if not os.path.exists(TRI_FILE):
-        from .fileutils import download_grids
-        download_grids()
+        from .grid import DartmouthModelGrid
+        DartmouthModelGrid.download_grids()
 
     #Check to see if you have the right tri file
     import hashlib
-    if hashlib.md5(open(TRI_FILE,'rb').read()).hexdigest() != '477f5b835c0e805810a3154922eeb3d6':
+    # tri_hash = '477f5b835c0e805810a3154922eeb3d6' # currently on zenodo
+    tri_hash = 'ebc01b529c50fe6c8145c92160e0a53e' # current one
+    if hashlib.md5(open(TRI_FILE,'rb').read()).hexdigest() != tri_hash:
         raise ImportError('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
                           ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 

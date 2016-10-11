@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 
-import sys
+import sys, os
 import pandas as pd
 import numpy as np
 import cPickle as pickle
 from scipy.interpolate import LinearNDInterpolator as interpnd
 
 from ..config import ISOCHRONES
-DATADIR = os.path.join(ISOCHRONES, 'dartmouth')
 
 from .grid import DartmouthModelGrid
 
-def write_tri(filename=os.path.join(DATADIR,'dartmouth.tri')):
-    df = DartmouthModelGrid(['g'])
+def write_tri(filename=os.path.join(ISOCHRONES,'dartmouth.tri')):
+    df = DartmouthModelGrid(['g']).df
     N = len(df)
     pts = np.zeros((N,3))
     pts[:,0] = np.array(df['MMo'])
-    pts[:,1] = df['age']
+    pts[:,1] = np.array(df['age'])
     pts[:,2] = np.array(df['feh'])
-    gmags = np.array(df['sdss_g'])
+    gmags = np.array(df['g'])
 
     gfn = interpnd(pts,gmags)
 

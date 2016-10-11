@@ -32,6 +32,9 @@ def get_ichrone(models):
     if models=='dartmouth':
         from isochrones.dartmouth import Dartmouth_Isochrone
         ichrone = Dartmouth_Isochrone()
+    elif models=='mist':
+        from isochrones.mist import MIST_Isochrone
+        ichrone = Dartmouth_Isochrone()
     elif models=='padova':
         from isochrones.padova import Padova_Isochrone
         ichrone = Padova_Isochrone()

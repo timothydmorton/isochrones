@@ -477,9 +477,13 @@ class AltIsochrone(Isochrone):
     loggTeff_col = 3
     logg_col = 4
     logL_col = 5
+    default_bands = ['g']
 
-    def __init__(self, bands, x_ext=0., ext_table=False, debug=False):
+    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False):
         # df should be indexed by [feh, age]
+
+        if bands is None:
+            bands = self.default_bands
 
         self.df = self.modelgrid(bands).df
         self.bands = bands

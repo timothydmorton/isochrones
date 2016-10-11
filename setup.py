@@ -44,7 +44,6 @@ setup(name = "isochrones",
                'scripts/batch_starfit',
                'scripts/starmodel-select',
                'scripts/starfit-summarize',
-               'scripts/isochrones-dartmouth_write_hdf',
                'scripts/isochrones-dartmouth_write_tri'],
     classifiers=[
       'Development Status :: 3 - Alpha',

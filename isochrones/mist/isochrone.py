@@ -11,6 +11,7 @@ class MIST_Isochrone(AltIsochrone):
     logg_col = 4
     logL_col = 5
     modelgrid = MISTModelGrid
+    default_bands = ['G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler']
 
     def Z_surf(self, mass, age, feh):
         return self.interp_value(mass, age, feh, 6)
