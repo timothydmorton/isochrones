@@ -8,6 +8,8 @@ def interp_box(x, y, z, box, values):
     box is 8x3 array, though not really a box
     
     values is length-8 array, corresponding to values at the "box" coords
+
+    TODO: should make power `p` an argument
     """
     
     # Calculate the distance to each vertex
@@ -15,11 +17,11 @@ def interp_box(x, y, z, box, values):
     val = 0
     norm = 0
     for i in range(8):
-        # Inv-sq distance weighting
-        # w = 1./sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
-        w = 1./((x-box[i,0])*(x-box[i,0]) + 
-                (y-box[i,1])*(y-box[i,1]) + 
-                (z-box[i, 2])*(z-box[i, 2]))
+        # Inv distance, or Inv-dsq weighting
+        w = 1./sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
+        # w = 1./((x-box[i,0])*(x-box[i,0]) + 
+        #         (y-box[i,1])*(y-box[i,1]) + 
+        #         (z-box[i, 2])*(z-box[i, 2]))
         val += w * values[i]
         norm += w
     
@@ -175,6 +177,8 @@ def interp_value(mass, age, feh, icol,
     fehs is grid of fehs
     grid_Ns keeps track of nmass in each slice (beyond this are nans)
     
+    TODO:  fix situation where there is exact match in age, feh, so we just
+    interpolate along the track, not between...
     """
     
 

@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import numpy.random as rand
 from scipy.stats import gaussian_kde
+import scipy
 import logging
 import json
 import emcee
@@ -103,6 +104,7 @@ class StarModel(object):
                         'age':age_prior,
                         'distance':distance_prior,
                         'AV':AV_prior}
+
         self._bounds = {'mass':None,
                         'feh':None,
                         'age':None,
@@ -203,8 +205,9 @@ class StarModel(object):
 
         c = configobj.ConfigObj(ini_file)
 
-        #RA = c.get('RA')
-        #dec = c.get('dec')
+        RA = c.get('RA')
+        dec = c.get('dec')
+        maxAV = c.get('maxAV')
 
         if len(c.sections) == 0:
             for k in c:
@@ -492,6 +495,19 @@ class StarModel(object):
         else:
             self._mnest_basename = os.path.join('chains', basename)
 
+    def lnpost_polychord(self, theta):
+        phi = [0.0] #nDerived
+        return self.lnpost(theta), phi
+
+    def fit_polychord(self, basename, verbose=False, **kwargs):
+        from .config import POLYCHORD
+        sys.path.append(POLYCHORD)
+        import PyPolyChord.PyPolyChord as PolyChord
+
+        return PolyChord.run_nested_sampling(self.lnpost_polychord, 
+                        self.n_params, 0, file_root=basename, **kwargs)
+
+
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
                       test=False,
@@ -528,7 +544,7 @@ class StarModel(object):
 
         basename = self.mnest_basename
         if verbose:
-            logging.info('MultiNest basename: '.format(basename))
+            logging.info('MultiNest basename: {}'.format(basename))
 
         folder = os.path.abspath(os.path.dirname(basename))
         if not os.path.exists(folder):
@@ -605,6 +621,18 @@ class StarModel(object):
         return (s['global evidence'],s['global evidence error'])
 
 
+    def maxlike(self, p0, **kwargs):
+        """ Finds (local) optimum in parameter space.
+        """
+        def fn(p):
+            return -self.lnpost(p)
+
+        if 'method' not in kwargs:
+            kwargs['method'] = 'Nelder-Mead'
+
+        p0 = [0.8, 9.5, 0.0, 200, 0.2]
+        fit = scipy.optimize.minimize(fn, p0, **kwargs)
+        return fit
 
     def emcee_p0(self, nwalkers):
         p0 = []
@@ -814,7 +842,26 @@ class StarModel(object):
         if query is not None:
             df = df.query(query)
 
-        fig = corner.corner(df[params], labels=params, **kwargs)
+        priors = []
+        for p in params:
+            if re.match('mass', p):
+                priors.append(lambda x: self.prior('mass', x, bounds=self.bounds('mass')))
+            elif re.match('age', p):
+                priors.append(lambda x: self.prior('age', x, bounds=self.bounds('age')))
+            elif re.match('feh', p):
+                priors.append(lambda x: self.prior('feh', x, bounds=self.bounds('feh')))
+            elif re.match('distance', p):
+                priors.append(lambda x: self.prior('distance', x, bounds=self.bounds('distance')))
+            elif re.match('AV', p):
+                priors.append(lambda x: self.prior('AV', x, bounds=self.bounds('AV')))
+            else:
+                priors.append(None)
+
+        try:
+            fig = corner.corner(df[params], labels=params, priors=priors, **kwargs)
+        except:
+            logging.warning("Use Tim's version of corner to plot priors.")
+            fig = corner.corner(df[params], labels=params, **kwargs)            
         fig.suptitle(self.name, fontsize=22)
         return fig
 

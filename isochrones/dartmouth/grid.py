@@ -22,7 +22,8 @@ class DartmouthModelGrid(ModelGrid):
     zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
     master_tarball_file = 'dartmouth.tgz'
 
-    def get_band(self, b):
+    @classmethod
+    def get_band(cls, b):
         """Defines what a "shortcut" band name refers to.  Returns phot_system, band
 
         """
@@ -45,7 +46,7 @@ class DartmouthModelGrid(ModelGrid):
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
             if m:
-                if m.group(1) in self.phot_systems:
+                if m.group(1) in cls.phot_systems:
                     sys = m.group(1)
                     if sys=='LSST':
                         band = b
@@ -56,8 +57,9 @@ class DartmouthModelGrid(ModelGrid):
                     band = m.group(2)
         return sys, band
 
-    def phot_tarball_file(self, phot, **kwargs):
-        return os.path.join(self.datadir, '{}.tgz'.format(phot))
+    @classmethod
+    def phot_tarball_file(cls, phot, **kwargs):
+        return os.path.join(cls.datadir, '{}.tgz'.format(phot))
 
     def get_filenames(self, phot, afe='afep0', y=''):
         if not os.path.exists(os.path.join(self.datadir, 'isochrones', phot)):
@@ -67,12 +69,14 @@ class DartmouthModelGrid(ModelGrid):
 
         return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,self.datadir))
 
-    def get_feh(self, filename):
+    @classmethod
+    def get_feh(cls, filename):
         m = re.search('feh([mp])(\d+)afe', filename)
         if m:
             sign = 1 if m.group(1)=='p' else -1
             return float(m.group(2))/10 * sign
         
+    @classmethod
     def to_df(self, filename):
         try:
             rec = np.recfromtxt(filename,skip_header=8,names=True)
@@ -97,7 +101,7 @@ class DartmouthModelGrid(ModelGrid):
                     i+=1
 
         df['age'] = ages
-        df['feh'] = self.get_feh(filename)
+        df['feh'] = cls.get_feh(filename)
         return df
 
     def df_all(self, phot):

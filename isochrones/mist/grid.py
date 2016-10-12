@@ -46,7 +46,8 @@ class MISTModelGrid(ModelGrid):
     zenodo_files = ('mist.tgz')
     master_tarball_file = 'mist.tgz'
 
-    def get_band(self, b):
+    @classmethod
+    def get_band(cls, b):
         """Defines what a "shortcut" band name refers to.  Returns phot_system, band
 
         """
@@ -107,6 +108,7 @@ class MISTModelGrid(ModelGrid):
 
         return [os.path.join(d,f) for f in os.listdir(d) if re.search('\.cmd$', f)]
 
+    @classmethod
     def get_feh(self, filename):
         m = re.search('feh_([mp])([0-9]\.[0-9]{2})_afe', filename)
         if m:
@@ -115,6 +117,7 @@ class MISTModelGrid(ModelGrid):
         else:
             raise ValueError('{} not a valid MIST file? Cannnot parse [Fe/H]'.format(filename))
 
+    @classmethod
     def to_df(self, filename):
         with open(filename, 'r') as fin:
             while True:
@@ -122,12 +125,11 @@ class MISTModelGrid(ModelGrid):
                 if re.match('# EEP', line):
                     column_names = line[1:].split()
                     break
-        feh = self.get_feh(filename)
+        feh = cls.get_feh(filename)
         df = pd.read_table(filename, comment='#', delim_whitespace=True,
                              skip_blank_lines=True, names=column_names)
         df['feh'] = feh
         return df
-
 
     def df_all(self, phot):
         df = super(MISTModelGrid, self).df_all(phot)

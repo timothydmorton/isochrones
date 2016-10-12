@@ -34,7 +34,7 @@ def get_ichrone(models):
         ichrone = Dartmouth_Isochrone()
     elif models=='mist':
         from isochrones.mist import MIST_Isochrone
-        ichrone = Dartmouth_Isochrone()
+        ichrone = MIST_Isochrone()
     elif models=='padova':
         from isochrones.padova import Padova_Isochrone
         ichrone = Padova_Isochrone()
@@ -43,6 +43,7 @@ def get_ichrone(models):
         ichrone = Basti_Isochrone()
     else:
         raise ValueError('Unknown stellar models: {}'.format(args.models))
+    return ichrone
 
 def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
