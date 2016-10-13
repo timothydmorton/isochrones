@@ -2,6 +2,7 @@ import os,re, glob
 import numpy as np
 import pandas as pd
 import logging
+import tarfile
 
 from ..config import ISOCHRONES
 from ..grid import ModelGrid
