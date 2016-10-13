@@ -8,7 +8,7 @@ import tables
 
 from configobj import ConfigObj
 from .starmodel import StarModel
-
+from .isochrone import get_ichrone
 
 def initLogging(filename, logger):
     if logger == None:
@@ -28,26 +28,9 @@ def initLogging(filename, logger):
     logger.addHandler(sh)
     return logger
 
-def get_ichrone(models):
-    if models=='dartmouth':
-        from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone()
-    elif models=='mist':
-        from isochrones.mist import MIST_Isochrone
-        ichrone = MIST_Isochrone()
-    elif models=='padova':
-        from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone()
-    elif models=='basti':
-        from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone()
-    else:
-        raise ValueError('Unknown stellar models: {}'.format(args.models))
-    return ichrone
-
-def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
+def starfit(folder, multiplicities=['single'], models='dartmouth',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
-            logger=None, starmodel_type=None):
+            logger=None, starmodel_type=None, ini_file='star.ini'):
     """ Runs starfit routine for a given folder.
     """
     nstars = {'single':1,
@@ -59,8 +42,8 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
     else:
         Mod = starmodel_type
 
-    if ichrone is None:
-        ichrone = get_ichrone(models)
+    ichrone = None
+
     print('Fitting {}'.format(folder))
     for mult in multiplicities:
         print('{} starfit...'.format(mult))
@@ -92,11 +75,14 @@ def starfit(folder, multiplicities=['single'], ichrone=None, models='dartmouth',
                     pass
 
                 if fit_model or overwrite:
-                    ini_file = os.path.join(folder, 'star.ini')
-                    c = ConfigObj(ini_file)
-                    N = nstars[mult] if 'N' not in c else None
+                    if ichrone is None:
+                        ini_file = os.path.join(folder, ini_file)
+                        bands = StarModel.get_bands(ini_file)
+                        ichrone = get_ichrone(models, bands)
 
-                    mod = Mod.from_ini(ichrone, folder, use_emcee=use_emcee, N=N)
+                    N = nstars[mult] if 'N' not in c else None
+                    mod = Mod.from_ini(ichrone, folder, use_emcee=use_emcee, N=N,
+                                        ini_file=ini_file)
                     try:
                         mod.obs.print_ascii()
                     except:

@@ -22,6 +22,7 @@ from .utils import addmags
 from .observation import ObservationTree, Observation, Source 
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, feh_prior
+from .isochrone import get_ichrone, Isochrone
 
 def _parse_config_value(v):
     try: 
@@ -63,6 +64,12 @@ class StarModel(object):
             arguments will be held in ``self.properties``.  ``parallax`` is
             also a valid property, and should be provided in miliarcseconds.        
     """
+
+    # These are allowable parameters that are not photometric bands
+    _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax',
+                  'logg','Teff','feh','density', 'separation',
+                 'PA','resolution','relative','N','index')
+
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
                  RA=None, dec=None, coords=None,
@@ -127,6 +134,36 @@ class StarModel(object):
         if type(self._ic)==type:
             self._ic = self._ic()
         return self._ic
+
+    @classmethod
+    def _parse_band(cls, kw):
+        """Returns photometric band from inifile keyword
+        """
+        m = re.search('(([a-zA-Z0-9]+)(_\d+)?)', kw)
+        if m:
+            if m.group(1) in not_a_band:
+                return None
+            else:
+                return m.group(1)
+            
+    @classmethod
+    def get_bands(cls, inifile):
+        
+        bands = []
+        c = configobj.ConfigObj(inifile)
+        for kw,v in c.items():
+            if type(v) is configobj.Section:
+                for kw in v:
+                    b = cls._parse_band(kw)
+                    if b is not None:
+                        bands.append(b)
+            else:
+                b = cls._parse_band(kw)
+                if b is not None:
+                    bands.append(b)
+
+        return list(set(bands))
+
 
     @classmethod
     def from_ini(cls, ic, folder='.', ini_file='star.ini', **kwargs):
@@ -198,8 +235,10 @@ class StarModel(object):
         if not os.path.isabs(ini_file):
             ini_file = os.path.join(folder,ini_file)
 
-        if type(ic) == type(type):
-            ic = ic()
+        bands = cls.get_bands(ini_file)
+
+        if not isinstance(ic, Isochrone):
+            ic = get_ichrone(ic, bands)
 
         logging.debug('Initializing StarModel from {}'.format(ini_file))
 

@@ -26,6 +26,40 @@ from .interp import interp_value, interp_values
 from .grid import ModelGrid
 
 
+def get_ichrone(models, bands=None, default=True):
+    """Gets Isochrone Object by name, or type, with the right bands
+
+    If `default` is `True`, then will set bands
+    to be the union of bands and default_bands
+    """
+    def actual(bands, ictype):
+        if default:
+            return list(set(bands).union(set(ictype.default_bands)))
+        else:
+            return bands
+            
+    if type(models) is type(type):
+        ichrone = models(actual(bands, models))
+    elif models=='dartmouth':
+        from isochrones.dartmouth import Dartmouth_Isochrone
+        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone))
+    elif models=='dartmouthfast':
+        from isochrones.dartmouth import Dartmouth_FastIsochrone
+        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone))
+    elif models=='mist':
+        from isochrones.mist import MIST_Isochrone
+        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone))
+    elif models=='padova':
+        from isochrones.padova import Padova_Isochrone
+        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone))
+    elif models=='basti':
+        from isochrones.basti import Basti_Isochrone
+        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone))
+    else:
+        raise ValueError('Unknown stellar models: {}'.format(args.models))
+    return ichrone
+
+
 class Isochrone(object):
     """
     Basic isochrone class. Everything is a function of mass, log(age), Fe/H.

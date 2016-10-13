@@ -51,10 +51,14 @@ class Dartmouth_Isochrone(Isochrone):
 
     """
     name = 'dartmouth'
-    def __init__(self,bands=['B','V','g','r','i','z',
+    default_bands = ('B','V','g','r','i','z',
                              'J','H','K',
-                             'W1','W2','W3','Kepler'], 
+                             'W1','W2','W3','Kepler')
+    def __init__(self,bands=None, 
                  afe='afep0', y='', **kwargs): # minage=9 removed
+        if bands is None:
+            bands = list(default_bands)
+
         if afe != 'afep0' and y != '':
             raise NotImplementedError('Model grids not prepared for non-solar [alpha/Fe] or y')
 
