@@ -81,7 +81,7 @@ class DartmouthModelGrid(ModelGrid):
             return float(m.group(2))/10 * sign
         
     @classmethod
-    def to_df(self, filename):
+    def to_df(cls, filename):
         try:
             rec = np.recfromtxt(filename,skip_header=8,names=True)
         except:
