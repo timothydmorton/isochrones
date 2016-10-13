@@ -58,18 +58,6 @@ if __name__=='__main__':
     except ImportError:
         args.emcee = True
 
-    if args.models=='dartmouth':
-        from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone()
-    elif args.models=='padova':
-        from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone()
-    elif args.models=='basti':
-        from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone()
-    else:
-        raise ValueError('Unknown stellar models: {}'.format(args.models))
-
     if args.all:
         multiplicities = ['single', 'binary', 'triple']
     elif args.binary:
@@ -89,7 +77,7 @@ if __name__=='__main__':
     
     for i,folder in enumerate(args.folders):
         print('{} of {}: {}'.format(i+1, len(args.folders), folder))
-        kwargs = dict(multiplicities=multiplicities, ichrone=ichrone, models=args.models,
+        kwargs = dict(multiplicities=multiplicities, models=args.models,
                         use_emcee=args.emcee, plot_only=args.plot_only, overwrite=args.overwrite,
                         verbose=args.verbose, logger=logger)
         if args.gaia:
