@@ -81,7 +81,7 @@ if __name__=='__main__':
                         use_emcee=args.emcee, plot_only=args.plot_only, overwrite=args.overwrite,
                         verbose=args.verbose, logger=logger)
         if args.gaia:
-            kwargs['write_ini'] = args.write_ini
+            kwargs['write_ini_file'] = args.write_ini
             kwargs['rootdir'] = args.rootdir
 
         mod, logger = starfit_fn(folder, **kwargs)
