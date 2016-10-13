@@ -98,7 +98,7 @@ class MISTModelGrid(ModelGrid):
         return os.path.join(self.datadir, 'MIST_v{}_{}.tar.gz'.format(version, phot))
 
     def extract_phot_tarball(self, phot, version='1.0'):
-        phot_tarball = phot_tarball_file(phot)
+        phot_tarball = self.phot_tarball_file(phot)
         with tarfile.open(phot_tarball) as tar:
             logging.info('Extracting {}...'.format(phot_tarball))
             tar.extractall(self.datadir)
