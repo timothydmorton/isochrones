@@ -114,7 +114,7 @@ class MISTModelGrid(ModelGrid):
         return [os.path.join(d,f) for f in os.listdir(d) if re.search('\.cmd$', f)]
 
     @classmethod
-    def get_feh(self, filename):
+    def get_feh(cls, filename):
         m = re.search('feh_([mp])([0-9]\.[0-9]{2})_afe', filename)
         if m:
             sign = 1 if m.group(1)=='p' else -1
@@ -123,7 +123,7 @@ class MISTModelGrid(ModelGrid):
             raise ValueError('{} not a valid MIST file? Cannnot parse [Fe/H]'.format(filename))
 
     @classmethod
-    def to_df(self, filename):
+    def to_df(cls, filename):
         with open(filename, 'r') as fin:
             while True:
                 line = fin.readline()
