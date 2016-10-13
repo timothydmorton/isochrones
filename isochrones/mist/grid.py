@@ -51,44 +51,48 @@ class MISTModelGrid(ModelGrid):
         """Defines what a "shortcut" band name refers to.  Returns phot_system, band
 
         """
+        phot = None
+
         # Default to SDSS for these
         if b in ['u','g','r','i','z']:
-            sys = 'SDSS'
+            phot = 'SDSS'
             band = 'SDSS_{}'.format(b)
         elif b in ['B','V']:
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = 'Tycho_{}'.format(b)
         elif b in ['U','R','I']:
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = 'Bessel_{}'.format(b)
         elif b in  ['J','H','Ks']:
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = '2MASS_{}'.format(b)
         elif b=='K':
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = '2MASS_Ks'
         elif b in ['kep','Kepler','Kp']:
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = 'Kepler_Kp'
         elif b in ['W1','W2','W3','W4']:
-            sys = 'WISE'
+            phot = 'WISE'
             band = 'WISE_{}'.format(b)
         elif b=='G':
-            sys = 'UBVRIplus'
+            phot = 'UBVRIplus'
             band = 'Gaia_G'
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
             if m:
                 if m.group(1) in self.phot_systems:
-                    sys = m.group(1)
-                    if sys=='PanSTARRS':
+                    phot = m.group(1)
+                    if phot=='PanSTARRS':
                         band = 'PS_{}'.format(m.group(2))
                     else:
                         band = m.group(0)
                 elif m.group(1) in ['UK','UKIRT']:
-                    sys = 'UKIDSS'
+                    phot = 'UKIDSS'
                     band = 'UKIDSS_{}'.format(m.group(2))
-        return sys, band
+        if phot is None:
+            raise ValueError('MIST grids cannot resolve band {}!'.format(b))
+        return phot, band
 
     def phot_tarball_file(self, phot, version='1.0'):
         return os.path.join(self.datadir, 'MIST_v{}_{}.tar.gz'.format(version, phot))

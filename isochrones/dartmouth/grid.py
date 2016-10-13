@@ -28,34 +28,38 @@ class DartmouthModelGrid(ModelGrid):
 
         """
         # Default to SDSS for these
+        phot = None
+
         if b in ['u','g','r','i','z']:
-            sys = 'SDSSugriz'
+            phot = 'SDSSugriz'
             band = 'sdss_{}'.format(b)
         elif b in ['U','B','V','R','I','J','H','Ks']:
-            sys = 'UBVRIJHKsKp'
+            phot = 'UBVRIJHKsKp'
             band = b
         elif b=='K':
-            sys = 'UBVRIJHKsKp'
+            phot = 'UBVRIJHKsKp'
             band = 'Ks'
         elif b in ['kep','Kepler','Kp']:
-            sys = 'UBVRIJHKsKp'
+            phot = 'UBVRIJHKsKp'
             band = 'Kp'
         elif b in ['W1','W2','W3','W4']:
-            sys = 'WISE'
+            phot = 'WISE'
             band = b
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
             if m:
                 if m.group(1) in cls.phot_systems:
-                    sys = m.group(1)
-                    if sys=='LSST':
+                    phot = m.group(1)
+                    if phot=='LSST':
                         band = b
                     else:
                         band = m.group(2)
                 elif m.group(1) in ['UK','UKIRT']:
-                    sys = 'UKIDSS'
+                    phot = 'UKIDSS'
                     band = m.group(2)
-        return sys, band
+        if phot is None:
+            raise ValueError('Dartmouth Models cannot resolve band {}!'.format(b))
+        return phot, band
 
     @classmethod
     def phot_tarball_file(cls, phot, **kwargs):

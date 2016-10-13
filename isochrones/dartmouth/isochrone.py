@@ -43,6 +43,9 @@ from .grid import DartmouthModelGrid
 
 TRI = None
 
+DEFAULT_BANDS = ('B','V','g','r','i','z',
+                             'J','H','K',
+                             'W1','W2','W3','Kepler')
 class Dartmouth_Isochrone(Isochrone):
     """Dotter (2008) Stellar Models, at solar a/Fe and He abundances.
 
@@ -51,13 +54,11 @@ class Dartmouth_Isochrone(Isochrone):
 
     """
     name = 'dartmouth'
-    default_bands = ('B','V','g','r','i','z',
-                             'J','H','K',
-                             'W1','W2','W3','Kepler')
+    default_bands = DEFAULT_BANDS
     def __init__(self,bands=None, 
                  afe='afep0', y='', **kwargs): # minage=9 removed
         if bands is None:
-            bands = list(default_bands)
+            bands = list(self.default_bands)
 
         if afe != 'afep0' and y != '':
             raise NotImplementedError('Model grids not prepared for non-solar [alpha/Fe] or y')
@@ -100,7 +101,7 @@ class Dartmouth_FastIsochrone(FastIsochrone):
     logg_col = 3
     logL_col = 4
     modelgrid = DartmouthModelGrid
-
+    default_bands = DEFAULT_BANDS
 
 #### Old utility function.  this needs to be updated.
 

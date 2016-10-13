@@ -75,14 +75,16 @@ def starfit(folder, multiplicities=['single'], models='dartmouth',
                     pass
 
                 if fit_model or overwrite:
+                    ini_file = os.path.join(folder, ini_file)
+                    c = ConfigObj(ini_file)
+
                     if ichrone is None:
-                        ini_file = os.path.join(folder, ini_file)
                         bands = StarModel.get_bands(ini_file)
                         ichrone = get_ichrone(models, bands)
 
                     N = nstars[mult] if 'N' not in c else None
                     mod = Mod.from_ini(ichrone, folder, use_emcee=use_emcee, N=N,
-                                        ini_file=ini_file)
+                                        ini_file=ini_file, name=name)
                     try:
                         mod.obs.print_ascii()
                     except:

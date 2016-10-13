@@ -25,7 +25,6 @@ from .config import ISOCHRONES
 from .interp import interp_value, interp_values
 from .grid import ModelGrid
 
-
 def get_ichrone(models, bands=None, default=True):
     """Gets Isochrone Object by name, or type, with the right bands
 
@@ -34,10 +33,13 @@ def get_ichrone(models, bands=None, default=True):
     """
     def actual(bands, ictype):
         if default:
-            return list(set(bands).union(set(ictype.default_bands)))
+            if bands is None:
+                return list(ictype.default_bands)
+            else:
+                return list(set(bands).union(set(ictype.default_bands)))
         else:
             return bands
-            
+
     if type(models) is type(type):
         ichrone = models(actual(bands, models))
     elif models=='dartmouth':
@@ -523,13 +525,14 @@ class FastIsochrone(Isochrone):
     loggTeff_col = None
     logg_col = None
     logL_col = None
-    default_bands = ['g']
+    default_bands = ('g')
 
     def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False):
         # df should be indexed by [feh, age]
 
         if bands is None:
-            bands = self.default_bands
+            bands = list(self.default_bands)
+        bands = sorted(bands)
 
         self.df = self.modelgrid(bands).df
         self.bands = bands

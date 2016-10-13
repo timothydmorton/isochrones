@@ -68,7 +68,7 @@ class StarModel(object):
     # These are allowable parameters that are not photometric bands
     _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax',
                   'logg','Teff','feh','density', 'separation',
-                 'PA','resolution','relative','N','index')
+                 'PA','resolution','relative','N','index', 'id')
 
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
@@ -139,9 +139,9 @@ class StarModel(object):
     def _parse_band(cls, kw):
         """Returns photometric band from inifile keyword
         """
-        m = re.search('(([a-zA-Z0-9]+)(_\d+)?)', kw)
+        m = re.search('([a-zA-Z0-9]+)(_\d+)?', kw)
         if m:
-            if m.group(1) in not_a_band:
+            if m.group(1) in cls._not_a_band:
                 return None
             else:
                 return m.group(1)
@@ -346,6 +346,8 @@ class StarModel(object):
 
         logging.debug('Obs is {}'.format(obs))
 
+        if 'name' not in kwargs:
+            kwargs['name'] = os.path.basename(folder)
         new = StarModel(ic, obs=obs, **kwargs)
         new._directory = os.path.abspath(folder)
 
@@ -520,6 +522,7 @@ class StarModel(object):
             elif s=='0_0-0_1-0_2':
                 s = 'triple'
 
+            s = '{}-{}'.format(self.ic.name, s)
             self._mnest_basename = os.path.join('chains', s+'-') 
 
         if os.path.isabs(self._mnest_basename):

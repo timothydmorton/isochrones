@@ -6,7 +6,7 @@ import logging
 import numpy as np
 from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
-from isochrones import StarModel
+from isochrones import StarModel, get_ichrone
 
 DAR = Dartmouth_Isochrone()
 MIST = MIST_Isochrone()
@@ -27,6 +27,10 @@ def test_AV():
     from isochrones.extinction import get_AV_infinity
     AV = get_AV_infinity(299.268036, 45.227428)
     assert np.isclose(AV, 1.216)
+
+def test_get_ichrone(models=['dartmouth','dartmouthfast','mist']):
+    for m in models:
+        get_ichrone(m)
 
 ##########  
 
