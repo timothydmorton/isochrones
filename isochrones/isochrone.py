@@ -186,6 +186,28 @@ class Isochrone(object):
     def Teff(self, *args):
         return 10**self.logTeff(*args)
 
+    def density(self, *args):
+        """ Mean density in g/cc
+        """
+        M = self.mass(*args) * MSUN
+        V = 4./3 * np.pi * (self.radius(*args) * RSUN)**3
+        return  M/V
+
+    def delta_nu(self, *args):
+        """Returns asteroseismic delta_nu in uHz
+
+        reference: https://arxiv.org/pdf/1312.3853v1.pdf, Eq (2)
+        """
+        return 134.88 * np.sqrt(self.mass(*args) / self.radius(*args)**3)
+
+    def nu_max(self, *args):
+        """Returns asteroseismic nu_max in uHz
+
+        reference: https://arxiv.org/pdf/1312.3853v1.pdf, Eq (3)
+        """
+        return 3120.* (self.mass(*args) / 
+                        (self.radius(*args)**2 * np.sqrt(self.Teff(*args)/5777.)))
+
     def _mag_fn(self, band):
         def fn(mass, age, feh, distance=10, AV=0.0, x_ext=0., ext_table=self.ext_table):
             if x_ext==0.:
@@ -647,12 +669,6 @@ class FastIsochrone(Isochrone):
     def logL(self, mass, age, feh):
         return self.interp_value(mass, age, feh, self.logL_col)
 
-    def radius(self, *args):
-        return np.sqrt(G*self.mass(*args)*MSUN/10**self.logg(*args))/RSUN
-
-    def Teff(self, *args):
-        return 10**self.logTeff(*args)
-
     def mass(self, *args):
         return args[0]
 
@@ -697,7 +713,7 @@ class FastIsochrone(Isochrone):
     def interp_value(self, mass, age, feh, icol): # 4 is log_g
         if self._ages is None:
             self._initialize()
-            
+
         try:
             return interp_value(float(mass), float(age), float(feh), icol,
                                 self.grid, self.mass_col,

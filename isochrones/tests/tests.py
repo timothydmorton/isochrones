@@ -35,11 +35,22 @@ def test_get_ichrone(models=['dartmouth','dartmouthfast','mist']):
 ##########  
 
 def _basic_ic_checks(ic):
-    ic.radius(1., 9.5, -0.2)
-    ic.radius(np.ones(100), 9.5, 0.0)
-    args = (1, 9.5, 0.1, 500, 0.2)
+    mass, age, feh = (1., 9.5, -0.2)
+    assert np.isfinite(ic.radius(mass, age, feh))
+    assert np.isfinite(ic.radius(np.ones(100)*mass, age, feh)).all()
+
+    assert np.isfinite(ic.Teff(mass, age, feh))
+    assert np.isfinite(ic.Teff(mass, np.ones(100)*age, feh)).all()
+
+    assert np.isfinite(ic.density(mass, age, feh))
+    assert np.isfinite(ic.density(mass, age, np.ones(100)*feh)).all()
+
+    assert np.isfinite(ic.nu_max(mass, age, feh))
+    assert np.isfinite(ic.delta_nu(mass, age, feh))
+
+    args = (mass, age, feh, 500, 0.2)
     for b in ic.bands:
-        ic.mag[b](*args)
+        assert np.isfinite(ic.mag[b](*args))
 
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
