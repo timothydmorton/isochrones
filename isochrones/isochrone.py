@@ -533,39 +533,105 @@ class FastIsochrone(Isochrone):
         if bands is None:
             bands = list(self.default_bands)
         bands = sorted(bands)
-
-        self.df = self.modelgrid(bands).df
         self.bands = bands
+
+        self._df = None
         self.x_ext = 0.
         self.ext_table = ext_table
         self.debug = debug
 
-        self.Ncols = self.df.shape[1]
     
-        self.fehs = self.df.iloc[:, self.feh_col].unique()
-        self.ages = self.df.iloc[:, self.age_col].unique()
-        self.Nfeh = len(self.fehs)
-        self.Nage = len(self.ages)
+        self._fehs = None
+        self._ages = None
+        self._Nfeh = None
+        self._Nage = None
+
+        self._minage = None
+        self._maxage = None
+        self._minmass = None
+        self._maxmass = None
+        self._minfeh = None
+        self._maxfeh = None
     
         n_common_cols = len(self.modelgrid.common_columns)
         self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
-        # self._mag_cols = {'u':7, 'g':8, 'r':9, 'i':10, 'z':11}
         self.mag = {b: MagFunction(self, b, i)
                             for b,i in self._mag_cols.items()}
-        # self.mag = {b:self._mag_fn(b) for b in self.bands}
 
         #organized array
         self._grid = None
         self._grid_Ns = None
-        
-
     
-        self.minage = self.ages.min()
-        self.maxage = self.ages.max()
-        self.minmass = self.df.iloc[:, self.mass_col].min()
-        self.maxmass = self.df.iloc[:, self.mass_col].max()
-        self.minfeh = self.fehs.min()
-        self.maxfeh = self.fehs.max()
+
+    @property
+    def df(self):
+        if self._df is None:
+            self._df = self.modelgrid(self.bands).df
+        return self._df
+    
+    @property
+    def Ncols(self):
+        return self.df.shape[1]
+    
+    @property
+    def fehs(self):
+        if self._fehs is None:
+            self._fehs = self.df.iloc[:, self.feh_col].unique()
+        return self._fehs
+    
+    @property
+    def ages(self):
+        if self._ages is None:
+            self._ages = self.df.iloc[:, self.age_col].unique()
+        return self._ages
+
+    @property
+    def Nfeh(self):
+        if self._Nfeh is None:
+            self._Nfeh = len(self.fehs)
+        return self._Nfeh
+
+    @property
+    def Nage(self):
+        if self._Nage is None:
+            self._Nage = len(self.ages)
+        return self._Nage
+    
+    @property
+    def minage(self):
+        if self._minage is None:
+            self._minage = self.ages.min()
+        return self._minage
+    
+    @property
+    def maxage(self):
+        if self._maxage is None:
+            self._maxage = self.ages.max()
+        return self._maxage
+
+    @property
+    def minfeh(self):
+        if self._minfeh is None:
+            self._minfeh = self.fehs.min()
+        return self._minfeh
+    
+    @property
+    def maxfeh(self):
+        if self._maxfeh is None:
+            self._maxfeh = self.fehs.max()
+        return self._maxfeh
+
+    @property
+    def minmass(self):
+        if self._minmass is None:
+            self._minmass = self.df.iloc[:, self.mass_col].min()
+        return self._minmass
+    
+    @property
+    def maxmass(self):
+        if self._maxmass is None:
+            self._maxmass = self.df.iloc[:, self.mass_col].max()
+        return self._maxmass    
 
     def logTeff(self, mass, age, feh):
         return self.interp_value(mass, age, feh, self.loggTeff_col)

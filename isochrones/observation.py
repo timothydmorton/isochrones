@@ -11,7 +11,7 @@ from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
 from itertools import chain, imap, izip, count
 from collections import OrderedDict
 
-from .dartmouth import Dartmouth_Isochrone
+from .isochrone import get_ichrone
 from .utils import addmags, distance
 
 class NodeTraversal(Traversal):
@@ -631,7 +631,7 @@ class Observation(object):
         """Creates and adds appropriate synthetic Source objects for list of stars (max 2 for now)
         """
         if ic is None:
-            ic = Dartmouth_Isochrone()
+            ic = get_ichrone('mist')
 
         if len(stars) > 2:
             raise NotImplementedError('No support yet for > 2 synthetic stars')
@@ -840,6 +840,8 @@ class ObservationTree(Node):
             attrs.parallax = self.parallax
             attrs.N = self._N
             attrs.index = self._index
+            attrs.ic_type = type(self.ic)
+            attrs.ic_bands = self.ic.bands
             store.close()
 
     @classmethod
@@ -847,7 +849,9 @@ class ObservationTree(Node):
         """
         Loads stored ObservationTree from file.
 
-        You can provide the isochrone to use; or it will default to Dartmouth
+        You can provide the isochrone to use; or it will default to MIST
+
+        TODO: saving and loading must be fixed!  save ic type, bands, etc.
         """
         store = pd.HDFStore(filename)
         try:
@@ -859,7 +863,11 @@ class ObservationTree(Node):
         df = store[path+'/df']
         new = cls.from_df(df)
         
-        new.define_models(Dartmouth_Isochrone, N=attrs.N, index=attrs.index)
+        ic_type = attrs.ic_type
+        ic_bands = attrs.ic_bands
+        ic = ic_type(ic_bands)
+
+        new.define_models(ic, N=attrs.N, index=attrs.index)
         new.spectroscopy = attrs.spectroscopy
         new.parallax = attrs.parallax
         store.close()
