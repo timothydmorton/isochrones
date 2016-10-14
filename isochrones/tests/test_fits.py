@@ -19,16 +19,29 @@ props = dict(Teff=(5800, 100), logg=(4.5, 0.1),
              B=(5.7,0.05), V=(5.0, 0.05))
 
 def test_fitting():
-    _check_fitting(StarModel(Dartmouth_Isochrone, **props))
-    _check_fitting(StarModel(MIST_Isochrone, **props))
+    mod_dar = _check_fitting(StarModel(Dartmouth_Isochrone, **props))
+    mod_mist = _check_fitting(StarModel(MIST_Isochrone, **props))
 
+    _check_saving(mod_dar)
+    _check_saving(mod_mist)
 
 ###############
 
+def _check_saving(mod):
+    filename = os.path.join(chainsdir, '{}.h5'.format(np.random.randint(1000000)))
+    mod.save_hdf(filename)
+    newmod = StarModel.load_hdf(filename)
+
+    assert np.allclose(mod.samples, newmod.samples)
+    assert mod.ic.bands == newmod.ic.bands
+
+    os.remove(filename)
+
 def _check_fitting(mod):
+    _fit_emcee(mod)
     if mnest:
         _fit_mnest(mod)
-    _fit_emcee(mod)
+    return mod
 
 def _fit_mnest(mod):
     basename = '{}/{}-'.format(chainsdir,np.random.randint(1000000))

@@ -1012,6 +1012,7 @@ class StarModel(object):
             attrs = store.get_storer('{}/samples'.format(path)).attrs
             
             attrs.ic_type = type(self.ic)
+            attrs.ic_bands = self.ic.bands
             attrs.use_emcee = self.use_emcee
             attrs._mnest_basename = self._mnest_basename
             
@@ -1045,7 +1046,11 @@ class StarModel(object):
             store.close()
             raise
         
-        ic = attrs.ic_type
+        try:
+            ic = attrs.ic_type(attrs.ic_bands)
+        except AttributeError:
+            ic = attrs.ic_type
+
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
         bounds = attrs._bounds
@@ -1059,7 +1064,7 @@ class StarModel(object):
 
         store.close()
 
-        obs = ObservationTree.load_hdf(filename, path+'/obs')
+        obs = ObservationTree.load_hdf(filename, path+'/obs', ic=ic)
         
         mod = cls(ic, obs=obs, 
                   use_emcee=use_emcee, name=name)

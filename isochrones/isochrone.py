@@ -562,6 +562,11 @@ class FastIsochrone(Isochrone):
         self._grid = None
         self._grid_Ns = None
     
+    def _initialize(self):
+        for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
+                     'minage','maxage','minfeh','maxfeh','minmass','maxmass']:
+            _ = getattr(self, attr)
+
 
     @property
     def df(self):
@@ -690,6 +695,9 @@ class FastIsochrone(Isochrone):
             self._grid_Ns = lens
                 
     def interp_value(self, mass, age, feh, icol): # 4 is log_g
+        if self._ages is None:
+            self._initialize()
+            
         try:
             return interp_value(float(mass), float(age), float(feh), icol,
                                 self.grid, self.mass_col,

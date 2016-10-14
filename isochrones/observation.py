@@ -477,9 +477,9 @@ class ObsNode(Node):
 
         lnl = -0.5*(mag - mod)**2 / dmag**2
 
-        logging.debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
-                                                                self.band,
-                                                                mag,mod,lnl))
+        # logging.debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
+        #                                                         self.band,
+        #                                                         mag,mod,lnl))
         return lnl
 
 class DummyObsNode(ObsNode):
@@ -840,8 +840,6 @@ class ObservationTree(Node):
             attrs.parallax = self.parallax
             attrs.N = self._N
             attrs.index = self._index
-            attrs.ic_type = type(self.ic)
-            attrs.ic_bands = self.ic.bands
             store.close()
 
     @classmethod
@@ -863,9 +861,8 @@ class ObservationTree(Node):
         df = store[path+'/df']
         new = cls.from_df(df)
         
-        ic_type = attrs.ic_type
-        ic_bands = attrs.ic_bands
-        ic = ic_type(ic_bands)
+        if ic is None:
+            ic = get_ichrone('mist')
 
         new.define_models(ic, N=attrs.N, index=attrs.index)
         new.spectroscopy = attrs.spectroscopy
