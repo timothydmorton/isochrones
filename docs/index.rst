@@ -104,6 +104,25 @@ you can pass array-like values, rather than single values::
     >>> mist.radius([0.8, 1.0, 1.2], 9.7, 0.0)
         array([ 0.75965718,  1.04297845,  1.96445299])
 
+You can also interpolate broadband magnitudes, at a given 
+distance and A_V extinction, as follows::
+
+    >>> mass, age, feh, distance, AV = (0.95, 9.61, -0.2, 200, 0.2)
+    >>> mist.mag['g'](mass, age, feh, distance, AV)
+        11.788065261437591
+
+You can see what bands are available to an :class:`Isochrone` object
+by checking the ``bands`` attribute:
+
+    >>> mist.bands
+        ['B', 'G', 'H', 'J', 'K', 'Kepler', 'V', 'W1', 'W2', 'W3', 'g', 'i', 'r', 'z']
+
+If you wish to use a different set of photometric bands, you may initialize the
+:class:`Isochrone` with a ``bands`` keyword argument.  However, the 
+:class:`ModelGrid` object used by the :class:`Isochrone` must know how to 
+interpret that band name, and where to get that data, via the :function:`get_band`
+method.
+
 Fitting Stellar Properties
 ------------------------
 
