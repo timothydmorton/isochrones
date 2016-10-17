@@ -58,10 +58,10 @@ class MISTModelGrid(ModelGrid):
         if b in ['u','g','r','i','z']:
             phot = 'SDSS'
             band = 'SDSS_{}'.format(b)
-        elif b in ['B','V']:
-            phot = 'UBVRIplus'
-            band = 'Tycho_{}'.format(b)
-        elif b in ['U','R','I']:
+        # elif b in ['B','V']:
+        #     phot = 'UBVRIplus'
+        #     band = 'Tycho_{}'.format(b)
+        elif b in ['U','B','V','R','I']:
             phot = 'UBVRIplus'
             band = 'Bessel_{}'.format(b)
         elif b in  ['J','H','Ks']:
