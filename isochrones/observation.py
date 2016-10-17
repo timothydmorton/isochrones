@@ -359,8 +359,7 @@ class ObsNode(Node):
 
     def _get_inds(self):
         inds = [n.index for n in self.leaves]
-        inds = list(set(inds))
-        inds.sort()
+        inds = sorted(list(set(inds)))
         return inds
 
     def _clear_leaves(self):
@@ -387,8 +386,7 @@ class ObsNode(Node):
 
     @property
     def systems(self):
-        lst = self.Nstars.keys()
-        lst.sort()
+        lst = sorted(self.Nstars.keys())
         return lst
 
     @property
