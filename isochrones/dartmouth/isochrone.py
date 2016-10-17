@@ -50,8 +50,10 @@ class Dartmouth_Isochrone(Isochrone):
     """Dotter (2008) Stellar Models, at solar a/Fe and He abundances.
 
     :param bands: (optional)
-        List of desired photometric bands. 
+        List of desired photometric bands.  Default list of bands is
+        ``['B','V','g','r','i','z','J','H','K','W1','W2','W3','Kepler']``.
 
+    Model grids are obtained from `here <http://stellar.dartmouth.edu/models/>`_
     """
     name = 'dartmouth'
     default_bands = DEFAULT_BANDS

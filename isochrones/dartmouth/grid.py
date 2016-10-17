@@ -7,6 +7,22 @@ from ..config import ISOCHRONES
 from ..grid import ModelGrid
 
 class DartmouthModelGrid(ModelGrid):
+    """Grid of Dartmouth Models.  
+
+    The following photometric systems are included::
+
+        phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
+        phot_bands = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
+              UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
+              WISE=['W4', 'W3', 'W2', 'W1'],
+              LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
+              UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
+
+    You may add additional ones by putting the ``phot_system.tgz`` file
+    into ``.isochrones/dartmouth`` alongside the others.  If you do 
+    this, you must edit the object definition accordingly so the ``get_band``
+    function returns the correct information.
+    """
     name = 'dartmouth'
     common_columns = ('EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh')
     phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
@@ -18,18 +34,18 @@ class DartmouthModelGrid(ModelGrid):
 
     default_kwargs = {'afe':'afep0', 'y':''}
     datadir = os.path.join(ISOCHRONES, 'dartmouth')
-    zenodo_record = 159426
+    zenodo_record = 161241
     zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
     master_tarball_file = 'dartmouth.tgz'
 
     @classmethod
     def get_band(cls, b):
-        """Defines what a "shortcut" band name refers to.  Returns phot_system, band
+        """Defines what a "shortcut" band name refers to.  
 
         """
-        # Default to SDSS for these
         phot = None
 
+        # Default to SDSS for these
         if b in ['u','g','r','i','z']:
             phot = 'SDSSugriz'
             band = 'sdss_{}'.format(b)

@@ -1,44 +1,63 @@
 isochrones
 =======
 
-``isochrones`` is a Python package built to simplify common tasks that are
-often done with stellar model grids, such as simulating synthetic
-stellar populations, plotting evolution tracks or isochrones,
-or estimating the physical properties of a star
-given photometric or spectroscopic observations.  The guts of this
-code is a 3-d linear interpolation in mass--age--[Fe/H] space. That is,
-the model predicts the various properties as functions of these
-inputs.
+The ``isochrones`` Python package aims to provide a 
+simple common interface to different stellar model grids, and to 
+simplify the task of inferring model-based physical stellar properties
+given arbitrary observations of a star (or multiple stars).
 
-While ``isochrones`` comes packaged with three different model grids
-(Padova, BASTI, and Dartmouth), it can be easily extended to a
-user-defined grid.  It uses MultiNest/PyMultiNest for sampling, or `emcee
-<http://dan.iel.fm/emcee/current/>`_ for MCMC sampling if (Py)MultiNest
+The package is built around three basic objects: :class:`ModelGrid`,
+which takes care of the bookkeeping aspects of storing and parsing
+a given grid of stellar models; :class:`Isochrone`, which
+takes care of the grid interpolation; and :class:`StarModel`,
+which is the top-level interface for fitting stellar properties.
+
+While ``isochrones`` comes packaged with two different model grids
+(MIST and Dartmouth), it can be easily extended to other
+model grids.  Of these two grid choices
+(accessible through the :class:`MIST_Isochrone` and :class:`Dartmouth_Isochrone`
+objects), MIST is generally preferred because it covers a broader
+range of age, mass, and metallicity than the Dartmouth Models.
+
+For posterior sampling, ``isochrones`` defaults to MultiNest/PyMultiNest for sampling (see `here <http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_ for installation instructions), but will fall back on `emcee
+<http://dan.iel.fm/emcee/current/>`_ if (Py)MultiNest
 is not installed.
 
 Note that the first time you import any of the pre-packaged model
-grids, it will download the required data to a ``~/.isochrones``
-folder.
-
-I welcome community feedback to help improve this tool.  The code is
-hosted at `GitHub <http://github.com/timothydmorton/isochrones>`_;
-please feel free to contribute. 
+grids, it will download the required data for you.  If you like, you can
+also download the data files directly and save them to ``~/.isochrones``
+(or to a location defined by an ``$ISOCHRONES`` environment variable.)
 
 .. note::
 
-  New in v0.9, fitting is now done by default using MultiNest, if 
-  available on your system via PyMultiNest.  If you wish to take 
-  advantage of this (highly recommended) feature, you can follow
-  `these<http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_
-  instructions for installing MultiNest and PyMultinest.  If you do 
-  not have MultiNest available, the fits should still work using ``emcee``.
+  The downloaded & unpacked data files, as well as some ancillary data 
+  created for convenience by the package, will take up about 10 Gb 
+  of disk space.  So if you're planning to use ``isochrones`` on a system 
+  on which you have a home directory quota, you may wish to explicitly
+  define an ``$ISOCHRONES`` environment variable somewhere where you have
+  more storage space. 
+
+I welcome community feedback to help improve this tool.  The code is
+hosted at `GitHub <http://github.com/timothydmorton/isochrones>`_;
+please feel free to contribute.  
+
+.. .. note::
+
+..   New in v0.9, fitting is now done by default using MultiNest, if 
+..   available on your system via PyMultiNest.  If you wish to take 
+..   advantage of this (highly recommended) feature, you can follow
+..   `these <http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_
+..   instructions for installing MultiNest and PyMultinest.  If you do 
+..   not have MultiNest available, the fits should still work using ``emcee``.
 
 .. warning::
   
-  Also note that there was a bug in the ``dartmouth.tri`` triangulation
-  file in versions prior to 0.9.  So if you've previously installed 
-  ``isochrones`` and upgrade to 0.9, you should be prompted to delete
-  this file so it can be re-installed.
+  If you have been a user of ``isochrones`` prior to v1.0, you will need
+  to download the new grid data.  There has also been significant change
+  to the code base.  Most backward compatibility should be preserved, but 
+  `raise an issue <http://github.com/timothydmorton/isochrones/issures>`_
+  if you have problems with the transition.
+
 
 Installation
 ------------
@@ -55,22 +74,33 @@ Or you can clone from github::
 
 The last command may require ``--user`` if you don't have root privileges.
 
+After installation, run the test suite to check if everything works::
+
+    nosetests isochrones
+
+Be patient the first time you do this, as it will have to download ~1.5 Gb
+of stellar grid data if you have not already done so.  
+If there is a problem with the automated downloading,
+you can also directly download the necessary files from 
+`here <https://zenodo.org/record/161241>`_ and put them in ``~/.isochrones``
+(or ``$ISOCHRONES``).
+
 Basic Usage
 ---------
 
 To find, for example, what a stellar model grid predicts for stellar
 radius at a given mass, log(age), and metallicity::
 
-    >>> from isochrones.dartmouth import Dartmouth_Isochrone
-    >>> dar = Dartmouth_Isochrone()
-    >>> dar.radius(1.0, 9.7, 0.0) #M/Msun, log10(age), Fe/H
-        1.0160123968403469
+    >>> from isochrones.mist import MIST_Isochrone
+    >>> mist = MIST_Isochrone()
+    >>> mist.radius(1.0, 9.7, 0.0) #M/Msun, log10(age), Fe/H
+        1.0429784536817184
 
 Importantly (for purposes of synthesizing populations of stars, e.g.),
 you can pass array-like values, rather than single values::
 
-    >>> dar.radius([0.8, 1.0, 1.2], 9.7, 0.0)
-        array([ 0.75105438,  1.0160124 ,  1.77470954])
+    >>> mist.radius([0.8, 1.0, 1.2], 9.7, 0.0)
+        array([ 0.75965718,  1.04297845,  1.96445299])
 
 Fitting Stellar Properties
 ------------------------
@@ -82,16 +112,16 @@ the following:
 .. code-block:: python
 
     from isochrones import StarModel
-    from isochrones.dartmouth import Dartmouth_Isochrone
+    from isochrones.mist import MIST_Isochrone
 
     #spectroscopic properties (value, uncertainty)
     Teff = (5770, 80)
     logg = (4.44, 0.08)
     feh = (0.00, 0.10)
     
-    dar = Dartmouth_Isochrone()
+    mist = MIST_Isochrone()
 
-    model  = StarModel(dar, Teff=Teff, logg=logg, feh=feh)
+    model  = StarModel(mist, Teff=Teff, logg=logg, feh=feh)
     model.fit()
 
 The model now has a ``samples`` property that contains all of the
@@ -99,30 +129,17 @@ samples generated by the MultiNest/MCMC chain in a :class:`pandas.DataFrame`
 object---or more specifically, it contains both the samples generated
 directly from the chain and the corresponding values of all the model
 properties (e.g. radius, synthetic photometry, etc.) evaluated at each
-chain link.  If you have installed the handy `triangle
-<https://github.com/dfm/triangle.py>`_ module, you can also
-visualize the results:
+chain link.  You can also visualize the results using:
 
 .. code-block:: python
 
-   model.triangle()
+   model.corner_physical()
 
 Note that a :class:`isochrones.StarModel` can be initialized with any arguments
 that correspond to properties predicted by the model grids---that is,
 in addition to spectroscopic properties, apparent magnitudes (and
-errors) may also be included among the keyword arguments.
-
-If apparent magnitudes are included among the properties, then a call
-to :func:`isochrones.StarModel.fit` will fit for distance and extinction as
-well as mass, age, and [Fe/H].  In this case, you may also set
-the ``maxAV`` argument to an appropriate value (1 is default), or the ``min_logg``
-argument, if you would like to rule out giant-star fits, for example.
-
-.. note::
-  
-  New in v0.9, when doing a MultiNest fit, you always will be fitting
-  for distance and extinction, so you should always provide at least
-  one apparent magnitude.
+errors) may also be included among the keyword arguments, as well as parallax
+(in miliarcseconds) and asteroseismic properties (``nu_max`` or ``delta_nu``).
 
 After running the MultiNest/MCMC chain, you can save the results::
 
@@ -133,8 +150,17 @@ Which you can then read back in later as::
     model = StarModel.load_hdf('starmodel.h5')
 
 In addition, if you would like to entertain the possibility of a star
-being having light from more than one component, you can also fit a
-:class:`BinaryStarModel` or :class:`TripleStarModel`, if desired.
+having light from more than one component, you can also fit a binary
+or triple star model by providing the additional keyword argument ``N=2``
+or ``N=3`` to the :class:`StarModel` initialization.  You can also set up
+a :class:`StarModel` that allows for light from multiple stars to be blended
+in some bandpasses but resolved in others.  See the 
+`demo notebook <https://github.com/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb>`_ for more details on how to do this.
+
+The easiest way to initialize and fit a :class:`StarModel` is to create a 
+``star.ini`` file in a directory called ``mystar`` (for example), and then 
+run the ``starfit`` command-line script that gets installed with ``isochrones``.
+Again, see the `demo notebook <https://github.com/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb>`_ for more details.
 
 API Documentation
 -----------------

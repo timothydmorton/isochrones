@@ -47,7 +47,7 @@ class StarModel(object):
         :class:`ObservationTree` object containing photometry information.
         If not provided, then one will be constructed from the provided
         keyword arguments (which must include at least one photometric
-            bandpass).  This should only happen in the simplest case
+        bandpass).  This should only happen in the simplest case
         of a single star system---if multiple stars are detected
         in any of the observations being used, an :class:`ObservationTree`
         should be passed.  If `obs` is a string, then it is assumed
@@ -55,14 +55,17 @@ class StarModel(object):
 
     :param N:
         Number of model stars to assign to each "leaf node" of the 
-        :class:`ObservationTree`.    
+        :class:`ObservationTree`.  If you want to model a binary star,
+        provide ``N=2``. 
 
     :param **kwargs:
-            Keyword arguments must be properties of given isochrone, e.g., logg,
-            feh, Teff, and/or magnitudes.  The values represent measurements of
-            the star, and must be in (value,error) format. All such keyword
-            arguments will be held in ``self.properties``.  ``parallax`` is
-            also a valid property, and should be provided in miliarcseconds.        
+        Keyword arguments must be properties of given isochrone, e.g., logg,
+        feh, Teff, and/or magnitudes.  The values represent measurements of
+        the star, and must be in (value,error) format. All such keyword
+        arguments will be held in ``self.properties``.  ``parallax`` is
+        also a valid property, and should be provided in miliarcseconds,
+        as is ``density`` [g/cc], and ``nu_max`` and ``delta_nu``
+        (asteroseismic parameters in uHz.)        
     """
 
     # These are allowable parameters that are not photometric bands
@@ -352,6 +355,11 @@ class StarModel(object):
         new._directory = os.path.abspath(folder)
 
         return new
+
+    def print_ascii(self):
+        """Prints an ascii representation of the observation tree structure.
+        """
+        return self.obs.print_ascii()
 
     def bounds(self, prop):
         if self._bounds[prop] is not None:

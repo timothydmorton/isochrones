@@ -9,27 +9,28 @@ from .config import ISOCHRONES
 class ModelGrid(object):
     """Base class for Model Grids.
 
-    Subclasses must implement the following (shown below is the Dartmouth example):
+    Subclasses must implement the following (shown below is the Dartmouth example)::
 
-    name = 'dartmouth'
-    common_columns = ('EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh')
-    phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
-    phot_bands = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
-                  UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
-                  WISE=['W4', 'W3', 'W2', 'W1'],
-                  LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
-                  UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
+        name = 'dartmouth'
+        common_columns = ('EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh')
+        phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
+        phot_bands = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
+                      UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
+                      WISE=['W4', 'W3', 'W2', 'W1'],
+                      LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
+                      UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
 
-    default_kwargs = {'afe':'afep0', 'y':''}
-    datadir = os.path.join(ISOCHRONES, 'dartmouth')
-    zenodo_record = 159426
-    zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
-    master_tarball_file = 'dartmouth.tgz'
+        default_kwargs = {'afe':'afep0', 'y':''}
+        datadir = os.path.join(ISOCHRONES, 'dartmouth')
+        zenodo_record = 159426  # if you want to store data here
+        zenodo_files = ('dartmouth.tgz', 'dartmouth.tri') # again, if desired
+        master_tarball_file = 'dartmouth.tgz'
 
     Subclasses also must implement the following methods:
 
     `get_band`, `phot_tarball_file`, `get_filenames`, `get_feh`,
-    `to_df`, `hdf_filename`
+    `to_df`, `hdf_filename`.  See :class:`DartmouthModelGrid`
+    and :class:`MISTModelGrid` for details.
     """
     def __init__(self, bands, **kwargs):
         self.bands = sorted(bands)
@@ -43,6 +44,15 @@ class ModelGrid(object):
 
     @classmethod
     def get_band(cls, b):
+        """Must defines what a "shortcut" band name refers to.  
+
+        :param: b (string)
+            Band name.
+
+        :return: phot_system, band
+            ``b`` maps to the band defined by ``phot_system`` as ``band``.
+        """
+
         raise NotImplementedError
 
     def phot_tarball_file(self, phot, **kwargs):

@@ -455,7 +455,10 @@ class Isochrone(object):
             within allowed ranges.  Used, e.g., to initialize random walkers for
             :class:`StarModel` fits.
 
-        ### Should change this to drawing from priors!
+        .. todo::
+
+            Should change this to drawing from priors!  Current implementation
+            is a bit outdated.
         """
         if minmass is None:
             minmass = self.minmass
@@ -670,7 +673,10 @@ class FastIsochrone(Isochrone):
         return self.interp_value(mass, age, feh, self.logL_col)
 
     def mass(self, *args):
-        return args[0]
+        if np.size(args[0]) > 1:
+            return np.array(args[0])
+        else:
+            return args[0]
 
     @property
     def grid(self):

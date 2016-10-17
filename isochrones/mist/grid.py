@@ -43,7 +43,7 @@ class MISTModelGrid(ModelGrid):
 
     default_kwargs = {'version':'1.0'}
     datadir = os.path.join(ISOCHRONES, 'mist')
-    zenodo_record = None
+    zenodo_record = 161241
     zenodo_files = ('mist.tgz')
     master_tarball_file = 'mist.tgz'
 
