@@ -13,10 +13,12 @@ takes care of the grid interpolation; and :class:`StarModel`,
 which is the top-level interface for fitting stellar properties.
 
 While ``isochrones`` comes packaged with two different model grids
-(MIST and Dartmouth), it can be easily extended to other
+(`MIST <http://waps.cfa.harvard.edu/MIST/>`_ and 
+`Dartmouth <http://stellar.dartmouth.edu/models/>`_), 
+it can be easily extended to other
 model grids.  Of these two grid choices
 (accessible through the :class:`MIST_Isochrone` and :class:`Dartmouth_Isochrone`
-objects), MIST is generally preferred because it covers a broader
+objects), MIST may be preferred because it covers a broader
 range of age, mass, and metallicity than the Dartmouth Models.
 
 For posterior sampling, ``isochrones`` defaults to MultiNest/PyMultiNest for sampling (see `here <http://astrobetter.com/wiki/MultiNest+Installation+Notes>`_ for installation instructions), but will fall back on `emcee
