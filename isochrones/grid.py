@@ -116,7 +116,7 @@ class ModelGrid(object):
         return df
 
     @classmethod
-    def download_grids(cls, overwrite=True):
+    def download_grids(cls, overwrite=False):
         record = cls.zenodo_record
 
         paths = []
@@ -140,6 +140,9 @@ class ModelGrid(object):
     def extract_master_tarball(cls):
         """Unpack tarball of tarballs
         """
+        if not os.path.exists(cls.master_tarball_file):
+            cls.download_grids()
+            
         with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
             logging.info('Extracting {}...'.format(cls.master_tarball_file))
             tar.extractall(ISOCHRONES)
