@@ -12,8 +12,14 @@ if not on_rtd:
     from asciitree import LeftAligned, Traversal
     from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
 
-    from itertools import chain, imap, izip, count
     from collections import OrderedDict
+
+    from itertools import chain, count
+    try:
+        from itertools import imap, izip
+    except ImportError:  # Python 3
+        imap = map
+        izip = zip
 else:
     class Traversal(object):
         pass
@@ -35,11 +41,11 @@ class NodeTraversal(Traversal):
 
     def get_children(self, node):
         return node.children
-    
+
     def get_root(self, node):
         return node
         return node.get_root()
-    
+
     def get_text(self, node):
         text = node.label
         if self.pars is not None:
@@ -87,7 +93,7 @@ class MyLeftAligned(LeftAligned):
         self.pars = pars
         self.traverse = NodeTraversal(pars)
         super(MyLeftAligned,self).__init__(**kwargs)
-    
+
 class Node(object):
     def __init__(self, label):
 
@@ -120,7 +126,7 @@ class Node(object):
             return self
         else:
             return self.parent.get_root()
-        
+
     def get_ancestors(self):
         if self.parent.is_root:
             return []
@@ -131,7 +137,7 @@ class Node(object):
         box_tr = MyLeftAligned(pars,draw=BoxStyle(gfx=BOX_DOUBLE, horiz_len=1))
         if fout is None:
             print(box_tr(self))
-        else: 
+        else:
             fout.write(box_tr(self))
 
     @property
@@ -140,20 +146,20 @@ class Node(object):
 
     def _clear_leaves(self):
         self._leaves = None
-    
+
     def _clear_all_leaves(self):
         if not self.is_root:
             self.parent._clear_all_leaves()
         self._clear_leaves()
-        
+
     def add_child(self, node):
         node.parent = self
         self.children.append(node)
         self._clear_all_leaves()
 
     def remove_children(self):
-        self.children = []    
-        self._clear_all_leaves()    
+        self.children = []
+        self._clear_all_leaves()
 
     def remove_child(self, label):
         """
@@ -169,16 +175,16 @@ class Node(object):
             return
         self.children.pop(ind)
         self._clear_all_leaves()
-    
+
     def attach_to_parent(self, node):
         # detach from current parent, if necessary
         if self.parent is not None:
             self.parent.remove_child(self.label)
-            
+
         node.children += [self]
         self.parent = node
         self._clear_all_leaves()
-    
+
     @property
     def leaves(self):
         if self._leaves is None:
@@ -195,7 +201,7 @@ class Node(object):
             return leaves
 
     def select_leaves(self, name):
-        """Returns all leaves under all nodes matching name 
+        """Returns all leaves under all nodes matching name
 
         """
 
@@ -210,11 +216,11 @@ class Node(object):
                 for c in self.children:
                     leaves += c.select_leaves(name) #only matching ones
             return leaves
-        
+
     @property
     def leaf_labels(self):
         return [l.label for l in self.leaves]
-        
+
     def get_leaf(self, label):
         for l in self.leaves:
             if label==l.label:
@@ -226,7 +232,7 @@ class Node(object):
     @property
     def obs_leaf_nodes(self):
         return self.get_obs_leaves()
-    
+
 
     def get_obs_leaves(self):
         """Returns the last obs nodes that are leaves
@@ -251,11 +257,11 @@ class Node(object):
 
     def print_tree(self):
         print(self.label)
-        
+
 
     def __str__(self):
         return self.label
-                
+
     def __repr__(self):
         if self.is_leaf:
             s = "<{} '{}', parent='{}'>".format(self.__class__,
@@ -268,31 +274,31 @@ class Node(object):
                                                         self.parent,
                                                         child_labels)
         return s
-    
+
 class ObsNode(Node):
     def __init__(self, observation, source, ref_node=None):
 
         self.observation = observation
         self.source = source
         self.reference = ref_node
-        
+
         self.children = []
         self.parent = None
         self._leaves = None
-        
-        #indices of underlying models, defining physical systems        
-        self._inds = None 
+
+        #indices of underlying models, defining physical systems
+        self._inds = None
         self._n_params = None
         self._Nstars = None
 
         #for model_mag caching
         self._cache_key = None
-        self._cache_val = None    
+        self._cache_val = None
 
     @property
     def instrument(self):
         return self.observation.name
-    
+
     @property
     def band(self):
         return self.observation.band
@@ -300,39 +306,39 @@ class ObsNode(Node):
     @property
     def value(self):
         return (self.source.mag, self.source.e_mag)
-    
+
     @property
     def resolution(self):
         return self.observation.resolution
-    
+
     @property
     def relative(self):
         return self.source.relative
-    
+
     @property
     def separation(self):
         return self.source.separation
-    
+
     @property
     def pa(self):
         return self.source.pa
-    
+
 
     @property
     def value_str(self):
         return '({:.2f}, {:.2f})'.format(*self.value)
-    
+
 
     def distance(self, other):
         """Coordinate distance from another ObsNode
         """
         return distance((self.separation, self.pa), (other.separation, other.pa))
-        
+
         r0, pa0 = (self.separation, self.pa)
         #logging.debug('r0={}, pa0={} (from {})'.format(r0, pa0, self))
         ra0 = r0*np.sin(pa0*np.pi/180)
         dec0 = r0*np.cos(pa0*np.pi/180)
-        
+
         r1, pa1 = (other.separation, other.pa)
         #logging.debug('r1={}, pa1={} (from {})'.format(r0, pa0, other))
         ra1 = r1*np.sin(pa1*np.pi/180)
@@ -341,7 +347,7 @@ class ObsNode(Node):
         dra = (ra1 - ra0)
         ddec = (dec1 - dec0)
         return np.sqrt(dra**2 + ddec**2)
-        
+
     def _in_same_observation(self, other):
         return self.instrument==other.instrument and self.band==other.band
 
@@ -350,19 +356,19 @@ class ObsNode(Node):
         if self._n_params is None:
             self._n_params = 5 * len(self.leaves)
         return self._n_params
-        
+
     def _get_inds(self):
         inds = [n.index for n in self.leaves]
         inds = list(set(inds))
         inds.sort()
         return inds
-    
+
     def _clear_leaves(self):
         self._leaves = None
         self._inds = None
         self._n_params = None
         self._Nstars = None
-        
+
     @property
     def Nstars(self):
         """
@@ -377,7 +383,7 @@ class ObsNode(Node):
                     N[n.index] += 1
             self._Nstars = N
         return self._Nstars
-    
+
 
     @property
     def systems(self):
@@ -390,21 +396,21 @@ class ObsNode(Node):
         if self._inds is None:
             self._inds = self._get_inds()
         return self._inds
-    
+
     @property
     def label(self):
         if self.source.relative:
             band_str = 'delta-{}'.format(self.band)
         else:
             band_str = self.band
-        return '{} {}={} @({:.2f}, {:.0f} [{:.2f}])'.format(self.instrument, 
+        return '{} {}={} @({:.2f}, {:.0f} [{:.2f}])'.format(self.instrument,
                                                            band_str,
                                 self.value_str, self.separation, self.pa,
                                                            self.resolution)
 
     @property
     def obsname(self):
-        return '{}-{}'.format(self.instrument, self.band)    
+        return '{}-{}'.format(self.instrument, self.band)
 
     def get_system(self, ind):
         system = []
@@ -420,7 +426,7 @@ class ObsNode(Node):
         """
         Should only be able to do this to a leaf node.
 
-        Either N and index both integers OR index is 
+        Either N and index both integers OR index is
         list of length=N
         """
         if type(index) in [list,tuple]:
@@ -433,7 +439,7 @@ class ObsNode(Node):
             existing = self.get_system(idx)
             tag = len(existing)
             self.add_child(ModelNode(ic, index=idx, tag=tag))
-            
+
     def model_mag(self, pardict, use_cache=True):
         """
         pardict is a dictionary of parameters for all leaves
@@ -480,7 +486,7 @@ class ObsNode(Node):
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = (self.model_mag(pardict, use_cache=use_cache) - 
+            mod = (self.model_mag(pardict, use_cache=use_cache) -
                    self.reference.model_mag(pardict, use_cache=use_cache))
             mag -= self.reference.value[0]
         else:
@@ -498,19 +504,19 @@ class DummyObsNode(ObsNode):
         self.observation = None
         self.source = None
         self.reference = None
-        
+
         self.children = []
         self.parent = None
         self._leaves = None
-        
-        #indices of underlying models, defining physical systems        
-        self._inds = None 
+
+        #indices of underlying models, defining physical systems
+        self._inds = None
         self._n_params = None
         self._Nstars = None
 
         #for model_mag caching
         self._cache_key = None
-        self._cache_val = None    
+        self._cache_val = None
 
     @property
     def label(self):
@@ -523,7 +529,7 @@ class DummyObsNode(ObsNode):
     def lnlike(self, *args, **kwargs):
         return 0
 
-        
+
 class ModelNode(Node):
     """
     These are always leaves; leaves are always these.
@@ -534,7 +540,7 @@ class ModelNode(Node):
         self._ic = ic
         self.index = index
         self.tag = tag
-        
+
         self.children = []
         self.parent = None
         self._leaves = None
@@ -542,12 +548,12 @@ class ModelNode(Node):
     @property
     def label(self):
         return '{}_{}'.format(self.index, self.tag)
-        
+
     @property
     def ic(self):
         if type(self._ic)==type:
             self._ic = self._ic()
-        return self._ic        
+        return self._ic
 
     def get_obs_ancestors(self):
         nodes = self.get_ancestors()
@@ -577,7 +583,7 @@ class ModelNode(Node):
         return self.ic.mag[band](*p)
 
     def lnlike(self, *args, **kwargs):
-        return 0        
+        return 0
 
 class Source(object):
     def __init__(self, mag, e_mag, separation=0., pa=0.,
@@ -597,13 +603,13 @@ class Source(object):
         return self.__str__()
 
 class Star(object):
-    """Theoretical counterpart of Source. 
+    """Theoretical counterpart of Source.
     """
     def __init__(self, pars, separation, pa):
         self.pars = pars
         self.separation = separation
-        self.pa = pa        
-        
+        self.pa = pa
+
     def distance(self, other):
         return distance((self.separation, self.pa),
                         (other.separation, other.pa))
@@ -646,14 +652,14 @@ class Observation(object):
 
         if len(stars) > 2:
             raise NotImplementedError('No support yet for > 2 synthetic stars')
-            
+
         mags = [ic(*s.pars)['{}_mag'.format(self.band)].values[0] for s in stars]
 
         d = stars[0].distance(stars[1])
-        
+
         if d < self.resolution:
             mag = addmags(*mags) + unc*np.random.randn()
-            sources = [Source(mag, unc, stars[0].separation, stars[0].pa, 
+            sources = [Source(mag, unc, stars[0].separation, stars[0].pa,
                            relative=self.relative)]
         else:
             mags = np.array([m + unc*np.random.randn() for m in mags])
@@ -661,7 +667,7 @@ class Observation(object):
                 mags -= mags.min()
             sources = [Source(m, unc, s.separation, s.pa, relative=self.relative)
                         for m,s in zip(mags, stars)]
-        
+
         for s in sources:
             self.add_source(s)
 
@@ -680,7 +686,7 @@ class Observation(object):
             ind = 0
             for s in self.sources:
                 # Keep sorted order of separation
-                if source.separation < s.separation: 
+                if source.separation < s.separation:
                     break
                 ind += 1
 
@@ -706,13 +712,13 @@ class Observation(object):
 
     def __str__(self):
         return '{}-{}'.format(self.name, self.band)
-    
+
     def __repr__(self):
         return str(self)
-        
+
 class ObservationTree(Node):
     """Builds a tree of Nodes from a list of Observation objects
-    
+
     Organizes Observations from smallest to largest resolution,
     and at each stage attaches each source to the most probable
     match from the previous Observation.  Admittedly somewhat hack-y,
@@ -722,10 +728,10 @@ class ObservationTree(Node):
     spec_props = ['Teff', 'logg', 'feh']
 
     def __init__(self, observations=None, name=None):
-        
+
         if observations is None:
             observations = []
-        
+
         if name is None:
             self.label = 'root'
         else:
@@ -745,7 +751,7 @@ class ObservationTree(Node):
 
         # Limits (such as minimum on logg)
         self.limits = {}
-        
+
         # Parallax measurements
         self.parallax = {}
 
@@ -759,7 +765,7 @@ class ObservationTree(Node):
     @property
     def name(self):
         return self.label
-    
+
     def _clear_cache(self):
         self._cache_key = None
         self._cache_val = None
@@ -775,13 +781,13 @@ class ObservationTree(Node):
 
         for (n,b), g in df.groupby(['name','band']):
             #g.sort('separation', inplace=True) #ensures that the first is reference
-            sources = [Source(**s[['mag','e_mag','separation','pa','relative']]) 
+            sources = [Source(**s[['mag','e_mag','separation','pa','relative']])
                         for _,s in g.iterrows()]
             obs = Observation(n, b, g.resolution.mean(),
                               sources=sources, relative=g.relative.any())
             tree.add_observation(obs)
 
-        # For all relative mags, set reference to be brightest 
+        # For all relative mags, set reference to be brightest
 
 
 
@@ -825,7 +831,7 @@ class ObservationTree(Node):
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """
         Writes all info necessary to recreate object to HDF file
-        
+
         Saves table of photometry in DataFrame
 
         Saves model specification, spectroscopy, parallax to attrs
@@ -865,13 +871,13 @@ class ObservationTree(Node):
         store = pd.HDFStore(filename)
         try:
             samples = store[path+'/df']
-            attrs = store.get_storer(path+'/df').attrs        
+            attrs = store.get_storer(path+'/df').attrs
         except:
             store.close()
             raise
         df = store[path+'/df']
         new = cls.from_df(df)
-        
+
         if ic is None:
             ic = get_ichrone('mist')
 
@@ -883,7 +889,7 @@ class ObservationTree(Node):
 
 
     def add_observation(self, obs):
-        """Adds an observation to observation list, keeping proper order        
+        """Adds an observation to observation list, keeping proper order
         """
         if len(self._observations)==0:
             self._observations.append(obs)
@@ -895,10 +901,10 @@ class ObservationTree(Node):
                     break
                 ind += 1
             self._observations.insert(ind, obs)
-        
+
         self._build_tree()
         self._clear_cache()
-        
+
     def add_spectroscopy(self, label='0_0', **props):
         """
         Adds spectroscopic measurement to particular star(s) (corresponding to individual model node)
@@ -928,7 +934,7 @@ class ObservationTree(Node):
 
         Usually will be used for 'logg', but 'Teff' and 'feh' will also work.
 
-        In form (min, max): e.g., t.add_limit(logg=(3.0,None))  
+        In form (min, max): e.g., t.add_limit(logg=(3.0,None))
 
         None will be converted to (-)np.inf
         """
@@ -971,15 +977,15 @@ class ObservationTree(Node):
         N : number of model stars per observed star
         index : index of physical association
 
-        leaves: either a list of leaves, or a pattern by which 
+        leaves: either a list of leaves, or a pattern by which
         the leaves are selected (via `select_leaves`)
 
-        If these are lists, then they are defined individually for 
+        If these are lists, then they are defined individually for
         each leaf.
 
         If `index` is a list, then each entry must be either
         an integer or a list of length `N` (where `N` is the corresponding
-            entry in the `N` list.)  
+            entry in the `N` list.)
 
         This bugs up if you call it multiple times.  If you want
         to re-do a call to this function, please re-define the tree.
@@ -1022,7 +1028,7 @@ class ObservationTree(Node):
         self._clear_all_leaves()
 
     def _fix_labels(self):
-        """For each system, make sure tag _0 is the brightest, and make sure 
+        """For each system, make sure tag _0 is the brightest, and make sure
         system 0 contains the brightest star in the highest-resolution image
         """
         for s in self.systems:
@@ -1036,7 +1042,7 @@ class ObservationTree(Node):
 
             # If brightest is not tag _0, then switch them.
             if n0.tag != 0:
-                n_other = self.get_leaf('{}_{}'.format(s,0))        
+                n_other = self.get_leaf('{}_{}'.format(s,0))
                 n_other.tag = n0.tag
                 n0.tag = 0
 
@@ -1052,7 +1058,7 @@ class ObservationTree(Node):
                 pass
         return system
 
-    @property    
+    @property
     def observations(self):
         return self._observations
 
@@ -1072,7 +1078,7 @@ class ObservationTree(Node):
         """
         Trims leaves from tree that are not observed at highest-resolution level
 
-        This is a bit hacky-- what it does is 
+        This is a bit hacky-- what it does is
         """
         # Only allow leaves to stay on list (highest-resolution) level
         return
@@ -1129,7 +1135,7 @@ class ObservationTree(Node):
         # fix this! make sure it is unique!!!
         lst = list(chain(*[c.systems for c in self.children]))
         return sorted(set(lst))
-    
+
     def print_ascii(self, fout=None, p=None):
         pardict = None
         if p is not None:
@@ -1194,7 +1200,7 @@ class ObservationTree(Node):
 
         ds = []
         nodes = []
-        
+
         ds.append(np.inf)
         nodes.append(self)
 
@@ -1212,7 +1218,7 @@ class ObservationTree(Node):
         inds = np.argsort(ds)
         ds = [ds[i] for i in inds]
         nodes = [nodes[i] for i in inds]
-        
+
         for d,n in zip(ds, nodes):
             try:
                 if d < n.resolution or n.resolution==-1:
@@ -1238,14 +1244,14 @@ class ObservationTree(Node):
                     node = ref_node
                 else:
                     node = ObsNode(o, s)
-                
+
                 # For first level, no need to choose parent
                 if i==0:
                     parent = self
                 else:
                     # Find parent (closest node in tree)
                     parent = self._find_closest(node)
-                        
+
                 parent.add_child(node)
 
         # If after all this, there are no `ObsNode` nodes,
