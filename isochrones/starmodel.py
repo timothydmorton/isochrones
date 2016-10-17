@@ -26,14 +26,19 @@ if not on_rtd:
     import configobj
     from astropy.coordinates import SkyCoord
 
+    try:
+        basestring
+    except NameError:
+        basestring = str
+
 from .utils import addmags
-from .observation import ObservationTree, Observation, Source 
+from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone, Isochrone
 
 def _parse_config_value(v):
-    try: 
+    try:
         val = float(v)
     except:
         try:
@@ -48,7 +53,7 @@ def _parse_config_value(v):
 class StarModel(object):
     """
 
-    :param ic: 
+    :param ic:
         :class:`Isochrone` object used to model star.
 
     :param obs: (optional)
@@ -62,9 +67,9 @@ class StarModel(object):
         to be a filename of an obs summary DataFrame.
 
     :param N:
-        Number of model stars to assign to each "leaf node" of the 
+        Number of model stars to assign to each "leaf node" of the
         :class:`ObservationTree`.  If you want to model a binary star,
-        provide ``N=2``. 
+        provide ``N=2``.
 
     :param **kwargs:
         Keyword arguments must be properties of given isochrone, e.g., logg,
@@ -73,7 +78,7 @@ class StarModel(object):
         arguments will be held in ``self.properties``.  ``parallax`` is
         also a valid property, and should be provided in miliarcseconds,
         as is ``density`` [g/cc], and ``nu_max`` and ``delta_nu``
-        (asteroseismic parameters in uHz.)        
+        (asteroseismic parameters in uHz.)
     """
 
     # These are allowable parameters that are not photometric bands
@@ -90,7 +95,7 @@ class StarModel(object):
 
         if coords is None:
             if RA is not None and dec is not None:
-                try: 
+                try:
                     coords = SkyCoord(RA, dec)
                 except:
                     coords = SkyCoord(float(RA), float(dec), unit='deg')
@@ -109,7 +114,7 @@ class StarModel(object):
             obs = ObservationTree.from_df(df)
             obs.define_models(ic, N=N, index=index)
             self.obs = obs
-            self._add_properties(**kwargs)            
+            self._add_properties(**kwargs)
         else:
             self.obs = obs
             if len(self.obs.get_model_nodes())==0:
@@ -156,10 +161,10 @@ class StarModel(object):
                 return None
             else:
                 return m.group(1)
-            
+
     @classmethod
     def get_bands(cls, inifile):
-        
+
         bands = []
         c = configobj.ConfigObj(inifile)
         for kw,v in c.items():
@@ -189,9 +194,9 @@ class StarModel(object):
             K = 9.0, 0.05
             Teff = 5000, 150
 
-        If there are multiple stars observed, you can either define them in 
-        the ini file, or use the `obsfile` keyword, pointing to a file with 
-        the summarized photometric observations.  In this case, spectroscopic/parallax 
+        If there are multiple stars observed, you can either define them in
+        the ini file, or use the `obsfile` keyword, pointing to a file with
+        the summarized photometric observations.  In this case, spectroscopic/parallax
         info should still be included in the .ini file; e.g.,
 
             obsfile = obs.csv
@@ -219,24 +224,24 @@ class StarModel(object):
             also assumed that the photometry is absolute. (`relative=False`)
 
           * If 'resolution' is an attribute under a particular survey section (and
-        'relative' is not explicitly stated), then the survey is assumed to have relative 
+        'relative' is not explicitly stated), then the survey is assumed to have relative
         photometry, and to be listing
         information about companion stars.  In this case, there must be "separation"
-        and "PA" included for each companion.  If there is more than one companion star, 
+        and "PA" included for each companion.  If there is more than one companion star,
         they must be identifed by tag, e.g., separation_1, PA_1, Ks_1, J_1, etc.  The
         tag can be anything alphanumeric, but it must be consistent within a particular
         section (instrument).  If there
         is no tag, there is assumed to be only one companion detected.
-        
+
           * If there are no sections, then bands will be interpreted at face value
         and will all be assumed to apply to all stars modeled.
-        
-          * Default is to model each star in the highest-resolution observation as a 
+
+          * Default is to model each star in the highest-resolution observation as a
         single star, at the same distance/age/feh/AV.
 
 
         The `N` and `index`
-        parameters may also be provided, to specify the relations between the 
+        parameters may also be provided, to specify the relations between the
         model stars.  If these are not provided, then `N` will default to `1`
         (one model star per star observed in highest-resolution observation)
         and `index` will default to all `0` (all stars physically associated).
@@ -273,7 +278,7 @@ class StarModel(object):
                     kwargs[k] = _parse_config_value(c[k])
                 else:
                     instrument = k
-                    
+
                     # Set values of 'resolution' and 'relative'
                     if 'resolution' in c[k]:
                         resolution = float(c[k]['resolution'])
@@ -281,14 +286,14 @@ class StarModel(object):
                     else:
                         resolution = 4.0 #default
                         relative = False
-                        
+
                     # Overwrite value of 'relative' if it is explicitly set
                     if 'relative' in c[k]:
                         relative = c[k]['relative']=='True'
-                        
-                    
+
+
                     # Check if there are multiple stars (defined by whether
-                    # any separations are listed).  
+                    # any separations are listed).
                     # While we're at it, keep track of tags if they exist,
                     #  and pull out the names of the bands.
                     multiple = False
@@ -311,11 +316,11 @@ class StarModel(object):
                             if b not in bands:
                                 bands.append(b)
 
-                    # If a blank tags needs to be created, do so 
+                    # If a blank tags needs to be created, do so
                     if len(tags)==0 or bands[0] in c[k]:
                         tags.append('')
 
-                    # For each band and each star, create a row 
+                    # For each band and each star, create a row
                     for b in bands:
                         for tag in tags:
                             row = {}
@@ -335,7 +340,7 @@ class StarModel(object):
                             if not np.isnan(row['mag']) and not np.isnan(row['e_mag']):
                                 df = df.append(pd.DataFrame(row, index=[i]))
                                 i += 1
-                            
+
                         # put the reference star in w/ mag=0
                         if relative:
                             row = {}
@@ -349,7 +354,7 @@ class StarModel(object):
                             row['e_mag'] = 0.01
                             df = df.append(pd.DataFrame(row, index=[i]))
                             i += 1
-                                
+
             obs = ObservationTree.from_df(df)
 
         if 'obsfile' in c:
@@ -451,7 +456,7 @@ class StarModel(object):
                 lo,hi = self.bounds(prop)
                 if val < lo or val > hi:
                     return -np.inf
-                lnp += np.log(self.prior(prop, val, 
+                lnp += np.log(self.prior(prop, val,
                                   bounds=self.bounds(prop)))
                 if not np.isfinite(lnp):
                     logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
@@ -489,7 +494,7 @@ class StarModel(object):
 
     def prior(self, prop, val, **kwargs):
         return self._priors[prop](val, **kwargs)
-    
+
 
     @property
     def n_params(self):
@@ -504,7 +509,7 @@ class StarModel(object):
             minmass, maxmass = self.bounds('mass')
             for j in xrange(n):
                 cube[i+j] = (maxmass - minmass)*cube[i+j] + minmass
-            
+
             for j, par in enumerate(['age','feh','distance','AV']):
                 lo, hi = self.bounds(par)
                 cube[i+n+j] = (hi - lo)*cube[i+n+j] + lo
@@ -514,7 +519,7 @@ class StarModel(object):
         """loglikelihood function for multinest
         """
         return self.lnpost(cube)
-            
+
     @property
     def labelstring(self):
         return '--'.join(['-'.join([n.label for n in l.children]) for l in self.obs.get_obs_leaves()])
@@ -539,7 +544,7 @@ class StarModel(object):
                 s = 'triple'
 
             s = '{}-{}'.format(self.ic.name, s)
-            self._mnest_basename = os.path.join('chains', s+'-') 
+            self._mnest_basename = os.path.join('chains', s+'-')
 
         if os.path.isabs(self._mnest_basename):
             return self._mnest_basename
@@ -562,7 +567,7 @@ class StarModel(object):
         sys.path.append(POLYCHORD)
         import PyPolyChord.PyPolyChord as PolyChord
 
-        return PolyChord.run_nested_sampling(self.lnpost_polychord, 
+        return PolyChord.run_nested_sampling(self.lnpost_polychord,
                         self.n_params, 0, file_root=basename, **kwargs)
 
 
@@ -571,28 +576,28 @@ class StarModel(object):
                       test=False,
                       **kwargs):
         """
-        Fits model using MultiNest, via pymultinest.  
+        Fits model using MultiNest, via pymultinest.
 
         :param n_live_points:
             Number of live points to use for MultiNest fit.
 
         :param basename:
-            Where the MulitNest-generated files will live.  
+            Where the MulitNest-generated files will live.
             By default this will be in a folder named `chains`
-            in the current working directory.  Calling this 
-            will define a `_mnest_basename` attribute for 
+            in the current working directory.  Calling this
+            will define a `_mnest_basename` attribute for
             this object.
 
         :param verbose:
             Whether you want MultiNest to talk to you.
 
         :param refit, overwrite:
-            Set either of these to true if you want to 
+            Set either of these to true if you want to
             delete the MultiNest files associated with the
             given basename and start over.
 
         :param **kwargs:
-            Additional keyword arguments will be passed to 
+            Additional keyword arguments will be passed to
             :func:`pymultinest.run`.
 
         """
@@ -613,7 +618,7 @@ class StarModel(object):
         # observed properties
         prop_nomatch = False
         propfile = '{}properties.json'.format(basename)
-        
+
         """
         if os.path.exists(propfile):
             with open(propfile) as f:
@@ -664,7 +669,7 @@ class StarModel(object):
     @property
     def mnest_analyzer(self):
         """
-        PyMultiNest Analyzer object associated with fit.  
+        PyMultiNest Analyzer object associated with fit.
 
         See PyMultiNest documentation for more.
         """
@@ -735,28 +740,28 @@ class StarModel(object):
             normal burn-in.  Default is `None`, which will be set to `True` if
             fitting for distance (i.e., if there are apparent magnitudes as
             properties of the model), and `False` if not.
-            
+
         :param ninitial: (optional)
             Number of iterations to test walkers for acceptance rate before
             re-initializing.
 
         :param loglike_args:
-            Any arguments to pass to :func:`StarModel.loglike`, such 
+            Any arguments to pass to :func:`StarModel.loglike`, such
             as what priors to use.
 
         :param **kwargs:
             Additional keyword arguments passed to :class:`emcee.EnsembleSampler`
             constructor.
-            
+
         :return:
             :class:`emcee.EnsembleSampler` object.
-            
+
         """
 
         #clear any saved _samples
         if self._samples is not None:
             self._samples = None
-            
+
         npars = self.n_params
 
         if p0 is None:
@@ -765,7 +770,7 @@ class StarModel(object):
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
                                                 **kwargs)
                 #ninitial = 300 #should this be parameter?
-                pos, prob, state = sampler.run_mcmc(p0, ninitial) 
+                pos, prob, state = sampler.run_mcmc(p0, ninitial)
 
                 # Choose walker with highest final lnprob to seed new one
                 i,j = np.unravel_index(sampler.lnprobability.argmax(),
@@ -777,12 +782,12 @@ class StarModel(object):
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
-        
+
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
-        
+
         self._sampler = sampler
         return sampler
 
@@ -831,7 +836,7 @@ class StarModel(object):
             AV = chain[:,i+n+3]
             for j in range(n):
                 mass = chain[:,i+j]
-                d = self.ic(mass, age, feh, 
+                d = self.ic(mass, age, feh,
                              distance=distance, AV=AV)
                 for c in d.columns:
                     df[c+'_{}_{}'.format(s,j)] = d[c]
@@ -839,7 +844,7 @@ class StarModel(object):
             df['feh_{}'.format(s)] = feh
             df['distance_{}'.format(s)] = distance
             df['AV_{}'.format(s)] = AV
-            
+
             i += 4 + n
 
         for b in self.ic.bands:
@@ -861,12 +866,12 @@ class StarModel(object):
         fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
         of the :class:`Isochrone` at each of these sample points---this
         is how chains of physical/observable parameters get produced.
-        
+
         """
         if not hasattr(self,'sampler') and self._samples is None:
             raise AttributeError('Must run MCMC (or load from file) '+
                                  'before accessing samples')
-        
+
         if self._samples is not None:
             df = self._samples
         else:
@@ -891,7 +896,7 @@ class StarModel(object):
         newsamples = samples.iloc[inds]
         newsamples.reset_index(inplace=True)
         return newsamples
-        
+
     def triangle(self, *args, **kwargs):
         return self.corner(*args, **kwargs)
 
@@ -919,7 +924,7 @@ class StarModel(object):
             fig = corner.corner(df[params], labels=params, priors=priors, **kwargs)
         except:
             logging.warning("Use Tim's version of corner to plot priors.")
-            fig = corner.corner(df[params], labels=params, **kwargs)            
+            fig = corner.corner(df[params], labels=params, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
 
@@ -936,10 +941,10 @@ class StarModel(object):
         collective_props = ['feh','age','distance','AV']
         indiv_props = [p for p in props if p not in collective_props]
         sys_props = [p for p in props if p in collective_props]
-        
+
         props = ['{}_{}'.format(p,l) for p in indiv_props for l in self.obs.leaf_labels]
         props += ['{}_{}'.format(p,s) for p in sys_props for s in self.obs.systems]
-        
+
         if 'range' not in kwargs:
             rng = [0.995 for p in props]
 
@@ -977,7 +982,7 @@ class StarModel(object):
                 truths.append(n.value[0])
 
             names.append(name)
-            rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)), 
+            rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)),
                         max(truths[-1], np.percentile(tot_mags[-1],99.5))))
         tot_mags = np.array(tot_mags).T
 
@@ -989,8 +994,8 @@ class StarModel(object):
         """Saves object data to HDF file (only works if MCMC is run)
 
         Samples are saved to /samples location under given path,
-        :class:`ObservationTree` is saved to /obs location under given path. 
-        
+        :class:`ObservationTree` is saved to /obs location under given path.
+
         :param filename:
             Name of file to save to.  Should be .h5 file.
 
@@ -1022,16 +1027,16 @@ class StarModel(object):
             pd.DataFrame().to_hdf(filename, path+'/samples')
 
         self.obs.save_hdf(filename, path+'/obs', append=True)
-        
+
         with pd.HDFStore(filename) as store:
             # store = pd.HDFStore(filename)
             attrs = store.get_storer('{}/samples'.format(path)).attrs
-            
+
             attrs.ic_type = type(self.ic)
             attrs.ic_bands = self.ic.bands
             attrs.use_emcee = self.use_emcee
             attrs._mnest_basename = self._mnest_basename
-            
+
             attrs._bounds = self._bounds
             attrs._priors = self._priors
 
@@ -1057,11 +1062,11 @@ class StarModel(object):
         store = pd.HDFStore(filename)
         try:
             samples = store[path+'/samples']
-            attrs = store.get_storer(path+'/samples').attrs        
+            attrs = store.get_storer(path+'/samples').attrs
         except:
             store.close()
             raise
-        
+
         try:
             ic = attrs.ic_type(attrs.ic_bands)
         except AttributeError:
@@ -1081,8 +1086,8 @@ class StarModel(object):
         store.close()
 
         obs = ObservationTree.load_hdf(filename, path+'/obs', ic=ic)
-        
-        mod = cls(ic, obs=obs, 
+
+        mod = cls(ic, obs=obs,
                   use_emcee=use_emcee, name=name)
         mod._samples = samples
         mod._mnest_basename = basename
@@ -1132,13 +1137,13 @@ class StarModelGroup(object):
 ########## Utility functions ###############
 
 def N_options(N_stars, max_multiples=1, max_stars=2):
-    return [N for N in itertools.product(np.arange(max_stars) + 1, repeat=N_stars) 
+    return [N for N in itertools.product(np.arange(max_stars) + 1, repeat=N_stars)
             if (np.array(N)>1).sum() <= max_multiples]
 
 def index_options(N_stars):
     if N_stars==1:
         return [0]
-    
+
     options = []
     for ind in itertools.product(xrange(N_stars), repeat=N_stars):
         diffs = np.array(ind[1:]) - np.array(ind[:-1])
