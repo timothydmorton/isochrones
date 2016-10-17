@@ -20,6 +20,7 @@ if not on_rtd:
     except ImportError:  # Python 3
         imap = map
         izip = zip
+        xrange = range
 else:
     class Traversal(object):
         pass
@@ -1146,7 +1147,7 @@ class ObservationTree(Node):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
-        if np.all(p==self._cache_key) and use_cache:
+        if use_cache and self._cache_key is not None and np.all(p==self._cache_key):
             return self._cache_val
         self._cache_key = p
 

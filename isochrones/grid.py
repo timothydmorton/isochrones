@@ -41,13 +41,13 @@ class ModelGrid(object):
 
         for k,v in self.default_kwargs.items():
             if k not in self.kwargs:
-                self.kwargs[k] = v            
+                self.kwargs[k] = v
 
         self._df = None
 
     @classmethod
     def get_band(cls, b):
-        """Must defines what a "shortcut" band name refers to.  
+        """Must defines what a "shortcut" band name refers to.
 
         :param: b (string)
             Band name.
@@ -73,7 +73,7 @@ class ModelGrid(object):
         """Parse [Fe/H] from filename (returns float)
         """
         raise NotImplementedError
-        
+
     @classmethod
     def to_df(cls, filename):
         """Parses specific file to a pandas DataFrame
@@ -91,10 +91,10 @@ class ModelGrid(object):
             self._df = self._get_df()
 
         return self._df
-    
+
     def _get_df(self):
         """Returns stellar model grid with desired bandpasses and with standard column names
-        
+
         bands must be iterable, and are parsed according to :func:``get_band``
         """
         grids = {}
@@ -136,7 +136,7 @@ class ModelGrid(object):
                     continue
             try:
                 urllib.request.urlretrieve(url, path)
-            except HTTPError:
+            except:
                 logging.error('Problem with url: {}'.format(url))
                 raise
 
@@ -163,7 +163,7 @@ class ModelGrid(object):
         """
         df = pd.concat([self.to_df(f) for f in self.get_filenames(phot, **self.kwargs)])
         return df
-        
+
     def get_hdf(self, phot):
         h5file = self.hdf_filename(phot)
         try:
@@ -173,7 +173,7 @@ class ModelGrid(object):
         return df
 
     def write_hdf(self, phot):
-        df = self.df_all(phot)   
+        df = self.df_all(phot)
         h5file = self.hdf_filename(phot)
         df.to_hdf(h5file,'df')
         print('{} written.'.format(h5file))
