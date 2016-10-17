@@ -14,6 +14,13 @@ if not on_rtd:
 
     from itertools import chain, imap, izip, count
     from collections import OrderedDict
+else:
+    class Traversal(object):
+        pass
+
+    class LeftAligned(object):
+        pass
+
 
 from .isochrone import get_ichrone
 from .utils import addmags, distance
