@@ -1,15 +1,19 @@
 from __future__ import print_function, division
 import os, re, sys
-import numpy as np
-import pandas as pd
 import logging
-from configobj import ConfigObj
 
-from asciitree import LeftAligned, Traversal
-from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
+from .config import on_rtd:
 
-from itertools import chain, imap, izip, count
-from collections import OrderedDict
+if not on_rtd:
+    import numpy as np
+    import pandas as pd
+    from configobj import ConfigObj
+
+    from asciitree import LeftAligned, Traversal
+    from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
+
+    from itertools import chain, imap, izip, count
+    from collections import OrderedDict
 
 from .isochrone import get_ichrone
 from .utils import addmags, distance

@@ -1,10 +1,13 @@
 import os,re, glob
 import tarfile
-import numpy as np
-import pandas as pd
 import logging
 
-from .config import ISOCHRONES
+from .config import ISOCHRONES, on_rtd
+
+if not on_rtd:
+    import numpy as np
+    import pandas as pd
+
 
 class ModelGrid(object):
     """Base class for Model Grids.

@@ -1,28 +1,30 @@
+from .config import on_rtd
+
 import os, re, sys
-import pandas as pd
-import numpy as np
 
-from scipy.interpolate import LinearNDInterpolator as interpnd
-import numpy.random as rand
-import matplotlib.pyplot as plt
+if not on_rtd:
+    import pandas as pd
+    import numpy as np
+    from scipy.interpolate import LinearNDInterpolator as interpnd
+    import numpy.random as rand
+    import matplotlib.pyplot as plt
 
-try:
     from astropy import constants as const
 
     #Define useful constants
     G = const.G.cgs.value
     MSUN = const.M_sun.cgs.value
     RSUN = const.R_sun.cgs.value
-except ImportError:
+
+    from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
+    from .interp import interp_value, interp_values
+
+else:
     G = 6.67e-11
     MSUN = 1.99e33
     RSUN = 6.96e10
 
-
-from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
-#from ..isochrone import Isochrone
 from .config import ISOCHRONES
-from .interp import interp_value, interp_values
 from .grid import ModelGrid
 
 def get_ichrone(models, bands=None, default=True):

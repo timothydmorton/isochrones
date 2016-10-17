@@ -1,10 +1,12 @@
-import matplotlib.pyplot as plt
-
 import os, os.path, re, sys
 import logging
 import time
 
-import tables
+from .config import on_rtd
+
+if not on_rtd:
+    import tables
+    import matplotlib.pyplot as plt
 
 from configobj import ConfigObj
 from .starmodel import StarModel

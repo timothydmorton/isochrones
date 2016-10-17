@@ -1,5 +1,10 @@
 from __future__ import print_function, division
-import numpy as np
+
+from .config import on_rtd
+
+if not on_rtd:
+    import numpy as np
+
 
 def age_prior(age, bounds=(9,10.15)):
     """

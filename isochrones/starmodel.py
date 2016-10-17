@@ -1,22 +1,30 @@
 from __future__ import print_function, division
 
-import numpy as np
-import pandas as pd
 import os, os.path, sys, re, glob
 import itertools
 from copy import deepcopy
-
-import numpy.random as rand
-from scipy.stats import gaussian_kde
-import scipy
 import logging
 import json
-import emcee
-import corner
-import pymultinest
 
-import configobj
-from astropy.coordinates import SkyCoord
+from .config import on_rtd:
+
+if not on_rtd:
+    import numpy as np
+    import pandas as pd
+
+    import numpy.random as rand
+    from scipy.stats import gaussian_kde
+    import scipy
+    import emcee
+    import corner
+
+    try:
+        import pymultinest
+    except ImportError:
+        logging.warning('PyMultiNest not imported.  MultiNest fits will not work.')
+
+    import configobj
+    from astropy.coordinates import SkyCoord
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source 

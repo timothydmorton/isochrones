@@ -1,7 +1,11 @@
 # Based on Numerical Recipes
-import numpy
-from scipy.linalg import solve_banded
-import pdb
+
+from ..config import on_rtd
+
+if not on_rtd:
+    import numpy
+    from scipy.linalg import solve_banded
+    import pdb
 
 def splint(spl, x):
     npts = len(spl.x)
