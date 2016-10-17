@@ -1035,6 +1035,8 @@ class ObservationTree(Node):
             mag0 = np.inf
             n0 = None
             for n in self.get_system(s):
+                if isinstance(n.parent, DummyObsNode):
+                    continue
                 mag, _ = n.parent.value
                 if mag < mag0:
                      mag0 = mag
