@@ -63,7 +63,7 @@ class MISTModelGrid(ModelGrid):
         #     band = 'Tycho_{}'.format(b)
         elif b in ['U','B','V','R','I']:
             phot = 'UBVRIplus'
-            band = 'Bessel_{}'.format(b)
+            band = 'Bessell_{}'.format(b)
         elif b in  ['J','H','Ks']:
             phot = 'UBVRIplus'
             band = '2MASS_{}'.format(b)
