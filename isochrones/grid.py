@@ -134,7 +134,10 @@ class ModelGrid(object):
                     os.remove(path)
                 else:
                     continue
-            urllib.request.urlretrieve(url, path)
+            try:
+                urllib.request.urlretrieve(url, path)
+            except HTTPError:
+                logging.error('Problem with url: {}'.format(url))
 
     @classmethod
     def extract_master_tarball(cls):
@@ -142,7 +145,7 @@ class ModelGrid(object):
         """
         if not os.path.exists(cls.master_tarball_file):
             cls.download_grids()
-            
+
         with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
             logging.info('Extracting {}...'.format(cls.master_tarball_file))
             tar.extractall(ISOCHRONES)
