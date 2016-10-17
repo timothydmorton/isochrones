@@ -1033,7 +1033,7 @@ class StarModel(object):
             attrs = store.get_storer('{}/samples'.format(path)).attrs
 
             attrs.ic_type = type(self.ic)
-            attrs.ic_bands = self.ic.bands
+            attrs.ic_bands = list(self.ic.bands)
             attrs.use_emcee = self.use_emcee
             attrs._mnest_basename = self._mnest_basename
 
