@@ -138,6 +138,7 @@ class ModelGrid(object):
                 urllib.request.urlretrieve(url, path)
             except HTTPError:
                 logging.error('Problem with url: {}'.format(url))
+                raise
 
     @classmethod
     def extract_master_tarball(cls):
