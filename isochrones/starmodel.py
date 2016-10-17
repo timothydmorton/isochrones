@@ -6,7 +6,7 @@ from copy import deepcopy
 import logging
 import json
 
-from .config import on_rtd:
+from .config import on_rtd
 
 if not on_rtd:
     import numpy as np
