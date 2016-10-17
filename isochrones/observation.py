@@ -1041,7 +1041,7 @@ class ObservationTree(Node):
                      n0 = n
 
             # If brightest is not tag _0, then switch them.
-            if n0.tag != 0:
+            if n0 is not None and n0.tag != 0:
                 n_other = self.get_leaf('{}_{}'.format(s,0))
                 n_other.tag = n0.tag
                 n0.tag = 0
