@@ -120,7 +120,7 @@ by checking the ``bands`` attribute:
 If you wish to use a different set of photometric bands, you may initialize the
 :class:`Isochrone` with a ``bands`` keyword argument.  However, the 
 :class:`ModelGrid` object used by the :class:`Isochrone` must know how to 
-interpret that band name, and where to get that data, via the :function:`get_band`
+interpret that band name, and where to get that data, via the :func:`get_band`
 method.
 
 Fitting Stellar Properties
