@@ -2,7 +2,7 @@ from __future__ import print_function, division
 import os, re, sys
 import logging
 
-from .config import on_rtd:
+from .config import on_rtd
 
 if not on_rtd:
     import numpy as np
