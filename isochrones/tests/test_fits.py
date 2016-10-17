@@ -10,12 +10,13 @@ mnest = True
 try:
     import pymultinest
 except:
+    import logging
     logging.warning('No PyMultiNest; fits will use emcee')
     mnest = False
 
 chainsdir = tempfile.gettempdir()
 
-props = dict(Teff=(5800, 100), logg=(4.5, 0.1), 
+props = dict(Teff=(5800, 100), logg=(4.5, 0.1),
              B=(5.7,0.05), V=(5.0, 0.05))
 
 def test_fitting():
@@ -51,7 +52,7 @@ def _fit_mnest(mod):
     files = glob.glob('{}*'.format(basename))
     for f in files:
         os.remove(f)
-    
+
 def _fit_emcee(mod):
     mod.use_emcee = True
     mod.fit_mcmc(nburn=20, niter=10, ninitial=10)

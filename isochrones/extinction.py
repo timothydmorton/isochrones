@@ -54,7 +54,7 @@ def get_AV_infinity(ra,dec,frame='icrs'):
 
     rah,ram,ras = coords.ra.hms
     decd,decm,decs = coords.dec.dms
-    if decd > 0: 
+    if decd > 0:
         decsign = '%2B'
     else:
         decsign = '%2D'
@@ -64,11 +64,11 @@ def get_AV_infinity(ra,dec,frame='icrs'):
 
     AV = None
     for line in urllib.request.urlopen(url).readlines():
-        m = re.search('^Landolt V \(0.54\)\s+(\d+\.\d+)', line)
+        m = re.search(b'^Landolt V \(0.54\)\s+(\d+\.\d+)', line)
         if m:
-            AV = (float(m.group(1)))  
+            AV = (float(m.group(1)))
             break
-        
+
     if AV is None:
         raise RuntimeError('AV query fails!  URL is {}'.format(url))
 
