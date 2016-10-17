@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+import os, os.path, glob, re, sys
+import numpy as np
+import logging
+
+import argparse
+
+from isochrones import StarModel
+
+if __name__=='__main__':
+
+    parser = argparse.ArgumentParser(description='Model select between different multinest runs.')
+
+    parser.add_argument('folders', nargs='*', default=['.'])
+    parser.add_argument('--models', default='dartmouth')
+
+    args = parser.parse_args()
+
+    for folder in args.folders:
+        chainsdir = folder + '/chains'
+        if not os.path.exists(chainsdir):
+            logging.error('No chains directory in {}'.format(folder))
+            sys.exit()
+            
+        starmodels = glob.glob('{}/{}_starmodel_*.h5'.format(folder,
+                                                             args.models))
+        names = []
+        evidence = {}
+        evidences = []
+        for sm in starmodels:
+            m = re.search('{}_starmodel_(\w+)\.h5'.format(args.models), sm)
+            if m:
+                name = m.group(1)
+                model = StarModel.load_hdf(sm)
+                evidences.append(model.evidence)
+
+        evidences = np.array(evidences)
+        evidences -= evidences.max()
+
+        print(names, evidences)
+            
+            
+        
