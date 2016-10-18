@@ -1,9 +1,6 @@
 from setuptools import setup, find_packages
-import os,sys
+import os, sys
 
-import re, shutil
-from tempfile import mkstemp
-import subprocess as sp
 
 def readme():
     with open('README.rst') as f:
@@ -11,7 +8,6 @@ def readme():
 
 # Hackishly inject a constant into builtins to enable importing of the
 # package before the library is built.
-import sys
 if sys.version_info[0] < 3:
     import __builtin__ as builtins
 else:
@@ -54,6 +50,7 @@ setup(name = "isochrones",
       ],
     install_requires=['pandas>=0.14','astropy>=0.3','emcee>=2.0',
                       'numpy>=1.9', 'tables>=3.0',
-                      'asciitree', 'corner', 'astroquery'],
+                      'asciitree', 'corner', 'astroquery', 'numba',
+                      'configobj'],
     zip_safe=False
-) 
+)
