@@ -5,7 +5,7 @@ import numpy as np
 @jit(nopython=True)
 def interp_box(x, y, z, box, values):
     """
-    box is 8x3 array, though not really a box
+    box is 8x3 array, though not really a box, necessarily
     
     values is length-8 array, corresponding to values at the "box" coords
 
@@ -256,3 +256,95 @@ def interp_value(mass, age, feh, icol,
     # else:
     return interp_box(mass, age, feh, pts, vals)
 
+
+@jit(nopython=True)
+def interp_value_extinction(logg, logT, feh, AV, 
+                     grid, loggs, logTs, fehs, AVs):
+
+                 # return_box):
+    """logg, logT, feh, AV are *single values* at which values are desired
+
+    grid is nlogg x nlogT x nfeh x nAV array
+    loggs is grid of loggs
+    logTs is grid of logTs
+    fehs is grid of fehs
+    AVs is grid of AVs
+    
+    """
+    Nlogg = len(loggs)
+    NlogT = len(logTs)
+    Nfeh = len(fehs)
+    NAV = len(AVs)
+
+    ilogg = searchsorted(loggs, Nlogg, logg)
+    ilogT = searchsorted(logTs, NlogT, logT)
+    ifeh = searchsorted(fehs, Nfeh, feh)
+    iAV = searchsorted(AVs, NAV, AV)
+
+    # If outside grid, extrapolate from closest
+    if ilogg==0:
+        ilogg = 1
+    if ilogg==Nlogg:
+        ilogg = Nlogg - 1
+
+    if ilogT==0:
+        ilogT = 1
+    if ilogT==NlogT:
+        ilogT = NlogT - 1
+
+    if ifeh==0:
+        ifeh = 1
+    if ifeh==Nfeh:
+        ifeh = Nfeh - 1
+
+    if iAV==0:
+        iAV = 1
+    if iAV==NAV:
+        iAV = NAV - 1
+
+    pts = np.zeros((16,4))
+    vals = np.zeros(16)
+
+    irow = 0
+    for i in range(2):
+        i_g = ilogg - 1 + i
+        for j in range(2):
+            i_T = ilogT - 1 + j
+            for k in range(2):
+                i_f = ifeh - 1 + k
+                for l in range(2):
+                    i_A = iAV - 1 + l
+                    pts[irow, 0] = loggs[i_g]
+                    pts[irow, 1] = logTs[i_T]
+                    pts[irow, 2] = fehs[i_f]
+                    pts[irow, 3] = AVs[i_A]
+                    vals[irow] = grid[i_g, i_T, i_f, i_A]
+                    irow += 1
+
+    return interp_box_4d(logg, logT, feh, AV, pts, vals)
+    # return pts, vals
+
+@jit(nopython=True)
+def interp_box_4d(a, b, c, d, box, values, p=-1):
+    """
+    box is 8x4 array
+    
+    values is length-8 array, corresponding to values at the "box" coords
+
+    TODO: should make power `p` an argument
+    """
+    
+    # Calculate the distance to each vertex
+    
+    val = 0
+    norm = 0
+    for i in range(16):
+        # Inv distance, or Inv-dsq weighting
+        if values[i] > 0.: # Extinction is positive; this should skip nans.
+            w = ((a-box[i,0])**2 + (b-box[i,1])**2 + 
+                        (c-box[i, 2])**2 + (d-box[i, 3])**2)**p
+            val += w * values[i]
+            norm += w
+    
+    return val/norm
+ 

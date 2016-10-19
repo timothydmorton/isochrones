@@ -1,9 +1,9 @@
 import os, os.path, re
 
-from .config import on_rtd
+from ..config import on_rtd
 
 if not on_rtd:
-    DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    DATADIR = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','data'))
 
     # Wavelength dependence of extinction from Schlafly+ (2016)
     #  http://e.schlaf.ly/apored/extcurve.html

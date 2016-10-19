@@ -1,4 +1,4 @@
-from ..config import on_rtd
+from ...config import on_rtd
 
 if not on_rtd:
     import numpy
