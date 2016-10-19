@@ -151,6 +151,8 @@ class ModelSpectrumGrid(object):
         for i,AV in enumerate(AV_grid):
             spec_atten = spec*np.exp(-0.4*AV*ext(lam.to('angstrom').magnitude))
             flux_atten = filt.get_flux(lam, spec_atten)
+
+            # Why does this only make sense with log instead of log10????
             dmag[:,:,:,i] = -2.5*np.log(flux_atten / flux_clean).reshape((shape[:3]))
 
         return ExtinctionGrid(band, dmag, self.logg_grid, 

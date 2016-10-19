@@ -4,6 +4,7 @@ from ...config import on_rtd
 
 if not on_rtd:
     import numpy
+    import numpy as np
     from scipy.linalg import solve_banded
     import pdb
 
@@ -51,8 +52,20 @@ class CubicSpline:
             bb[-1] = yp[1]-1.*(y[-1]-y[-2])/(x[-1]-x[-2])
         y2 = solve_banded((1,1), mat, bb)
         self.x, self.y, self.y2 = (x, y, y2)
+        self.xmax = self.x[-1]
+        self.ymax = self.y[-1]
     def __call__(self, x):
-        return splint(self, x)
+        """
+        TDM edited for crude bounds-watching
+        """
+        y = splint(self, x) 
+        if np.size(x) > 1:
+            y[x > self.xmax] = self.ymax
+        else:
+            if x > self.xmax:
+                y = self.ymax
+
+        return y
     
     
     

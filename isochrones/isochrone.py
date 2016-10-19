@@ -1,6 +1,7 @@
 from .config import on_rtd
 
 import os, re, sys
+import logging
 
 if not on_rtd:
     import pandas as pd
@@ -73,7 +74,13 @@ class MagFunction(object):
         self.x_ext = ic.x_ext
         self.simple = simple
 
-        self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+        if not simple:
+            try:
+                self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+            except:
+                logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
+                self.A_fn = None
+                self.simple = True
 
         if self.x_ext==0.:
             ext = extcurve_0
@@ -84,14 +91,16 @@ class MagFunction(object):
 
     def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
         if self.simple:
-            if x_ext==0.:
-                ext = extcurve_0
+            if x_ext is not None:
+                if x_ext==0.:
+                    ext = extcurve_0
+                else:
+                    ext = extcurve(x_ext)
+
+                AAV = ext(LAMBDA_EFF[self.band])
             else:
-                ext = extcurve(x_ext)
-            if ext_table:
-                A = AV*EXTINCTION[band]
-            else:
-                A = AV*ext(LAMBDA_EFF[band])
+                AAV = self.AAV
+
             A = AV*AAV
         else:
             logg = self.ic.logg(mass, age, feh)
@@ -99,7 +108,7 @@ class MagFunction(object):
             A = self.A_fn([logg, logT, feh, AV])
 
         dm = 5*np.log10(distance) - 5
-        mag = self._mag[self.band](mass, age, feh)
+        mag = self.ic._mag[self.band](mass, age, feh)
         return mag + dm + A
 
 
@@ -152,7 +161,7 @@ class Isochrone(object):
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
-                 minage=None, maxage=None, x_ext=0.):
+                 minage=None, maxage=None, x_ext=0., simple_extinction=False):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -536,7 +545,13 @@ class MagFunctionFast(object):
         self.x_ext = ic.x_ext
         self.simple = simple
 
-        self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+        if not simple:
+            try:
+                self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+            except:
+                logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
+                self.A_fn = None
+                self.simple = True
 
         if self.x_ext==0.:
             ext = extcurve_0
