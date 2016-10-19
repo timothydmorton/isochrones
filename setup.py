@@ -50,7 +50,7 @@ setup(name = "isochrones",
       ],
     install_requires=['pandas>=0.14','astropy>=0.3','emcee>=2.0',
                       'numpy>=1.9', 'tables>=3.0',
-                      'asciitree', 'corner', 'astroquery', 'numba',
+                      'asciitree', 'corner', 'astroquery',
                       'configobj'],
     zip_safe=False
 )
