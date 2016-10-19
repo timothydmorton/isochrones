@@ -17,6 +17,7 @@ if not on_rtd:
     RSUN = const.R_sun.cgs.value
 
     from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
+    from .extinction.grid import get_extinction_grid
     from .interp import interp_value, interp_values
 
 else:
@@ -493,12 +494,13 @@ class Isochrone(object):
 
 
 class MagFunction(object):
-    def __init__(self, ic, band, icol):
+    def __init__(self, ic, band, icol, spec_models='kurucz'):
         self.ic = ic
         self.band = band
         self.icol = icol
         self.x_ext = ic.x_ext
-        self.ext_table = ic.ext_table
+
+        self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
 
         if self.x_ext==0.:
             ext = extcurve_0
@@ -509,17 +511,14 @@ class MagFunction(object):
         else:
             self.AAV = ext(LAMBDA_EFF[self.band])        
 
-    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None, ext_table=False):
+    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
         if x_ext is not None:
             if x_ext==0.:
                 ext = extcurve_0
             else:
                 ext = extcurve(x_ext)
 
-            if ext_table:
-                AAV = EXTINCTION[self.band]
-            else:
-                AAV = ext(LAMBDA_EFF[self.band])        
+            AAV = ext(LAMBDA_EFF[self.band])
         else:
             AAV = self.AAV
 

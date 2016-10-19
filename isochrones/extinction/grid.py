@@ -1,4 +1,7 @@
 from __future__ import print_function, division
+import os
+import logging
+
 import pandas as pd
 import numpy as np
 from itertools import product
@@ -14,6 +17,16 @@ import pyphot
 filter_lib = pyphot.get_library()
 
 from pystellibs import BaSeL, Kurucz
+
+def get_stellargrid(models):
+    if models=='kurucz':
+        return Kurucz()
+    elif models=='basel':
+        return BaSeL()
+    elif type(models)==type(type):
+        return models()
+    else:
+        return models
 
 def get_filter(b):
     """ Returns pyphot filter given shorthand name
@@ -38,11 +51,7 @@ def get_filter(b):
 
 class ModelSpectrumGrid(object):
     def __init__(self, models=Kurucz):
-        if type(models)==type(type):
-            self.models = models()
-        else:
-            self.models = models
-        
+        self.models = get_stellargrid(models)
         
         self._Nlogg = None
         self._NlogT = None
@@ -171,8 +180,8 @@ class ExtinctionGrid(object):
     def _scipy_interp(self, *args):
         return self._scipy_func(*args)
     
-    def _custom_interp(self, *args):
-        g, T, f, A = args
+    def _custom_interp(self, pars):
+        g, T, f, A = pars
         return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
                                       self.logT, self.feh, self.AV)
     
@@ -184,6 +193,46 @@ class ExtinctionGrid(object):
             return self._scipy_interp(*args)
         else:
             return self._custom_interp(*args)
-        
-def _write_extinction_grid(band):
-    pass
+
+    def save(self, filename):
+        """Saves as a numpy save file
+        """
+        np.savez(filename, Agrid=self.Agrid, logg=self.logg, 
+                 logT=self.logT, feh=self.feh, AV=self.AV,
+                 band=np.array([self.band]))
+
+    @classmethod
+    def load(cls, filename):
+        d = np.load(filename)
+        return cls(d['band'][0], d['Agrid'], 
+                    d['logg'], d['logT'], d['feh'], d['AV'])
+
+
+def extinction_grid_filename(band, x=0., models='kurucz'):
+    extinction_dir = os.path.join(ISOCHRONES, 'extinction')
+    if not os.path.exists(extinction_dir):
+        os.makedirs(extinction_dir)
+    filename = os.path.join(extinction_dir, '{}_{}_{:.2f}.npz'.format(band, models, x))
+    return filename    
+
+def get_extinction_grid(band, AVs=np.concatenate(([0], np.logspace(-1,1,12))),
+                            x=0., models='kurucz', overwrite=False):
+    filename = extinction_grid_filename(band, x=x, models=models)
+    try:
+        if overwrite:
+            raise IOError
+        Agrid = ExtinctionGrid.load(filename)
+    except (IOError, KeyError):
+        write_extinction_grid(band, AVs=AVs, x=x, models=models)
+        grid = ModelSpectrumGrid(models)
+        Agrid = grid.get_Agrid(band, AVs, x=x)
+    return Agrid
+
+def write_extinction_grid(band, AVs=np.concatenate(([0], np.logspace(-1,1,12))),
+                            x=0., models='kurucz'):
+    grid = ModelSpectrumGrid(models)
+    Agrid = grid.get_Agrid(band, AVs, x=x)
+    filename = extinction_grid_filename(band, x=x, models=models)
+    Agrid.save(filename)
+    logging.info('Extinction grid saved to {}.'.format(filename))
+
