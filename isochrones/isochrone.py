@@ -65,6 +65,44 @@ def get_ichrone(models, bands=None, default=True):
     return ichrone
 
 
+class MagFunction(object):
+    def __init__(self, ic, band, spec_models='kurucz', simple=False):
+        self.ic = ic
+        self.band = band
+
+        self.x_ext = ic.x_ext
+        self.simple = simple
+
+        self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+
+        if self.x_ext==0.:
+            ext = extcurve_0
+        else:
+            ext = extcurve(x_ext)
+
+        self.AAV = ext(LAMBDA_EFF[self.band])
+
+    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
+        if self.simple:
+            if x_ext==0.:
+                ext = extcurve_0
+            else:
+                ext = extcurve(x_ext)
+            if ext_table:
+                A = AV*EXTINCTION[band]
+            else:
+                A = AV*ext(LAMBDA_EFF[band])
+            A = AV*AAV
+        else:
+            logg = self.ic.logg(mass, age, feh)
+            logT = self.ic.logTeff(mass, age, feh)
+            A = self.A_fn([logg, logT, feh, AV])
+
+        dm = 5*np.log10(distance) - 5
+        mag = self._mag[self.band](mass, age, feh)
+        return mag + dm + A
+
+
 class Isochrone(object):
     """
     Basic isochrone class. Everything is a function of mass, log(age), Fe/H.
@@ -114,7 +152,7 @@ class Isochrone(object):
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
-                 minage=None, maxage=None, ext_table=False):
+                 minage=None, maxage=None, x_ext=0.):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -125,7 +163,7 @@ class Isochrone(object):
         self.minfeh = feh.min()
         self.maxfeh = feh.max()
 
-        self.ext_table = ext_table
+        self.x_ext = x_ext
 
         if minage is not None:
             self.minage = minage
@@ -156,11 +194,9 @@ class Isochrone(object):
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
-        d = {}
-        for b in self._mag.keys():
-            d[b] = self._mag_fn(b)
+        self.mag = {b: MagFunction(self, b, simple=simple_extinction)
+                            for b in self.bands}
 
-        self.mag = d
 
     def _prop(self, prop, *args):
         if prop not in self._props:
@@ -492,13 +528,13 @@ class Isochrone(object):
             nbad = bad.sum()
         return ms,ages,fehs
 
-
-class MagFunction(object):
-    def __init__(self, ic, band, icol, spec_models='kurucz'):
+class MagFunctionFast(object):
+    def __init__(self, ic, band, icol, spec_models='kurucz', simple=False):
         self.ic = ic
         self.band = band
         self.icol = icol
         self.x_ext = ic.x_ext
+        self.simple = simple
 
         self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
 
@@ -506,23 +542,27 @@ class MagFunction(object):
             ext = extcurve_0
         else:
             ext = extcurve(x_ext)
-        if self.ext_table:
-            self.AAV = EXTINCTION[self.band]
-        else:
-            self.AAV = ext(LAMBDA_EFF[self.band])        
+
+        self.AAV = ext(LAMBDA_EFF[self.band])
 
     def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
-        if x_ext is not None:
-            if x_ext==0.:
-                ext = extcurve_0
+        if self.simple:
+            if x_ext is not None:
+                if x_ext==0.:
+                    ext = extcurve_0
+                else:
+                    ext = extcurve(x_ext)
+
+                AAV = ext(LAMBDA_EFF[self.band])
             else:
-                ext = extcurve(x_ext)
+                AAV = self.AAV
 
-            AAV = ext(LAMBDA_EFF[self.band])
+            A = AV*AAV
         else:
-            AAV = self.AAV
+            logg = self.ic.logg(mass, age, feh)
+            logT = self.ic.logTeff(mass, age, feh)
+            A = self.A_fn([logg, logT, feh, AV])
 
-        A = AV*AAV
         dm = 5*np.log10(distance) - 5
         mag = self.ic.interp_value(mass, age, feh, self.icol)
         return mag + dm + A
@@ -553,7 +593,8 @@ class FastIsochrone(Isochrone):
     logL_col = None
     default_bands = ('g')
 
-    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False):
+    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False,
+                    simple_extinction=False):
         # df should be indexed by [feh, age]
 
         if bands is None:
@@ -565,7 +606,7 @@ class FastIsochrone(Isochrone):
         self.x_ext = 0.
         self.ext_table = ext_table
         self.debug = debug
-
+        self.simple_extinction = simple_extinction
     
         self._fehs = None
         self._ages = None
@@ -581,7 +622,7 @@ class FastIsochrone(Isochrone):
     
         n_common_cols = len(self.modelgrid.common_columns)
         self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
-        self.mag = {b: MagFunction(self, b, i)
+        self.mag = {b: MagFunctionFast(self, b, i, simple=simple_extinction)
                             for b,i in self._mag_cols.items()}
 
         #organized array

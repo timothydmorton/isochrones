@@ -38,4 +38,4 @@ LSST_z 8664.4
 LSST_y 9710.3
 Kepler 6417
 # Gaia
-G 7000.0
+G 6000.0
