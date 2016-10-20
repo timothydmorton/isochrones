@@ -36,22 +36,22 @@ def get_filter(b):
     """
     filtname = None
     if b in ['g','r','i','z']:
-        filtname = 'SDSS_{}'.format(b)
+        filtname = u'SDSS_{}'.format(b)
     elif b in ['J','H','Ks']:
-        filtname = '2MASS_{}'.format(b)
+        filtname = u'2MASS_{}'.format(b)
     elif b=='K':
-        filtname = '2MASS_Ks'
+        filtname = u'2MASS_Ks'
     elif b=='G':
-        filtname = 'Gaia_G'
+        filtname = u'Gaia_G'
     elif b in ['W1','W2','W3','W4']:
-        filtname = 'WISE_RSR_{}'.format(b)
+        filtname = u'WISE_RSR_{}'.format(b)
     elif b in ['U','B','V']:
-        filtname = 'GROUND_JOHNSON_{}'.format(b)
+        filtname = u'GROUND_JOHNSON_{}'.format(b)
     else:
-        filtname = b
+        filtname = six.text_type(b)
 
     try:
-        return filter_lib[six.text_type(filtname)]
+        return filter_lib[filtname]
     except UnicodeDecodeError:
         logging.error('Cannot decode band name: {}'.format(filtname))
         raise 
