@@ -317,7 +317,7 @@ class StarModel(object):
                                 bands.append(b)
 
                     # If a blank tags needs to be created, do so
-                    if len(tags)==0 or bands[0] in c[k]:
+                    if len(bands) > 0 and (len(tags)==0 or bands[0] in c[k]):
                         tags.append('')
 
                     # For each band and each star, create a row
