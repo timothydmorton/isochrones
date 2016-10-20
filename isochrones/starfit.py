@@ -30,7 +30,7 @@ def initLogging(filename, logger):
     logger.addHandler(sh)
     return logger
 
-def starfit(folder, multiplicities=['single'], models='dartmouth',
+def starfit(folder, multiplicities=['single'], models='mist',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
             logger=None, starmodel_type=None, ini_file='star.ini'):
     """ Runs starfit routine for a given folder.
