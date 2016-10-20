@@ -22,7 +22,7 @@ def interp_box(x, y, z, box, values, p=-2):
         if dsq==0:
             return values[i]
         else:
-            w = dsq**(p./2)
+            w = dsq**(p/2.)
             val += w * values[i]
             norm += w
     
@@ -341,7 +341,7 @@ def interp_value_extinction(logg, logT, feh, AV,
     # return pts, vals
 
 @jit(nopython=True)
-def interp_box_4d(a, b, c, d, box, values, p=-1):
+def interp_box_4d(a, b, c, d, box, values, p=-2):
     """
     box is 8x4 array
     
@@ -362,7 +362,7 @@ def interp_box_4d(a, b, c, d, box, values, p=-1):
             if dsq==0:
                 return values[i]
             else:
-                w = dsq**p
+                w = dsq**(p/2.)
                 val += w * values[i]
                 norm += w
     
