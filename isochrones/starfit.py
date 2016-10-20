@@ -77,8 +77,8 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     pass
 
                 if fit_model or overwrite:
-                    ini_file = os.path.join(folder, ini_file)
-                    c = ConfigObj(ini_file)
+                    ini_file_path = os.path.join(folder, ini_file)
+                    c = ConfigObj(ini_file_path)
 
                     if ichrone is None:
                         bands = StarModel.get_bands(ini_file)
