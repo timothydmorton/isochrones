@@ -15,8 +15,15 @@ Installation
 Install with ``pip install isochrones`` or by cloning the repository
 and running ``python setup.py install``.
 
-Depends on normal scientific libraries (e.g. ``numpy``, ``pandas``, etc.),
-as can easily be installed trouble-free via, e.g., the anaconda python distribution.
+To deal correctly with extinction (important if you are trying to fit
+any wide bandpasses such as Gaia G band), you will also need to install
+the following packages::
+
+    pip install git+git://github.com/mfouesneau/pyphot
+    pip install git+git://github.com/mfouesneau/pystellibs
+
+The package also depends on the suite of scientific and numerical libraries
+contained within the Anaconda suite.  
 
 For usage details, `read the documentation <http://isochrones.rtfd.org>`_ or
 check out the `demo notebook <http://nbviewer.ipython.org/github/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb>`_.

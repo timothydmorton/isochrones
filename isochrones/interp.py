@@ -256,7 +256,22 @@ def interp_value(mass, age, feh, icol,
     # else:
     return interp_box(mass, age, feh, pts, vals)
 
+@jit(nopython=True)
+def interp_values_extinction(logg_arr, logT_arr, feh_arr, AV_arr, 
+                 grid, loggs, logTs, fehs, AVs):
+    """Just like interp_value_extinction but for arrays
+    
+    """
+    
+    N = len(logg_arr)
+    results = np.zeros(N)
 
+    for i in range(N):
+        results[i] = interp_value_extinction(logg_arr[i], logT_arr[i], feh_arr[i], AV_arr[i], 
+                                 grid, loggs, logTs, fehs, AVs)
+
+    return results
+    
 @jit(nopython=True)
 def interp_value_extinction(logg, logT, feh, AV, 
                      grid, loggs, logTs, fehs, AVs):

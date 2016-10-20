@@ -9,9 +9,11 @@ from itertools import product
 from . import extcurve
 from ..config import ISOCHRONES
 
+from scipy.interpolate import RegularGridInterpolator
+from isochrones.interp import interp_value_extinction, interp_values_extinction
+
 import sys
-sys.path.append('/Users/tdm/repositories/pystellibs')
-sys.path.append('/Users/tdm/repositories/pyphot')
+# sys.path.append('/Users/tdm/repositories/pystellibs')
 
 import pyphot
 filter_lib = pyphot.get_library()
@@ -47,7 +49,7 @@ def get_filter(b):
     else:
         filtname = b
 
-    return filter_lib[filtname]
+    return filter_lib[unicode(filtname, 'utf-8')]
 
 class ModelSpectrumGrid(object):
     def __init__(self, models=Kurucz):
@@ -158,8 +160,6 @@ class ModelSpectrumGrid(object):
         return ExtinctionGrid(band, dmag, self.logg_grid, 
                               self.logT_grid, self.feh_grid, AV_grid)
     
-from scipy.interpolate import RegularGridInterpolator
-from isochrones.interp import interp_value_extinction
 
 class ExtinctionGrid(object):
     def __init__(self, band, Agrid, logg, logT, feh, AV, use_scipy=False):
@@ -184,9 +184,20 @@ class ExtinctionGrid(object):
     
     def _custom_interp(self, pars):
         g, T, f, A = pars
-        return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
-                                      self.logT, self.feh, self.AV)
-    
+        if np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1:
+            return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
+                                          self.logT, self.feh, self.AV)
+        else:
+            b = np.broadcast(g, T, f, A)
+            g = np.resize(g, b.shape).astype(float)
+            T = np.resize(T, b.shape).astype(float)
+            f = np.resize(f, b.shape).astype(float)
+            A = np.resize(A, b.shape).astype(float)
+
+            return interp_values_extinction(g, T, f, A, self.Agrid, self.logg,
+                                          self.logT, self.feh, self.AV)
+
+
     def __call__(self, *args, **kwargs):
         use_scipy = self.use_scipy or ('scipy' in kwargs and kwargs['scipy'])
         if use_scipy:

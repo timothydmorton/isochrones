@@ -1,2 +1,2 @@
 from .query import Query, EmptyQueryError
-from .vizier import WISE, TwoMASS, Tycho2
+from .vizier import WISE, TwoMASS, Tycho2, APASS

@@ -33,6 +33,19 @@ class TwoMASS(VizierCatalog):
              'Kmag':'K'}
     id_column = '_2MASS'
 
+class APASS(VizierCatalog):
+    name = 'APASS'
+    vizier_name = 'APASS'
+    epoch = 2000.
+    bands = {'Bmag':'B', 
+             'Vmag':'V', 
+             'g_mag':'g',
+             'r_mag':'r',
+             'i_mag':'i'
+             }
+    id_column = 'recno'
+
+
 class Tycho2(VizierCatalog):
     name = 'Tycho2'
     vizier_name = 'tycho2'
