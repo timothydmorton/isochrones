@@ -9,7 +9,6 @@ def interp_box(x, y, z, box, values, p=-2):
     
     values is length-8 array, corresponding to values at the "box" coords
 
-    TODO: should make power `p` an argument
     """
     
     # Calculate the distance to each vertex
@@ -275,7 +274,7 @@ def interp_values_extinction(logg_arr, logT_arr, feh_arr, AV_arr,
 
 @jit(nopython=True)
 def interp_value_extinction(logg, logT, feh, AV, 
-                     grid, loggs, logTs, fehs, AVs):
+                     grid, loggs, logTs, fehs, AVs, normalize=True):
 
                  # return_box):
     """logg, logT, feh, AV are *single values* at which values are desired
@@ -337,18 +336,22 @@ def interp_value_extinction(logg, logT, feh, AV,
                     vals[irow] = grid[i_g, i_T, i_f, i_A]
                     irow += 1
 
-    logg_norm = loggs[Nlogg - 1] - loggs[0]
-    logT_norm = logTs[Nlogg - 1] - logTs[0]
-    feh_norm = fehs[Nlogg - 1] - fehs[0]
-    AV_norm = AVs[Nlogg - 1] - AVs[0]
+    if normalize:
+        logg_norm = loggs[Nlogg - 1] - loggs[0]
+        logT_norm = logTs[NlogT - 1] - logTs[0]
+        feh_norm = fehs[Nfeh - 1] - fehs[0]
+        AV_norm = 1. #AVs[NAV - 1] - AVs[0]
 
-    return interp_box_4d(logg, logT, feh, AV, pts, vals,
-                         logg_norm, logT_norm, feh_norm, AV_norm)
+        return interp_box_4d(logg, logT, feh, AV, pts, vals,
+                             logg_norm, logT_norm, feh_norm, AV_norm)
+    else:
+        return interp_box_4d(logg, logT, feh, AV, pts, vals)
+
     # return pts, vals
 
 @jit(nopython=True)
 def interp_box_4d(a, b, c, d, box, values, 
-                  a_norm=1, b_norm=1, c_norm=1, d_norm = 1, 
+                  a_norm=1., b_norm=1., c_norm=1., d_norm = 1., 
                   p=-2):
     """
     box is nx4 array
@@ -365,8 +368,8 @@ def interp_box_4d(a, b, c, d, box, values,
     for i in range(N):
         # Inv distance, or Inv-dsq weighting
         if values[i] > 0.: # Extinction is positive; this should skip nans.
-            dsq = (((a-box[i,0])/a_norm)**2 + 
-                   ((b-box[i,1])/b_norm)**2 + 
+            dsq = (((a-box[i, 0])/a_norm)**2 + 
+                   ((b-box[i, 1])/b_norm)**2 + 
                    ((c-box[i, 2])/c_norm)**2 + 
                    ((d-box[i, 3])/d_norm)**2)
             if dsq==0:

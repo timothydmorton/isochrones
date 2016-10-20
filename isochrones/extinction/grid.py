@@ -215,7 +215,7 @@ class ExtinctionGrid(object):
             pts[:, 0] /= self.logg_norm
             pts[:, 1] /= self.logT_norm
             pts[:, 2] /= self.feh_norm
-            pts[:, 3] /= self.AV_norm
+            # pts[:, 3] /= self.AV_norm # don't normalize AV
             vals = self.flat_Agrid
             ok = np.isfinite(vals)
             self._kdtree_pts = pts[ok, :]
@@ -223,20 +223,22 @@ class ExtinctionGrid(object):
             self._kdtree = KDTree(self._kdtree_pts, leaf_size=2)
         return self._kdtree
 
-    def _kdtree_interp(self, pars):
+    def _kdtree_interp(self, pars, k=3):
         pars = np.atleast_2d(pars)
         pars[:, 0] /= self.logg_norm
         pars[:, 1] /= self.logT_norm
         pars[:, 2] /= self.feh_norm
-        pars[:, 3] /= self.AV_norm
-        d, i = self.kdtree.query(pars)
-        return self._kdtree_vals[i]
+        # pars[:, 3] /= self.AV_norm # don't normalize AV
+        d, i = self.kdtree.query(pars, k=k)
+        vals = self._kdtree_vals[i]
+        weights = (1./d*d)
+        return (vals*weights).sum() / weights.sum()
 
     def _build_scipy_func(self):    
         points = (self.logg / self.logg_norm, 
                   self.logT / self.logT_norm, 
-                  self.feh / self.feh_norm, 
-                  self.AV / self.AV_norm)
+                  self.feh / self.feh_norm,
+                  self.AV)# / self.AV_norm)
         vals = self.Agrid
         self._scipy_func = RegularGridInterpolator(points, vals)
 
@@ -245,21 +247,21 @@ class ExtinctionGrid(object):
         g = g / self.logg_norm
         T = T / self.logT_norm
         f = f / self.feh_norm
-        A = A / self.AV_norm
+        # A = A / self.AV_norm # don't normalize AV
         if self._scipy_func is None:
             self._build_scipy_func()
         return self._scipy_func([g, T, f, A])
     
-    def _custom_interp(self, pars):
+    def _custom_interp(self, pars, normalize=True):
         g, T, f, A = pars
-        # normalization happens within interp_value_extinction
-        if np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1:
+        # normalization (but not in AV) happens within interp_value_extinction
+        if np.isscalar(g) and np.isscalar(T) and np.isscalar(f) and np.isscalar(A):
             try:
                 return interp_value_extinction(g, T, f, A, self.Agrid, 
                                         self.logg,
                                         self.logT, 
                                         self.feh, 
-                                        self.AV)
+                                        self.AV, normalize=normalize)
             except ZeroDivisionError:
                 return self._kdtree_interp(pars)
         else:
