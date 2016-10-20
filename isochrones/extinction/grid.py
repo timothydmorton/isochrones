@@ -252,17 +252,14 @@ class ExtinctionGrid(object):
     
     def _custom_interp(self, pars):
         g, T, f, A = pars
-        g = g / self.logg_norm
-        T = T / self.logT_norm
-        f = f / self.feh_norm
-        A = A / self.AV_norm
+        # normalization happens within interp_value_extinction
         if np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1:
             try:
                 return interp_value_extinction(g, T, f, A, self.Agrid, 
-                                        self.logg / self.logg_norm,
-                                        self.logT / self.logT_norm, 
-                                        self.feh / self.feh_norm, 
-                                        self.AV / self.AV_norm)
+                                        self.logg,
+                                        self.logT, 
+                                        self.feh, 
+                                        self.AV)
             except ZeroDivisionError:
                 return self._kdtree_interp(pars)
         else:

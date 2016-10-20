@@ -337,11 +337,19 @@ def interp_value_extinction(logg, logT, feh, AV,
                     vals[irow] = grid[i_g, i_T, i_f, i_A]
                     irow += 1
 
-    return interp_box_4d(logg, logT, feh, AV, pts, vals)
+    logg_norm = loggs[Nlogg - 1] - loggs[0]
+    logT_norm = logTs[Nlogg - 1] - logTs[0]
+    feh_norm = fehs[Nlogg - 1] - fehs[0]
+    AV_norm = AVs[Nlogg - 1] - AVs[0]
+
+    return interp_box_4d(logg, logT, feh, AV, pts, vals,
+                         logg_norm, logT_norm, feh_norm, AV_norm)
     # return pts, vals
 
 @jit(nopython=True)
-def interp_box_4d(a, b, c, d, box, values, p=-2):
+def interp_box_4d(a, b, c, d, box, values, 
+                  a_norm=1, b_norm=1, c_norm=1, d_norm = 1, 
+                  p=-2):
     """
     box is nx4 array
     
@@ -357,8 +365,10 @@ def interp_box_4d(a, b, c, d, box, values, p=-2):
     for i in range(N):
         # Inv distance, or Inv-dsq weighting
         if values[i] > 0.: # Extinction is positive; this should skip nans.
-            dsq = ((a-box[i,0])**2 + (b-box[i,1])**2 + 
-                        (c-box[i, 2])**2 + (d-box[i, 3])**2)
+            dsq = (((a-box[i,0])/a_norm)**2 + 
+                   ((b-box[i,1])/b_norm)**2 + 
+                   ((c-box[i, 2])/c_norm)**2 + 
+                   ((d-box[i, 3])/d_norm)**2)
             if dsq==0:
                 return values[i]
             else:
