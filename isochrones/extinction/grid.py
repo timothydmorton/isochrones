@@ -5,6 +5,7 @@ import logging
 import pandas as pd
 import numpy as np
 from itertools import product
+import six
 
 from . import extcurve
 from ..config import ISOCHRONES
@@ -49,7 +50,7 @@ def get_filter(b):
     else:
         filtname = b
 
-    return filter_lib[unicode(filtname, 'utf-8')]
+    return filter_lib[six.text_type(filtname)]
 
 class ModelSpectrumGrid(object):
     def __init__(self, models=Kurucz):

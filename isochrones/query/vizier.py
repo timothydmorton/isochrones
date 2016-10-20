@@ -38,11 +38,11 @@ class APASS(VizierCatalog):
     vizier_name = 'APASS'
     epoch = 2000.
     bands = {'Bmag':'B', 
-             'Vmag':'V', 
-             'g_mag':'g',
-             'r_mag':'r',
-             'i_mag':'i'
-             }
+             'Vmag':'V'}
+             # 'g_mag':'g',
+             # 'r_mag':'r',
+             # 'i_mag':'i'
+             # }
     id_column = 'recno'
 
 
