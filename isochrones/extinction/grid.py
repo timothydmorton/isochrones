@@ -4,6 +4,7 @@ import logging
 
 import pandas as pd
 import numpy as np
+from sklearn.neighbors import KDTree
 from itertools import product
 import six
 
@@ -178,21 +179,66 @@ class ExtinctionGrid(object):
 
         self.use_scipy = False
         self._scipy_func = None
+
+        self._flat_points = None
+        self._flat_Agrid = None
         
+        self._kdtree = None
+        self._kdtree_pts = None
+        self._kdtree_vals = None
+
+    @property
+    def flat_points(self):
+        if self._flat_points is None:
+            self._flat_points = np.array([[g, T, f, A] for 
+                                            g, T, f, A in product(self.logg,
+                                                              self.logT,
+                                                              self.feh,
+                                                              self.AV)])
+        return self._flat_points
+
+    @property
+    def flat_Agrid(self):
+        if self._flat_Agrid is None:
+            self._flat_Agrid = self.Agrid.ravel()
+        return self._flat_Agrid
+    
+    @property    
+    def kdtree(self):
+        if self._kdtree is None:
+            pts = self.flat_points
+            vals = self.flat_Agrid
+            ok = np.isfinite(vals)
+            self._kdtree_pts = pts[ok, :]
+            self._kdtree_vals = vals[ok]
+            self._kdtree = KDTree(self._kdtree_pts, leaf_size=2)
+        return self._kdtree
+
+    def _kdtree_interp(self, pars):
+        pars = np.atleast_2d(pars)
+        d, i = self.kdtree.query(pars)
+        return self._kdtree_vals[i]
+
     def _build_scipy_func(self):    
         points = (self.logg, self.logT, self.feh, self.AV)
         vals = self.Agrid
         self._scipy_func = RegularGridInterpolator(points, vals)
     
     def _scipy_interp(self, *args):
+        if self._scipy_func is None:
+            self._build_scipy_func()
         return self._scipy_func(*args)
     
     def _custom_interp(self, pars):
         g, T, f, A = pars
         if np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1:
-            return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
+            try:
+                return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
                                           self.logT, self.feh, self.AV)
+            except ZeroDivisionError:
+                return self._kdtree_interp(pars)
         else:
+            # return self._kdtree_interp(pars)
             b = np.broadcast(g, T, f, A)
             g = np.resize(g, b.shape).astype(float)
             T = np.resize(T, b.shape).astype(float)

@@ -343,18 +343,18 @@ def interp_value_extinction(logg, logT, feh, AV,
 @jit(nopython=True)
 def interp_box_4d(a, b, c, d, box, values, p=-2):
     """
-    box is 8x4 array
+    box is nx4 array
     
-    values is length-8 array, corresponding to values at the "box" coords
+    values is length-n array, corresponding to values at the "box" coords
 
-    TODO: should make power `p` an argument
     """
     
     # Calculate the distance to each vertex
     
     val = 0
     norm = 0
-    for i in range(16):
+    N = box.shape[0]
+    for i in range(N):
         # Inv distance, or Inv-dsq weighting
         if values[i] > 0.: # Extinction is positive; this should skip nans.
             dsq = ((a-box[i,0])**2 + (b-box[i,1])**2 + 
