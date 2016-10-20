@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np
 
 @jit(nopython=True)
-def interp_box(x, y, z, box, values):
+def interp_box(x, y, z, box, values, p=-2):
     """
     box is 8x3 array, though not really a box, necessarily
     
@@ -18,12 +18,13 @@ def interp_box(x, y, z, box, values):
     norm = 0
     for i in range(8):
         # Inv distance, or Inv-dsq weighting
-        w = 1./sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
-        # w = 1./((x-box[i,0])*(x-box[i,0]) + 
-        #         (y-box[i,1])*(y-box[i,1]) + 
-        #         (z-box[i, 2])*(z-box[i, 2]))
-        val += w * values[i]
-        norm += w
+        dsq = (x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2
+        if dsq==0:
+            return values[i]
+        else:
+            w = dsq**(p./2)
+            val += w * values[i]
+            norm += w
     
     return val/norm
 
@@ -271,7 +272,7 @@ def interp_values_extinction(logg_arr, logT_arr, feh_arr, AV_arr,
                                  grid, loggs, logTs, fehs, AVs)
 
     return results
-    
+
 @jit(nopython=True)
 def interp_value_extinction(logg, logT, feh, AV, 
                      grid, loggs, logTs, fehs, AVs):
@@ -356,10 +357,14 @@ def interp_box_4d(a, b, c, d, box, values, p=-1):
     for i in range(16):
         # Inv distance, or Inv-dsq weighting
         if values[i] > 0.: # Extinction is positive; this should skip nans.
-            w = ((a-box[i,0])**2 + (b-box[i,1])**2 + 
-                        (c-box[i, 2])**2 + (d-box[i, 3])**2)**p
-            val += w * values[i]
-            norm += w
+            dsq = ((a-box[i,0])**2 + (b-box[i,1])**2 + 
+                        (c-box[i, 2])**2 + (d-box[i, 3])**2)
+            if dsq==0:
+                return values[i]
+            else:
+                w = dsq**p
+                val += w * values[i]
+                norm += w
     
     return val/norm
  
