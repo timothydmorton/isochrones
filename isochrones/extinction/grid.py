@@ -177,6 +177,11 @@ class ExtinctionGrid(object):
         self.feh = feh.astype(float)
         self.AV = AV.astype(float)
 
+        self.logg_norm = self.logg[-1] - self.logg[0]
+        self.logT_norm = self.logT[-1] - self.logT[0]
+        self.feh_norm = self.feh[-1] - self.feh[0]
+        self.AV_norm = self.AV[-1] - self.AV[0]
+
         self.use_scipy = False
         self._scipy_func = None
 
