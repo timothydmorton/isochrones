@@ -50,7 +50,11 @@ def get_filter(b):
     else:
         filtname = b
 
-    return filter_lib[six.text_type(filtname)]
+    try:
+        return filter_lib[six.text_type(filtname)]
+    except UnicodeDecodeError:
+        logging.error('Cannot decode band name: {}'.format(filtname))
+        raise 
 
 class ModelSpectrumGrid(object):
     def __init__(self, models=Kurucz):
