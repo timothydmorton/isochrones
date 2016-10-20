@@ -212,6 +212,10 @@ class ExtinctionGrid(object):
     def kdtree(self):
         if self._kdtree is None:
             pts = self.flat_points
+            pts[:, 0] /= self.logg_norm
+            pts[:, 1] /= self.logT_norm
+            pts[:, 2] /= self.feh_norm
+            pts[:, 3] /= self.AV_norm
             vals = self.flat_Agrid
             ok = np.isfinite(vals)
             self._kdtree_pts = pts[ok, :]
@@ -221,25 +225,44 @@ class ExtinctionGrid(object):
 
     def _kdtree_interp(self, pars):
         pars = np.atleast_2d(pars)
+        pars[:, 0] /= self.logg_norm
+        pars[:, 1] /= self.logT_norm
+        pars[:, 2] /= self.feh_norm
+        pars[:, 3] /= self.AV_norm
         d, i = self.kdtree.query(pars)
         return self._kdtree_vals[i]
 
     def _build_scipy_func(self):    
-        points = (self.logg, self.logT, self.feh, self.AV)
+        points = (self.logg / self.logg_norm, 
+                  self.logT / self.logT_norm, 
+                  self.feh / self.feh_norm, 
+                  self.AV / self.AV_norm)
         vals = self.Agrid
         self._scipy_func = RegularGridInterpolator(points, vals)
-    
-    def _scipy_interp(self, *args):
+
+    def _scipy_interp(self, pars):
+        g, T, f, A = pars
+        g = g / self.logg_norm
+        T = T / self.logT_norm
+        f = f / self.feh_norm
+        A = A / self.AV_norm
         if self._scipy_func is None:
             self._build_scipy_func()
-        return self._scipy_func(*args)
+        return self._scipy_func([g, T, f, A])
     
     def _custom_interp(self, pars):
         g, T, f, A = pars
+        g = g / self.logg_norm
+        T = T / self.logT_norm
+        f = f / self.feh_norm
+        A = A / self.AV_norm
         if np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1:
             try:
-                return interp_value_extinction(g, T, f, A, self.Agrid, self.logg,
-                                          self.logT, self.feh, self.AV)
+                return interp_value_extinction(g, T, f, A, self.Agrid, 
+                                        self.logg / self.logg_norm,
+                                        self.logT / self.logT_norm, 
+                                        self.feh / self.feh_norm, 
+                                        self.AV / self.AV_norm)
             except ZeroDivisionError:
                 return self._kdtree_interp(pars)
         else:
