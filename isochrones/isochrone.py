@@ -17,7 +17,7 @@ if not on_rtd:
     MSUN = const.M_sun.cgs.value
     RSUN = const.R_sun.cgs.value
 
-    from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
+    from .extinction import LAMBDA_EFF, get_extinction_curve
     from .extinction.grid import get_extinction_grid
     from .interp import interp_value, interp_values
 
@@ -71,7 +71,7 @@ class MagFunction(object):
         self.ic = ic
         self.band = band
 
-        self.x_ext = ic.x_ext
+        self.extcurve = ic.extcurve
         self.simple = simple
 
         if not simple:
@@ -82,26 +82,12 @@ class MagFunction(object):
                 self.A_fn = None
                 self.simple = True
 
-        if self.x_ext==0.:
-            ext = extcurve_0
-        else:
-            ext = extcurve(x_ext)
+        if simple:
+            self.AAV = self.extcurve(LAMBDA_EFF[self.band])
 
-        self.AAV = ext(LAMBDA_EFF[self.band])
-
-    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
+    def __call__(self, mass, age, feh, distance=10, AV=0.0):
         if self.simple:
-            if x_ext is not None:
-                if x_ext==0.:
-                    ext = extcurve_0
-                else:
-                    ext = extcurve(x_ext)
-
-                AAV = ext(LAMBDA_EFF[self.band])
-            else:
-                AAV = self.AAV
-
-            A = AV*AAV
+            A = AV*self.AAV
         else:
             logg = self.ic.logg(mass, age, feh)
             logT = self.ic.logTeff(mass, age, feh)
@@ -161,7 +147,8 @@ class Isochrone(object):
         
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
-                 minage=None, maxage=None, x_ext=0., simple_extinction=False):
+                 minage=None, maxage=None, extinction='schlafly', 
+                 simple_extinction=False):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
 
@@ -172,7 +159,8 @@ class Isochrone(object):
         self.minfeh = feh.min()
         self.maxfeh = feh.max()
 
-        self.x_ext = x_ext
+        self.extinction = extinction
+        self._extcurve = None
 
         if minage is not None:
             self.minage = minage
@@ -206,6 +194,12 @@ class Isochrone(object):
         self.mag = {b: MagFunction(self, b, simple=simple_extinction)
                             for b in self.bands}
 
+    @property
+    def extcurve(self):
+        if self._extcurve is None:
+            self._extcurve = get_extinction_curve(self.extinction)
+        return self._extcurve
+    
 
     def _prop(self, prop, *args):
         if prop not in self._props:
@@ -255,21 +249,6 @@ class Isochrone(object):
         """
         return 3120.* (self.mass(*args) / 
                         (self.radius(*args)**2 * np.sqrt(self.Teff(*args)/5777.)))
-
-    def _mag_fn(self, band):
-        def fn(mass, age, feh, distance=10, AV=0.0, x_ext=0., ext_table=self.ext_table):
-            if x_ext==0.:
-                ext = extcurve_0
-            else:
-                ext = extcurve(x_ext)
-            if ext_table:
-                A = AV*EXTINCTION[band]
-            else:
-                A = AV*ext(LAMBDA_EFF[band])
-            dm = 5*np.log10(distance) - 5
-            return self._mag[band](mass, age, feh) + dm + A
-        return fn
-
 
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
@@ -542,7 +521,7 @@ class MagFunctionFast(object):
         self.ic = ic
         self.band = band
         self.icol = icol
-        self.x_ext = ic.x_ext
+        self.extcurve = ic.extcurve
         self.simple = simple
 
         if not simple:
@@ -553,26 +532,11 @@ class MagFunctionFast(object):
                 self.A_fn = None
                 self.simple = True
 
-        if self.x_ext==0.:
-            ext = extcurve_0
-        else:
-            ext = extcurve(x_ext)
+        self.AAV = self.extcurve(LAMBDA_EFF[self.band])
 
-        self.AAV = ext(LAMBDA_EFF[self.band])
-
-    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None):
+    def __call__(self, mass, age, feh, distance=10, AV=0.0):
         if self.simple:
-            if x_ext is not None:
-                if x_ext==0.:
-                    ext = extcurve_0
-                else:
-                    ext = extcurve(x_ext)
-
-                AAV = ext(LAMBDA_EFF[self.band])
-            else:
-                AAV = self.AAV
-
-            A = AV*AAV
+            A = AV*self.AAV
         else:
             logg = self.ic.logg(mass, age, feh)
             logT = self.ic.logTeff(mass, age, feh)
@@ -608,7 +572,7 @@ class FastIsochrone(Isochrone):
     logL_col = None
     default_bands = ('g')
 
-    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False,
+    def __init__(self, bands=None, extinction='schlafly', debug=False,
                     simple_extinction=False):
         # df should be indexed by [feh, age]
 
@@ -618,10 +582,10 @@ class FastIsochrone(Isochrone):
         self.bands = bands
 
         self._df = None
-        self.x_ext = 0.
-        self.ext_table = ext_table
         self.debug = debug
         self.simple_extinction = simple_extinction
+        self.extinction = extinction
+        self._extcurve = None
     
         self._fehs = None
         self._ages = None

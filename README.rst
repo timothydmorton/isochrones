@@ -19,11 +19,15 @@ To deal correctly with extinction (important if you are trying to fit
 any wide bandpasses such as Gaia G band), you will also need to install
 the following packages::
 
+    pip install git+git://github.com/mfouesneau/pyextinction
     pip install git+git://github.com/mfouesneau/pyphot
     pip install git+git://github.com/mfouesneau/pystellibs
 
+Without installing these, there is still a default extinction law included,
+from `Schlafly (2016) <http://e.schlaf.ly/apored/extcurve.html>`_. 
+
 The package also depends on the suite of scientific and numerical libraries
-contained within the Anaconda suite.  
+contained within `Anaconda <http://www.continuum.io/downloads>`_.    
 
 For usage details, `read the documentation <http://isochrones.rtfd.org>`_ or
 check out the `demo notebook <http://nbviewer.ipython.org/github/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb>`_.

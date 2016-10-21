@@ -1,5 +1,5 @@
 from __future__ import print_function, division
-import os
+import os, sys
 import logging
 
 import pandas as pd
@@ -8,18 +8,14 @@ from sklearn.neighbors import KDTree
 from itertools import product
 import six
 
-from . import extcurve
+from . import get_extinction_curve
 from ..config import ISOCHRONES
 
 from scipy.interpolate import RegularGridInterpolator
-from isochrones.interp import interp_value_extinction, interp_values_extinction
-
-import sys
-# sys.path.append('/Users/tdm/repositories/pystellibs')
+from ..interp import interp_value_extinction, interp_values_extinction
 
 import pyphot
 filter_lib = pyphot.get_library()
-
 from pystellibs import BaSeL, Kurucz
 
 def get_stellargrid(models):
@@ -148,9 +144,9 @@ class ModelSpectrumGrid(object):
             self._generate_grid()
         return self._lam
             
-    def get_Agrid(self, band, AV_grid, x=0., savefile=None):
+    def get_Agrid(self, band, AV_grid, extinction='schlafly', parameter=None):
         filt = get_filter(band)
-        ext = extcurve(x)
+        ext = get_extinction_curve(extinction, parameter=parameter)
         lam = self.lam
         spec = self.spectrum
         flux_clean = filt.get_flux(lam, spec)
@@ -163,14 +159,20 @@ class ModelSpectrumGrid(object):
             # Why does this only make sense with log instead of log10????
             dmag[:,:,:,i] = -2.5*np.log(flux_atten / flux_clean).reshape((shape[:3]))
 
-        return ExtinctionGrid(band, dmag, self.logg_grid, 
-                              self.logT_grid, self.feh_grid, AV_grid)
+        return ExtinctionGrid(extinction, band, dmag, self.logg_grid, 
+                              self.logT_grid, self.feh_grid, AV_grid,
+                              parameter=parameter)
     
 
 class ExtinctionGrid(object):
-    def __init__(self, band, Agrid, logg, logT, feh, AV, use_scipy=False):
+    def __init__(self, extinction, band, Agrid, 
+                logg, logT, feh, AV, 
+                parameter=None, use_scipy=False, models='kurucz'):
         assert Agrid.shape == (len(logg), len(logT), len(feh), len(AV))
+        self.extinction = extinction
+        self.parameter = parameter
         self.band = band
+        self.models = models
         self.Agrid = Agrid.astype(float)
         self.logg = logg.astype(float)
         self.logT = logT.astype(float)
@@ -285,45 +287,73 @@ class ExtinctionGrid(object):
         else:
             return self._custom_interp(*args)
 
-    def save(self, filename):
-        """Saves as a numpy save file
+    @property
+    def filename(self):
+        extinction_dir = os.path.join(ISOCHRONES, 'extinction')
+        if not os.path.exists(extinction_dir):
+            os.makedirs(extinction_dir)
+        basename = '{}_{}_{}_{:.1f}.npz'.format(self.band, 
+                                                self.models, 
+                                                self.extcurve.name,
+                                                self.extcurve.parameter)
+        filename = os.path.join(extinction_dir, basename)
+        return filename    
+
+
+    def save(self, filename=None):
+        """Saves as a numpy save file to given location
+
+        Default location is self.filename
         """
         np.savez(filename, Agrid=self.Agrid, logg=self.logg, 
                  logT=self.logT, feh=self.feh, AV=self.AV,
-                 band=np.array([self.band]))
+                 band=np.array([self.band]), 
+                 extinction=np.array([self.extinction]),
+                 parameter=np.array([self.parameter]))
 
     @classmethod
     def load(cls, filename):
         d = np.load(filename)
-        return cls(d['band'][0], d['Agrid'], 
-                    d['logg'], d['logT'], d['feh'], d['AV'])
+        return cls(d['extinction'][0], d['band'][0], d['Agrid'], 
+                    d['logg'], d['logT'], d['feh'], d['AV'],
+                    parameter=d['parameter'][0])
 
 
-def extinction_grid_filename(band, x=0., models='kurucz'):
-    extinction_dir = os.path.join(ISOCHRONES, 'extinction')
-    if not os.path.exists(extinction_dir):
-        os.makedirs(extinction_dir)
-    filename = os.path.join(extinction_dir, '{}_{}_{:.2f}.npz'.format(band, models, x))
-    return filename    
+def extinction_grid_filename(band, models='kurucz', extinction='schlafly',
+                                parameter=None):
+        extinction_dir = os.path.join(ISOCHRONES, 'extinction')
+        if not os.path.exists(extinction_dir):
+            os.makedirs(extinction_dir)
+        parameter = get_extinction_curve(extinction, parameter=parameter).parameter
+        basename = '{}_{}_{}_{:.1f}.npz'.format(band, 
+                                                models, 
+                                                extinction,
+                                                parameter)
+        filename = os.path.join(extinction_dir, basename)
+        return filename    
 
 def get_extinction_grid(band, AVs=np.concatenate(([0], np.logspace(-1,1,12))),
-                            x=0., models='kurucz', overwrite=False):
-    filename = extinction_grid_filename(band, x=x, models=models)
+                            parameter=None, models='kurucz', overwrite=False,
+                            extinction='schlafly'):
+    filename = extinction_grid_filename(band, parameter=parameter, 
+                                        models=models, extinction='schlafly')
     try:
         if overwrite:
             raise IOError
         Agrid = ExtinctionGrid.load(filename)
     except (IOError, KeyError):
-        write_extinction_grid(band, AVs=AVs, x=x, models=models)
+        write_extinction_grid(band, AVs=AVs, extinction=extinction, 
+                              parameter=parameter, models=models)
         grid = ModelSpectrumGrid(models)
-        Agrid = grid.get_Agrid(band, AVs, x=x)
+        Agrid = grid.get_Agrid(band, AVs, extinction=extinction, parameter=parameter)
     return Agrid
 
 def write_extinction_grid(band, AVs=np.concatenate(([0], np.logspace(-1,1,12))),
-                            x=0., models='kurucz'):
+                            parameter=None, models='kurucz', extinction='schlafly'):
     grid = ModelSpectrumGrid(models)
-    Agrid = grid.get_Agrid(band, AVs, x=x)
-    filename = extinction_grid_filename(band, x=x, models=models)
+    Agrid = grid.get_Agrid(band, AVs, extinction=extinction, parameter=parameter)
+    filename = extinction_grid_filename(band, extinction=extinction, 
+                                        parameter=parameter, models=models)
     Agrid.save(filename)
     logging.info('Extinction grid saved to {}.'.format(filename))
 
