@@ -287,19 +287,6 @@ class ExtinctionGrid(object):
         else:
             return self._custom_interp(*args)
 
-    @property
-    def filename(self):
-        extinction_dir = os.path.join(ISOCHRONES, 'extinction')
-        if not os.path.exists(extinction_dir):
-            os.makedirs(extinction_dir)
-        basename = '{}_{}_{}_{:.1f}.npz'.format(self.band, 
-                                                self.models, 
-                                                self.extcurve.name,
-                                                self.extcurve.parameter)
-        filename = os.path.join(extinction_dir, basename)
-        return filename    
-
-
     def save(self, filename=None):
         """Saves as a numpy save file to given location
 
@@ -324,10 +311,12 @@ def extinction_grid_filename(band, models='kurucz', extinction='schlafly',
         extinction_dir = os.path.join(ISOCHRONES, 'extinction')
         if not os.path.exists(extinction_dir):
             os.makedirs(extinction_dir)
-        parameter = get_extinction_curve(extinction, parameter=parameter).parameter
+        curve = get_extinction_curve(extinction, parameter=parameter)
+        parameter = curve.parameter
+        name = curve.name
         basename = '{}_{}_{}_{:.1f}.npz'.format(band, 
                                                 models, 
-                                                extinction,
+                                                name,
                                                 parameter)
         filename = os.path.join(extinction_dir, basename)
         return filename    
@@ -336,7 +325,7 @@ def get_extinction_grid(band, AVs=np.concatenate(([0], np.logspace(-1,1,12))),
                             parameter=None, models='kurucz', overwrite=False,
                             extinction='schlafly'):
     filename = extinction_grid_filename(band, parameter=parameter, 
-                                        models=models, extinction='schlafly')
+                                        models=models, extinction=extinction)
     try:
         if overwrite:
             raise IOError
