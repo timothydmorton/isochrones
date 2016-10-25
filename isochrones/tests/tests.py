@@ -50,7 +50,10 @@ def _basic_ic_checks(ic):
 
     args = (mass, age, feh, 500, 0.2)
     for b in ic.bands:
-        assert np.isfinite(ic.mag[b](*args))
+        try:
+            assert np.isfinite(ic.mag[b](*args))
+        except AssertionError:
+            raise('Problem with {} band!'.format(b))
 
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))

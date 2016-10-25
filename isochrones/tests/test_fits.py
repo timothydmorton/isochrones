@@ -44,10 +44,10 @@ def _check_fitting(mod):
         _fit_mnest(mod)
     return mod
 
-def _fit_mnest(mod):
+def _fit_mnest(mod, verbose=False):
     basename = '{}/{}-'.format(chainsdir,np.random.randint(1000000))
     mod.fit_multinest(n_live_points=5, max_iter=50,basename=basename,
-            verbose=False)
+            verbose=verbose)
     foo = mod.mnest_analyzer
     files = glob.glob('{}*'.format(basename))
     for f in files:

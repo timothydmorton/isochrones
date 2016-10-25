@@ -340,7 +340,7 @@ def interp_value_extinction(logg, logT, feh, AV,
         logg_norm = loggs[Nlogg - 1] - loggs[0]
         logT_norm = logTs[NlogT - 1] - logTs[0]
         feh_norm = fehs[Nfeh - 1] - fehs[0]
-        AV_norm = 1. #AVs[NAV - 1] - AVs[0]
+        AV_norm = 1. #AVs[NAV - 1] - AVs[0] # don't normalize AV
 
         return interp_box_4d(logg, logT, feh, AV, pts, vals,
                              logg_norm, logT_norm, feh_norm, AV_norm)
@@ -378,6 +378,8 @@ def interp_box_4d(a, b, c, d, box, values,
                 w = dsq**(p/2.)
                 val += w * values[i]
                 norm += w
-    
-    return val/norm
+    if norm==0:
+        return np.nan
+    else:
+        return val/norm
  

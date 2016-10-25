@@ -17,6 +17,7 @@ from ..interp import interp_value_extinction, interp_values_extinction
 import pyphot
 filter_lib = pyphot.get_library()
 from pystellibs import BaSeL, Kurucz
+from tables import NoSuchNodeError # to catch non-existent filters
 
 def get_stellargrid(models):
     if models=='kurucz':
@@ -33,25 +34,24 @@ def get_filter(b):
     """
     filtname = None
     if b in ['g','r','i','z']:
-        filtname = u'SDSS_{}'.format(b)
+        filtname = 'SDSS_{}'.format(b)
     elif b in ['J','H','Ks']:
-        filtname = u'2MASS_{}'.format(b)
+        filtname = '2MASS_{}'.format(b)
     elif b=='K':
-        filtname = u'2MASS_Ks'
+        filtname = '2MASS_Ks'
     elif b=='G':
-        filtname = u'Gaia_G'
+        filtname = 'Gaia_G'
     elif b in ['W1','W2','W3','W4']:
-        filtname = u'WISE_RSR_{}'.format(b)
+        filtname = 'WISE_RSR_{}'.format(b)
     elif b in ['U','B','V']:
-        filtname = u'GROUND_JOHNSON_{}'.format(b)
+        filtname = 'GROUND_JOHNSON_{}'.format(b)
     else:
-        filtname = six.text_type(b)
+        filtname = b
 
     try:
-        return filter_lib[filtname]
-    except UnicodeDecodeError:
-        logging.error('Cannot decode band name: {}'.format(filtname))
-        raise 
+        return filter_lib[six.text_type(filtname)]
+    except NoSuchNodeError:
+        raise ValueError('Filter not in library: {}'.format(filtname))
 
 class ModelSpectrumGrid(object):
     def __init__(self, models=Kurucz):
@@ -257,15 +257,18 @@ class ExtinctionGrid(object):
     def _custom_interp(self, pars, normalize=True):
         g, T, f, A = pars
         # normalization (but not in AV) happens within interp_value_extinction
-        if np.isscalar(g) and np.isscalar(T) and np.isscalar(f) and np.isscalar(A):
-            try:
-                return interp_value_extinction(g, T, f, A, self.Agrid, 
-                                        self.logg,
-                                        self.logT, 
-                                        self.feh, 
-                                        self.AV, normalize=normalize)
-            except ZeroDivisionError:
-                return self._kdtree_interp(pars)
+        if ((np.isscalar(g) and np.isscalar(T) and np.isscalar(f) and np.isscalar(A)) or
+            (np.size(g)==1 and np.size(T)==1 and np.size(f)==1 and np.size(A)==1)):
+            val = interp_value_extinction(float(g), float(T), 
+                                               float(f), float(A), 
+                                                self.Agrid, 
+                                                self.logg,
+                                                self.logT, 
+                                                self.feh, 
+                                                self.AV, normalize=normalize)
+            if np.isnan(val):
+                val = self._kdtree_interp(pars)
+            return val
         else:
             # return self._kdtree_interp(pars)
             b = np.broadcast(g, T, f, A)
@@ -274,8 +277,16 @@ class ExtinctionGrid(object):
             f = np.resize(f, b.shape).astype(float)
             A = np.resize(A, b.shape).astype(float)
 
-            return interp_values_extinction(g, T, f, A, self.Agrid, self.logg,
+            vals = interp_values_extinction(g, T, f, A, self.Agrid, self.logg,
                                           self.logT, self.feh, self.AV)
+
+            # Fix NaNs that are outside grid...
+            bad = np.isnan(vals)
+            if bad.any():
+                vals[bad] = self._kdtree_interp(np.array([g[bad], T[bad], 
+                                                            f[bad], A[bad]]).T)
+
+            return vals
 
 
     def __call__(self, *args, **kwargs):

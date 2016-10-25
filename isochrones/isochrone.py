@@ -29,7 +29,7 @@ else:
 from .config import ISOCHRONES
 from .grid import ModelGrid
 
-def get_ichrone(models, bands=None, default=True):
+def get_ichrone(models, bands=None, default=True, **kwargs):
     """Gets Isochrone Object by name, or type, with the right bands
 
     If `default` is `True`, then will set bands
@@ -45,22 +45,22 @@ def get_ichrone(models, bands=None, default=True):
             return bands
 
     if type(models) is type(type):
-        ichrone = models(actual(bands, models))
+        ichrone = models(actual(bands, models), **kwargs)
     elif models=='dartmouth':
         from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone))
+        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone), **kwargs)
     elif models=='dartmouthfast':
         from isochrones.dartmouth import Dartmouth_FastIsochrone
-        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone))
+        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone), **kwargs)
     elif models=='mist':
         from isochrones.mist import MIST_Isochrone
-        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone))
+        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone), **kwargs)
     elif models=='padova':
         from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone))
+        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone), **kwargs)
     elif models=='basti':
         from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone))
+        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone), **kwargs)
     else:
         raise ValueError('Unknown stellar models: {}'.format(args.models))
     return ichrone
@@ -76,14 +76,14 @@ class MagFunction(object):
 
         if not simple:
             try:
-                self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+                self.A_fn = get_extinction_grid(band, extinction=self.ic.extinction,
+                    models=spec_models, parameter=self.ic.extinction_parameter)
             except:
                 logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
                 self.A_fn = None
                 self.simple = True
 
-        if simple:
-            self.AAV = self.extcurve(LAMBDA_EFF[self.band])
+        self.AAV = self.extcurve(LAMBDA_EFF[self.band])
 
     def __call__(self, mass, age, feh, distance=10, AV=0.0):
         if self.simple:
@@ -148,6 +148,7 @@ class Isochrone(object):
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
                  minage=None, maxage=None, extinction='schlafly', 
+                 extinction_parameter=None,
                  simple_extinction=False):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
@@ -160,6 +161,7 @@ class Isochrone(object):
         self.maxfeh = feh.max()
 
         self.extinction = extinction
+        self.extinction_parameter = extinction_parameter
         self._extcurve = None
 
         if minage is not None:
@@ -197,7 +199,8 @@ class Isochrone(object):
     @property
     def extcurve(self):
         if self._extcurve is None:
-            self._extcurve = get_extinction_curve(self.extinction)
+            self._extcurve = get_extinction_curve(self.extinction, 
+                                parameter=self.extinction_parameter)
         return self._extcurve
     
 
@@ -526,7 +529,9 @@ class MagFunctionFast(object):
 
         if not simple:
             try:
-                self.A_fn = get_extinction_grid(band, x=self.x_ext, models=spec_models)
+                self.A_fn = get_extinction_grid(band, models=spec_models,
+                                extinction=self.ic.extinction, 
+                                parameter=self.ic.extinction_parameter)
             except:
                 logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
                 self.A_fn = None
@@ -573,8 +578,7 @@ class FastIsochrone(Isochrone):
     default_bands = ('g')
 
     def __init__(self, bands=None, extinction='schlafly', debug=False,
-                    simple_extinction=False):
-        # df should be indexed by [feh, age]
+                    simple_extinction=False, extinction_parameter=None):
 
         if bands is None:
             bands = list(self.default_bands)
@@ -585,6 +589,7 @@ class FastIsochrone(Isochrone):
         self.debug = debug
         self.simple_extinction = simple_extinction
         self.extinction = extinction
+        self.extinction_parameter = extinction_parameter
         self._extcurve = None
     
         self._fehs = None
