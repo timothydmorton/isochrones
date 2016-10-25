@@ -286,6 +286,14 @@ def interp_value_extinction(logg, logT, feh, AV,
     AVs is grid of AVs
     
     """
+
+    # Check for nans.  If any of logg, logT, feh, AV are nan, return nan.
+    if not ((logg < 0 or logg >=0) and
+            (logT < 0 or logT >=0) and
+            (feh < 0 or feh >=0) and
+            (AV < 0 or AV >=0)):
+        return np.nan
+
     Nlogg = len(loggs)
     NlogT = len(logTs)
     Nfeh = len(fehs)

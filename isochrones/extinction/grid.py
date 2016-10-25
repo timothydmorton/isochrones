@@ -267,7 +267,11 @@ class ExtinctionGrid(object):
                                                 self.feh, 
                                                 self.AV, normalize=normalize)
             if np.isnan(val):
-                val = self._kdtree_interp(pars)
+                # Test for param=nan is here so test isn't always done
+                if np.isnan(g) or np.isnan(T) or np.isnan(f) or np.isnan(A):
+                    val = np.nan
+                else:
+                    val = self._kdtree_interp(pars)
             return val
         else:
             # return self._kdtree_interp(pars)
