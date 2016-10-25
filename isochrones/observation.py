@@ -573,7 +573,7 @@ class ModelNode(Node):
             return p[1]
         elif prop=='feh':
             return p[2]
-        elif prop in ['Teff','logg','radius']:
+        elif prop in ['Teff','logg','radius','logTeff']:
             return getattr(self.ic, prop)(*p[:3])
         else:
             raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))

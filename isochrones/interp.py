@@ -165,6 +165,102 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
     return results
 
 @jit(nopython=True)
+def interp_allcols(mass, age, feh, grid, mass_col, ages, fehs, grid_Ns, debug):
+    Nage = len(ages)
+    Nfeh = len(fehs)
+    Ncols = grid.shape[3]
+
+    results = np.zeros(Ncols, dtype=float64)
+
+    ifeh = searchsorted(fehs, Nfeh, feh)
+    iage = searchsorted(ages, Nage, age)
+    if ifeh==0 or iage==0 or ifeh==Nfeh or iage==Nage:
+        for j in range(Ncols):
+            results[j] = np.nan
+        return results
+
+    pts = np.zeros((8,3))
+    vals = np.zeros((8,Ncols))
+
+    i_f = ifeh - 1
+    i_a = iage - 1
+    Nmass = grid_Ns[i_f, i_a]
+    imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
+    pts[0, 0] = grid[i_f, i_a, imass, mass_col]
+    pts[0, 1] = ages[i_a]
+    pts[0, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[0, j] = grid[i_f, i_a, imass, j]
+    pts[1, 0] = grid[i_f, i_a, imass-1, mass_col]
+    pts[1, 1] = ages[i_a]
+    pts[1, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[1, j] = grid[i_f, i_a, imass-1, j]
+
+    i_f = ifeh - 1
+    i_a = iage 
+    Nmass = grid_Ns[i_f, i_a]
+    imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
+    pts[2, 0] = grid[i_f, i_a, imass, mass_col]
+    pts[2, 1] = ages[i_a]
+    pts[2, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[2, j] = grid[i_f, i_a, imass, j]
+    pts[3, 0] = grid[i_f, i_a, imass-1, mass_col]
+    pts[3, 1] = ages[i_a]
+    pts[3, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[3] = grid[i_f, i_a, imass-1, j]
+
+    i_f = ifeh
+    i_a = iage - 1
+    Nmass = grid_Ns[i_f, i_a]
+    imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
+    pts[4, 0] = grid[i_f, i_a, imass, mass_col]
+    pts[4, 1] = ages[i_a]
+    pts[4, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[4, j] = grid[i_f, i_a, imass, j]
+    pts[5, 0] = grid[i_f, i_a, imass-1, mass_col]
+    pts[5, 1] = ages[i_a]
+    pts[5, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[5, j] = grid[i_f, i_a, imass-1, j]
+
+    i_f = ifeh 
+    i_a = iage
+    Nmass = grid_Ns[i_f, i_a]
+    imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
+    pts[6, 0] = grid[i_f, i_a, imass, mass_col]
+    pts[6, 1] = ages[i_a]
+    pts[6, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[6, j] = grid[i_f, i_a, imass, j]
+    pts[7, 0] = grid[i_f, i_a, imass-1, mass_col]
+    pts[7, 1] = ages[i_a]
+    pts[7, 2] = fehs[i_f]
+    for j in range(Ncols):
+        vals[7, j] = grid[i_f, i_a, imass-1, j]
+    
+    # if debug:
+    #     result = np.zeros((8,4))
+    #     for i in range(8):
+    #         result[i, 0] = pts[i, 0]
+    #         result[i, 1] = pts[i, 1]
+    #         result[i, 2] = pts[i, 2]
+    #         result[i, 3] = vals[i]
+    #     return result
+    # else:
+    for j in range(Ncols):
+        these_vals = np.zeros(8)
+        for k in range(8):
+            these_vals[k] = vals[k, j]
+
+        results[j] = interp_box(mass, age, feh, pts, these_vals) 
+
+    return results
+
+@jit(nopython=True)
 def interp_value(mass, age, feh, icol, 
                  grid, mass_col, ages, fehs, grid_Ns, debug):
                  # return_box):

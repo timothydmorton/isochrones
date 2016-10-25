@@ -19,7 +19,7 @@ if not on_rtd:
 
     from .extinction import LAMBDA_EFF, get_extinction_curve
     from .extinction.grid import get_extinction_grid
-    from .interp import interp_value, interp_values
+    from .interp import interp_value, interp_values, interp_allcols
 
 else:
     G = 6.67e-11
@@ -85,7 +85,11 @@ class MagFunction(object):
 
         self.AAV = self.extcurve(LAMBDA_EFF[self.band])
 
-    def __call__(self, mass, age, feh, distance=10, AV=0.0):
+    def _get_mag(self, mass, age, feh):
+        return self.ic._mag[self.band](mass, age, feh)
+
+    def __call__(self, mass, age, feh, distance=10, AV=0.0, 
+                logg=None, logT=None):
         if self.simple:
             A = AV*self.AAV
         else:
@@ -94,9 +98,8 @@ class MagFunction(object):
             A = self.A_fn([logg, logT, feh, AV])
 
         dm = 5*np.log10(distance) - 5
-        mag = self.ic._mag[self.band](mass, age, feh)
+        mag = self._get_mag(mass, age, feh)
         return mag + dm + A
-
 
 class Isochrone(object):
     """
@@ -519,37 +522,15 @@ class Isochrone(object):
             nbad = bad.sum()
         return ms,ages,fehs
 
-class MagFunctionFast(object):
+class MagFunctionFast(MagFunction):
     def __init__(self, ic, band, icol, spec_models='kurucz', simple=False):
-        self.ic = ic
-        self.band = band
         self.icol = icol
-        self.extcurve = ic.extcurve
-        self.simple = simple
+        super(MagFunctionFast, self).__init__(ic, band, 
+                                            spec_models=spec_models, simple=simple)
 
-        if not simple:
-            try:
-                self.A_fn = get_extinction_grid(band, models=spec_models,
-                                extinction=self.ic.extinction, 
-                                parameter=self.ic.extinction_parameter)
-            except:
-                logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
-                self.A_fn = None
-                self.simple = True
+    def _get_mag(self, mass, age, feh):
+        return self.ic.interp_value(mass, age, feh, self.icol)
 
-        self.AAV = self.extcurve(LAMBDA_EFF[self.band])
-
-    def __call__(self, mass, age, feh, distance=10, AV=0.0):
-        if self.simple:
-            A = AV*self.AAV
-        else:
-            logg = self.ic.logg(mass, age, feh)
-            logT = self.ic.logTeff(mass, age, feh)
-            A = self.A_fn([logg, logT, feh, AV])
-
-        dm = 5*np.log10(distance) - 5
-        mag = self.ic.interp_value(mass, age, feh, self.icol)
-        return mag + dm + A
 
 class FastIsochrone(Isochrone):
     """Alternative isochrone implementation for large grids, faster likelihoods
@@ -742,6 +723,14 @@ class FastIsochrone(Isochrone):
             self._grid = data
             self._grid_Ns = lens
                 
+    def interp_allcols(self, mass, age, feh):
+        if self._ages is None:
+            self._initialize()
+
+        return interp_allcols(float(mass), float(age), float(feh),
+                              self.grid, self.mass_col, self.ages,
+                              self.fehs, self.grid_Ns, self.debug)
+
     def interp_value(self, mass, age, feh, icol): # 4 is log_g
         if self._ages is None:
             self._initialize()
