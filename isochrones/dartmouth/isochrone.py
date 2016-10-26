@@ -83,9 +83,9 @@ class Dartmouth_Isochrone(Isochrone):
         
         mags = {b:df[b].values for b in bands}
 
-        Isochrone.__init__(self,df['MMo'].values, df['age'].values,
-                           df['feh'].values,df['MMo'].values, df['LogLLo'].values,
-                           10**df['LogTeff'].values,df['LogG'].values,mags,tri=TRI, 
+        Isochrone.__init__(self,df['mass'].values, df['age'].values,
+                           df['feh'].values,df['mass'].values, df['logL'].values,
+                           10**df['logTeff'].values,df['logg'].values,mags,tri=TRI, 
                            **kwargs)
 
     def agerange(self, m, feh=0.0):

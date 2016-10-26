@@ -46,6 +46,8 @@ class MISTModelGrid(ModelGrid):
     zenodo_record = 161241
     zenodo_files = ('mist.tgz',)
     master_tarball_file = 'mist.tgz'
+    column_mapping = {'initial_mass':'mass', 'log_Teff':'logTeff', 'log_g':'logg',
+                          'log_L':'logL', 'log10_isochrone_age_yr':'age', 'feh':'feh'}
 
     @classmethod
     def get_band(cls, b):

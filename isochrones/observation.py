@@ -29,7 +29,7 @@ else:
         pass
 
 
-from .isochrone import get_ichrone
+from .isochrone import get_ichrone, FastIsochrone
 from .utils import addmags, distance
 
 class NodeTraversal(Traversal):
@@ -544,6 +544,10 @@ class ModelNode(Node):
         self.parent = None
         self._leaves = None
 
+        self._cache_key = None
+        self._cache_val = {}
+        self._cache_mag = {}
+
     @property
     def label(self):
         return '{}_{}'.format(self.index, self.tag)
@@ -565,21 +569,47 @@ class ModelNode(Node):
         return [n.obsname for n in self.get_obs_ancestors()]
 
     def evaluate(self, p, prop):
-        if prop in self.ic.bands:
-            return self.evaluate_mag(p, prop)
-        elif prop=='mass':
-            return p[0]
-        elif prop=='age':
-            return p[1]
-        elif prop=='feh':
-            return p[2]
-        elif prop in ['Teff','logg','radius','logTeff']:
-            return getattr(self.ic, prop)(*p[:3])
-        else:
-            raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
+        if self._cache_key is not None and p==self._cache_key:
+            try:
+                return self._cache_val[prop]
+            except KeyError:
+                pass
 
-    def evaluate_mag(self, p, band):
-        return self.ic.mag[band](*p)
+        if isinstance(self.ic, FastIsochrone):
+            prop_dict = self.ic.interp_allcols(p[0], p[1], p[2], return_dict=True)
+        else:
+            prop_dict = {}
+        self._cache_val = prop_dict
+
+        if prop in self.ic.bands:
+            val = self.ic.mag[prop](*p, **prop_dict)
+        elif prop=='mass':
+            val = p[0]
+        elif prop=='age':
+            val = p[1]
+        elif prop=='feh':
+            val = p[2]
+        elif prop in ['logg','logTeff']:
+            try:
+                val = prop_dict[prop]
+            except KeyError:
+                val = getattr(self.ic, prop)(*p[:3])
+                self._cache_val[prop] = val
+        elif prop=='Teff':
+            try:
+                val = 10**prop_dict['logTeff']
+            except KeyError:
+                val = self.ic.Teff(*p[:3])
+            self._cache_val['Teff'] = val
+        else:
+            try:
+                val = getattr(self.ic, prop)(*p[:3])
+                self._cache_val[prop] = val
+            except AttributeError:
+                raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
+
+        self._cache_key = p
+        return val
 
     def lnlike(self, *args, **kwargs):
         return 0

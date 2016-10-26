@@ -113,7 +113,7 @@ class ModelGrid(object):
             df.loc[:, bnd] = col.values #dunno why it has to be this way; something
                                         # funny with indexing.
 
-        return df
+        return df.rename(columns=self.column_mapping)
 
     @classmethod
     def download_grids(cls, overwrite=False):

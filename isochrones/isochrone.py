@@ -85,20 +85,31 @@ class MagFunction(object):
 
         self.AAV = self.extcurve(LAMBDA_EFF[self.band])
 
-    def _get_mag(self, mass, age, feh):
+    def _get_mag(self, mass, age, feh, **props):
+        if len(props) > 0:
+            try:
+                return props[self.band]
+            except KeyError:
+                pass
         return self.ic._mag[self.band](mass, age, feh)
 
-    def __call__(self, mass, age, feh, distance=10, AV=0.0, 
-                logg=None, logT=None):
+    def __call__(self, m, a, f, distance=10, AV=0.0, 
+                 **props):
         if self.simple:
             A = AV*self.AAV
         else:
-            logg = self.ic.logg(mass, age, feh)
-            logT = self.ic.logTeff(mass, age, feh)
-            A = self.A_fn([logg, logT, feh, AV])
+            if 'logg' in props:
+                logg = props['logg']
+            else:
+                logg = self.ic.logg(m, a, f)
+            if 'logTeff' in props:
+                logT = props['logTeff']
+            else:
+                logT = self.ic.logTeff(m, a, f)
+            A = self.A_fn([logg, logT, f, AV])
 
         dm = 5*np.log10(distance) - 5
-        mag = self._get_mag(mass, age, feh)
+        mag = self._get_mag(m, a, f, props=props)
         return mag + dm + A
 
 class Isochrone(object):
@@ -528,7 +539,12 @@ class MagFunctionFast(MagFunction):
         super(MagFunctionFast, self).__init__(ic, band, 
                                             spec_models=spec_models, simple=simple)
 
-    def _get_mag(self, mass, age, feh):
+    def _get_mag(self, mass, age, feh, **props):
+        if len(props) > 0:
+            try:
+                return props[self.band]
+            except KeyError:
+                pass
         return self.ic.interp_value(mass, age, feh, self.icol)
 
 
@@ -590,6 +606,8 @@ class FastIsochrone(Isochrone):
         self.mag = {b: MagFunctionFast(self, b, i, simple=simple_extinction)
                             for b,i in self._mag_cols.items()}
 
+        self._column_names = None
+
         #organized array
         self._grid = None
         self._grid_Ns = None
@@ -606,6 +624,12 @@ class FastIsochrone(Isochrone):
             self._df = self.modelgrid(self.bands).df
         return self._df
     
+    @property
+    def column_names(self):
+        if self._column_names is None:
+            self._column_names = list(self.df.columns)
+        return self._column_names
+
     @property
     def Ncols(self):
         return self.df.shape[1]
@@ -723,13 +747,18 @@ class FastIsochrone(Isochrone):
             self._grid = data
             self._grid_Ns = lens
                 
-    def interp_allcols(self, mass, age, feh):
+    def interp_allcols(self, mass, age, feh, return_dict=False):
         if self._ages is None:
             self._initialize()
 
-        return interp_allcols(float(mass), float(age), float(feh),
+        vals = interp_allcols(float(mass), float(age), float(feh),
                               self.grid, self.mass_col, self.ages,
                               self.fehs, self.grid_Ns, self.debug)
+
+        if return_dict:
+            return {c:vals[i] for i,c in enumerate(self.column_names)}
+        else:
+            return vals
 
     def interp_value(self, mass, age, feh, icol): # 4 is log_g
         if self._ages is None:

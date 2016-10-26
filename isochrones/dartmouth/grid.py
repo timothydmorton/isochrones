@@ -37,6 +37,9 @@ class DartmouthModelGrid(ModelGrid):
     zenodo_record = 161241
     zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
     master_tarball_file = 'dartmouth.tgz'
+    column_mapping = {'MMo':'mass', 'LogTeff':'logTeff', 'LogG':'logg',
+                      'LogLLo':'logL', 'age':'age', 'feh':'feh'}
+
 
     @classmethod
     def get_band(cls, b):
