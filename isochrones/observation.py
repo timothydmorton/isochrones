@@ -571,18 +571,26 @@ class ModelNode(Node):
     def evaluate(self, p, prop):
         if self._cache_key is not None and p==self._cache_key:
             try:
-                return self._cache_val[prop]
+                if prop in self.ic.bands:
+                    val = self.ic.mag[prop](p[0], p[1], p[2],
+                                    distance=p[3], AV=p[4], **self._cache_val)
+                else:
+                    val = self._cache_val[prop]
+                return val
             except KeyError:
                 pass
+
 
         if isinstance(self.ic, FastIsochrone):
             prop_dict = self.ic.interp_allcols(p[0], p[1], p[2], return_dict=True)
         else:
             prop_dict = {}
+
         self._cache_val = prop_dict
 
         if prop in self.ic.bands:
-            val = self.ic.mag[prop](*p, **prop_dict)
+            val = self.ic.mag[prop](p[0], p[1], p[2],
+                                    distance=p[3], AV=p[4], **prop_dict)
         elif prop=='mass':
             val = p[0]
         elif prop=='age':
