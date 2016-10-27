@@ -541,9 +541,9 @@ class ModelNode(Node):
     def props(self):
         if self._props is None:
             self._props = self.ic.interp_allcols(*self.pars[:3], return_dict=True)
-            self._props.pop('mass')
-            self._props.pop('feh')
-            self._props.pop('age')
+            self._props.pop('mass', None)
+            self._props.pop('feh', None)
+            self._props.pop('age', None)
         return self._props
 
     @property
@@ -572,7 +572,7 @@ class ModelNode(Node):
         p = self.pars
 
         if prop in self.ic.bands:
-            val = self.ic.mag[prop](*p, **self.props)
+            val = self.ic.mag[prop](*p) #, **self.props) ## what's going on here??
         elif prop=='mass':
             val = p[0]
         elif prop=='age':

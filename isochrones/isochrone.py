@@ -201,9 +201,15 @@ class Isochrone(object):
                     'logg':logg,
                     'logTeff':np.log10(Teff),
                     'mags':mags}
-        self._props = ['mass', 'logL', 'logg', 'logTeff']
 
         self.bands = mags.keys()
+
+        self._all_vals = np.array([m_act, logg, logL, np.log10(Teff)] + 
+                                [mags[b] for b in self.bands]).T
+        self._master_columns = ['mass','logg','logL','logTeff'] + self.bands
+        self._master_interp = None
+
+        self._props = ['mass', 'logL', 'logg', 'logTeff']
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
@@ -217,6 +223,19 @@ class Isochrone(object):
                                 parameter=self.extinction_parameter)
         return self._extcurve
     
+    @property
+    def master_interp(self):
+        if self._master_interp is None:
+            self._master_interp = interpnd(self.tri, self._all_vals)
+        return self._master_interp
+    
+    def interp_allcols(self, mass, age, feh, return_dict=True):
+        vals = np.squeeze(self.master_interp([mass, age, feh]))
+        if return_dict:
+            d = {c:vals[i] for i,c in enumerate(self._master_columns)}
+            return d
+        else:
+            return vals
 
     def _prop(self, prop, *args):
         if prop not in self._props:
@@ -749,7 +768,7 @@ class FastIsochrone(Isochrone):
             self._grid = data
             self._grid_Ns = lens
                 
-    def interp_allcols(self, mass, age, feh, return_dict=False):
+    def interp_allcols(self, mass, age, feh, return_dict=True):
         if self._ages is None:
             self._initialize()
 
