@@ -109,7 +109,7 @@ class MagFunction(object):
             A = self.A_fn([logg, logT, f, AV])
 
         dm = 5*np.log10(distance) - 5
-        mag = self._get_mag(m, a, f, props=props)
+        mag = self._get_mag(m, a, f, **props)
         return mag + dm + A
 
 class Isochrone(object):
@@ -619,7 +619,6 @@ class FastIsochrone(Isochrone):
         for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
                      'minage','maxage','minfeh','maxfeh','minmass','maxmass']:
             _ = getattr(self, attr)
-
 
     @property
     def df(self):

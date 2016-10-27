@@ -60,7 +60,7 @@ class NodeTraversal(Traversal):
                         for k,v in root.spectroscopy[node.label].items():
                             text += ', {}={}'.format(k,v)
 
-                            modval = node.evaluate(self.pars[node.label], k)
+                            modval = node.evaluate(k, self.pars[node.label])
                             lnl = -0.5*(modval - v[0])**2/v[1]**2
                             text += '; model={} ({})'.format(modval, lnl)
                     if node.label in root.limits:
@@ -439,38 +439,15 @@ class ObsNode(Node):
             tag = len(existing)
             self.add_child(ModelNode(ic, index=idx, tag=tag))
 
-    def model_mag(self, pardict, use_cache=True):
+    def model_mag(self, use_cache=True):
         """
         pardict is a dictionary of parameters for all leaves
         gets converted back to traditional parameter vector
         """
-        if use_cache and pardict == self._cache_key:
-            #print('{}: using cached'.format(self))
-            return self._cache_val
-
-        #print('{}: calculating'.format(self))
-        self._cache_key = pardict
+        return addmags(*[m.evaluate(self.band) for m in self.leaves])
 
 
-        # Generate appropriate parameter vector from dictionary
-        p = []
-        for l in self.leaf_labels:
-            p.extend(pardict[l])
-
-        assert len(p) == self.n_params
-
-        tot = np.inf
-        #print('Building {} mag for {}:'.format(self.band, self))
-        for i,m in enumerate(self.leaves):
-            mag = m.evaluate(p[i*5:(i+1)*5], self.band)
-            # logging.debug('{}: mag={}'.format(self,mag))
-            #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
-            tot = addmags(tot, mag)
-
-        self._cache_val = tot
-        return tot
-
-    def lnlike(self, pardict, use_cache=True):
+    def lnlike(self, use_cache=True):
         """
         returns log-likelihood of this observation
 
@@ -485,11 +462,11 @@ class ObsNode(Node):
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = (self.model_mag(pardict, use_cache=use_cache) -
-                   self.reference.model_mag(pardict, use_cache=use_cache))
+            mod = (self.model_mag(use_cache=use_cache) -
+                   self.reference.model_mag(use_cache=use_cache))
             mag -= self.reference.value[0]
         else:
-            mod = self.model_mag(pardict, use_cache=use_cache)
+            mod = self.model_mag(use_cache=use_cache)
 
         lnl = -0.5*(mag - mod)**2 / dmag**2
 
@@ -548,6 +525,27 @@ class ModelNode(Node):
         self._cache_val = {}
         self._cache_mag = {}
 
+        self._pars = None
+        self._props = None
+
+    @property
+    def pars(self):
+        return self._pars
+    
+    @pars.setter
+    def pars(self, p):
+        self._pars = p
+        self._props = None
+
+    @property
+    def props(self):
+        if self._props is None:
+            self._props = self.ic.interp_allcols(*self.pars[:3], return_dict=True)
+            self._props.pop('mass')
+            self._props.pop('feh')
+            self._props.pop('age')
+        return self._props
+
     @property
     def label(self):
         return '{}_{}'.format(self.index, self.tag)
@@ -568,69 +566,26 @@ class ModelNode(Node):
         """
         return [n.obsname for n in self.get_obs_ancestors()]
 
-    def evaluate(self, p, prop, clever_caching=False):
-        if clever_caching:
-            if self._cache_key is not None and np.all(p==self._cache_key):
-                try:
-                    if prop in self.ic.bands:
-                        val = self.ic.mag[prop](p[0], p[1], p[2],
-                                        distance=p[3], AV=p[4], **self._cache_val)
-                    else:
-                        val = self._cache_val[prop]
-                    return val
-                except KeyError:
-                    pass
+    def evaluate(self, prop, p=None):
+        if p is not None:
+            self.pars = p
+        p = self.pars
 
-            if isinstance(self.ic, FastIsochrone):
-                prop_dict = self.ic.interp_allcols(p[0], p[1], p[2], return_dict=True)
-            else:
-                prop_dict = {}
-
-            self._cache_val = prop_dict
-
-            if prop in self.ic.bands:
-                val = self.ic.mag[prop](p[0], p[1], p[2],
-                                        distance=p[3], AV=p[4], **prop_dict)
-            elif prop=='mass':
-                val = p[0]
-            elif prop=='age':
-                val = p[1]
-            elif prop=='feh':
-                val = p[2]
-            elif prop in ['logg','logTeff']:
-                try:
-                    val = prop_dict[prop]
-                except KeyError:
-                    val = getattr(self.ic, prop)(*p[:3])
-                    self._cache_val[prop] = val
-            elif prop=='Teff':
-                try:
-                    val = 10**prop_dict['logTeff']
-                except KeyError:
-                    val = self.ic.Teff(*p[:3])
-                self._cache_val['Teff'] = val
-            else:
-                try:
-                    val = getattr(self.ic, prop)(*p[:3])
-                    self._cache_val[prop] = val
-                except AttributeError:
-                    raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
-
-            self._cache_key = p
+        if prop in self.ic.bands:
+            val = self.ic.mag[prop](*p, **self.props)
+        elif prop=='mass':
+            val = p[0]
+        elif prop=='age':
+            val = p[1]
+        elif prop=='feh':
+            val = p[2]
+        elif prop in self.props:
+            val = self.props[prop]
         else:
-            if prop in self.ic.bands:
-                val = self.ic.mag[prop](*p)
-            elif prop=='mass':
-                val = p[0]
-            elif prop=='age':
-                val = p[1]
-            elif prop=='feh':
-                val = p[2]
-            else:
-                try:
-                    val = getattr(self.ic, prop)(*p[:3])
-                except AttributeError:
-                    raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
+            try:
+                val = getattr(self.ic, prop)(*p[:3])
+            except AttributeError:
+                raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
 
         return val
 
@@ -1196,7 +1151,7 @@ class ObservationTree(Node):
             pardict = self.p2pardict(p)
         super(ObservationTree, self).print_ascii(fout, pardict)
 
-    def lnlike(self, p, use_cache=True):
+    def lnlike(self, p, use_cache=False):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
@@ -1206,11 +1161,14 @@ class ObservationTree(Node):
 
         pardict = self.p2pardict(p)
 
+        for n in self.get_model_nodes():
+            n.pars = pardict[n.label]
+
         # lnlike from photometry
         lnl = 0
         for n in self:
             if n is not self:
-                lnl += n.lnlike(pardict, use_cache=use_cache)
+                lnl += n.lnlike(use_cache=use_cache)
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
                 return -np.inf
@@ -1218,7 +1176,7 @@ class ObservationTree(Node):
         # lnlike from spectroscopy
         for l in self.spectroscopy:
             for prop,(val,err) in self.spectroscopy[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                mod = self.get_leaf(l).evaluate(prop)
                 lnl += -0.5*(val - mod)**2/err**2
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
@@ -1227,7 +1185,7 @@ class ObservationTree(Node):
         # enforce limits
         for l in self.limits:
             for prop,(vmin,vmax) in self.limits[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                mod = self.get_leaf(l).evaluate(prop)
                 if mod < vmin or mod > vmax or not np.isfinite(mod):
                     self._cache_val = -np.inf
                     return -np.inf
