@@ -17,6 +17,7 @@ def interp_box(x, y, z, box, values, p=-2):
     norm = 0
     for i in range(8):
         # Inv distance, or Inv-dsq weighting
+        # if values[i] >= 0. or values[i] < 0: # this should skip nans.
         dsq = (x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2
         if dsq==0:
             return values[i]
@@ -25,7 +26,10 @@ def interp_box(x, y, z, box, values, p=-2):
             val += w * values[i]
             norm += w
     
-    return val/norm
+    if norm==0:
+        return np.nan
+    else:
+        return val/norm
 
 @jit(nopython=True)
 def searchsorted(arr, N, x):

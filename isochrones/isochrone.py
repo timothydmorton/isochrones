@@ -227,6 +227,9 @@ class Isochrone(object):
         fn = getattr(self, attr)
         return fn(*args)
 
+    def feh(self, *args):
+        return args[2]
+
     def mass(self, *args):
         return self._prop('mass', *args)
 

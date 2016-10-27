@@ -444,7 +444,7 @@ class ObsNode(Node):
         pardict is a dictionary of parameters for all leaves
         gets converted back to traditional parameter vector
         """
-        if pardict == self._cache_key and use_cache:
+        if use_cache and pardict == self._cache_key:
             #print('{}: using cached'.format(self))
             return self._cache_val
 
@@ -568,55 +568,70 @@ class ModelNode(Node):
         """
         return [n.obsname for n in self.get_obs_ancestors()]
 
-    def evaluate(self, p, prop):
-        if self._cache_key is not None and p==self._cache_key:
-            try:
-                if prop in self.ic.bands:
-                    val = self.ic.mag[prop](p[0], p[1], p[2],
-                                    distance=p[3], AV=p[4], **self._cache_val)
-                else:
-                    val = self._cache_val[prop]
-                return val
-            except KeyError:
-                pass
+    def evaluate(self, p, prop, clever_caching=False):
+        if clever_caching:
+            if self._cache_key is not None and np.all(p==self._cache_key):
+                try:
+                    if prop in self.ic.bands:
+                        val = self.ic.mag[prop](p[0], p[1], p[2],
+                                        distance=p[3], AV=p[4], **self._cache_val)
+                    else:
+                        val = self._cache_val[prop]
+                    return val
+                except KeyError:
+                    pass
 
+            if isinstance(self.ic, FastIsochrone):
+                prop_dict = self.ic.interp_allcols(p[0], p[1], p[2], return_dict=True)
+            else:
+                prop_dict = {}
 
-        if isinstance(self.ic, FastIsochrone):
-            prop_dict = self.ic.interp_allcols(p[0], p[1], p[2], return_dict=True)
+            self._cache_val = prop_dict
+
+            if prop in self.ic.bands:
+                val = self.ic.mag[prop](p[0], p[1], p[2],
+                                        distance=p[3], AV=p[4], **prop_dict)
+            elif prop=='mass':
+                val = p[0]
+            elif prop=='age':
+                val = p[1]
+            elif prop=='feh':
+                val = p[2]
+            elif prop in ['logg','logTeff']:
+                try:
+                    val = prop_dict[prop]
+                except KeyError:
+                    val = getattr(self.ic, prop)(*p[:3])
+                    self._cache_val[prop] = val
+            elif prop=='Teff':
+                try:
+                    val = 10**prop_dict['logTeff']
+                except KeyError:
+                    val = self.ic.Teff(*p[:3])
+                self._cache_val['Teff'] = val
+            else:
+                try:
+                    val = getattr(self.ic, prop)(*p[:3])
+                    self._cache_val[prop] = val
+                except AttributeError:
+                    raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
+
+            self._cache_key = p
         else:
-            prop_dict = {}
+            if prop in self.ic.bands:
+                val = self.ic.mag[prop](*p)
+            elif prop=='mass':
+                val = p[0]
+            elif prop=='age':
+                val = p[1]
+            elif prop=='feh':
+                val = p[2]
+            else:
+                try:
+                    val = getattr(self.ic, prop)(*p[:3])
+                except AttributeError:
+                    raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
 
-        self._cache_val = prop_dict
-
-        if prop in self.ic.bands:
-            val = self.ic.mag[prop](p[0], p[1], p[2],
-                                    distance=p[3], AV=p[4], **prop_dict)
-        elif prop=='mass':
-            val = p[0]
-        elif prop=='age':
-            val = p[1]
-        elif prop=='feh':
-            val = p[2]
-        elif prop in ['logg','logTeff']:
-            try:
-                val = prop_dict[prop]
-            except KeyError:
-                val = getattr(self.ic, prop)(*p[:3])
-                self._cache_val[prop] = val
-        elif prop=='Teff':
-            try:
-                val = 10**prop_dict['logTeff']
-            except KeyError:
-                val = self.ic.Teff(*p[:3])
-            self._cache_val['Teff'] = val
-        else:
-            try:
-                val = getattr(self.ic, prop)(*p[:3])
-                self._cache_val[prop] = val
-            except AttributeError:
-                raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
-
-        self._cache_key = p
         return val
 
     def lnlike(self, *args, **kwargs):

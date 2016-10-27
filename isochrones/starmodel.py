@@ -558,17 +558,35 @@ class StarModel(object):
         else:
             self._mnest_basename = os.path.join('chains', basename)
 
-    def lnpost_polychord(self, theta):
-        phi = [0.0] #nDerived
+    def polychord_lnpost(self, cube):
+        phi = [0.0] * 0
+        theta = self.polychord_prior(cube)
         return self.lnpost(theta), phi
+
+    def polychord_prior(self, cube):
+        i = 0
+        theta = [c*0. for c in cube]
+        for _,n in self.obs.Nstars.items():
+            minmass, maxmass = self.bounds('mass')
+            for j in xrange(n):
+                theta[i+j] = (maxmass - minmass)*cube[i+j] + minmass
+
+            for j, par in enumerate(['age','feh','distance','AV']):
+                lo, hi = self.bounds(par)
+                theta[i+n+j] = (hi - lo)*cube[i+n+j] + lo
+            i += 4 + n
+        return theta
+
 
     def fit_polychord(self, basename, verbose=False, **kwargs):
         from .config import POLYCHORD
         sys.path.append(POLYCHORD)
         import PyPolyChord.PyPolyChord as PolyChord
 
-        return PolyChord.run_nested_sampling(self.lnpost_polychord,
-                        self.n_params, 0, file_root=basename, **kwargs)
+        return PolyChord.run_nested_sampling(self.polychord_lnpost,
+                        self.n_params, 0, 
+                        prior=self.polychord_prior,
+                        file_root=basename, **kwargs)
 
 
     def fit_multinest(self, n_live_points=1000, basename=None,

@@ -285,7 +285,7 @@ class ExtinctionGrid(object):
                                           self.logT, self.feh, self.AV)
 
             # Fix NaNs that are outside grid...
-            bad = np.isnan(vals)
+            bad = ~np.isfinite(vals)
             if bad.any():
                 vals[bad] = self._kdtree_interp(np.array([g[bad], T[bad], 
                                                             f[bad], A[bad]]).T)
