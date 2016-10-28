@@ -416,7 +416,7 @@ class StarModel(object):
         Creates self.obs
         """
         logging.debug('Building ObservationTree...')
-        self.obs = ObservationTree.from_kwargs(ic, **kwargs)
+        self.obs = ObservationTree.from_kwargs(self.ic, **kwargs)
 
     def _add_properties(self, **kwargs):
         """
