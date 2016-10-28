@@ -50,6 +50,9 @@ def get_filter(b):
 
     try:
         return filter_lib[six.text_type(filtname)]
+    except UnicodeDecodeError:
+        logging.error('Unicode decode error with {}!'.format(filtname))
+        raise
     except NoSuchNodeError:
         raise ValueError('Filter not in library: {}'.format(filtname))
 
