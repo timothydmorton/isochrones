@@ -66,6 +66,15 @@ class NodeTraversal(Traversal):
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
+                if hasattr(root, 'parallax'):
+                    m = re.search('(\d+)_(\d+)', node.label)
+                    system = int(m.group(1))
+                    if system in root.parallax:
+                        val, unc = root.parallax[system]
+                        text += ', plax=({:.2f},{:.2f})'.format(val, unc)
+                        modval = 1000. / self.pars[node.label][3]
+                        lnl = -0.5*(modval - v[0])**2/v[1]**2
+                        text += '; model={} ({})'.format(modval, lnl)
                 text += ': {}'.format(self.pars[node.label])
 
         else:
@@ -78,6 +87,13 @@ class NodeTraversal(Traversal):
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
+                if hasattr(root, 'parallax'):
+                    m = re.search('(\d+)_(\d+)', node.label)
+                    system = int(m.group(1))
+                    if system in root.parallax: # bug for double-digit systems
+                        val, unc = root.parallax[system]
+                        text += ', plax=({:.2f},{:.2f})'.format(val, unc)
+
                 #root = node.get_root()
                 #if hasattr(root,'spectroscopy'):
                 #    if node.label in root.spectroscopy:
@@ -607,7 +623,7 @@ class Source(object):
                                             self.separation, self.pa)
 
     def __repr__(self):
-        return self.__str__()
+        return self.__str__()        
 
 class Star(object):
     """Theoretical counterpart of Source.
@@ -778,6 +794,21 @@ class ObservationTree(Node):
         self._cache_val = None
 
     @classmethod
+    def from_kwargs(cls, ic, **kwargs):
+        tree = cls()
+        for k,v in kwargs.items():
+            if k in ic.bands:
+                if np.size(v) != 2:
+                    logging.warning('{}={} ignored.'.format(k,v))
+                    continue
+                o = Observation('', k, 4) #bogus resolution=4
+                s = Source(v[0], v[1])
+                o.add_source(s)
+                logging.debug('Adding {} ({})'.format(s,o))
+                tree.add_observation(o)
+        return tree
+
+    @classmethod
     def from_df(cls, df, **kwargs):
         """
         DataFrame must have the right columns.
@@ -803,6 +834,21 @@ class ObservationTree(Node):
     @classmethod
     def from_ini(cls, filename):
         config = ConfigObj(filename)
+
+    def merge(self, other, separation=60., pa=0.):
+        """Returns a merged combination of two ObservationTrees
+
+        All observations in other are to be offset by separation, PA
+        """
+        obs1 = self.observations
+
+        obs2 = other.observations
+        for o in obs2:
+            for s in o.sources:
+                s.separation = separation
+                s.pa = pa
+
+        return ObservationTree(obs1 + obs2)
 
     def to_df(self):
         """

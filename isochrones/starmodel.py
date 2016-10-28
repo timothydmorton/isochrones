@@ -36,6 +36,7 @@ from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone, Isochrone
+from .extinction import get_AV_infinity
 
 def _parse_config_value(v):
     try:
@@ -100,6 +101,9 @@ class StarModel(object):
                 except:
                     coords = SkyCoord(float(RA), float(dec), unit='deg')
         self.coords = coords
+        if self.coords is not None:
+            if 'maxAV' not in kwargs:
+                kwargs['maxAV'] = get_AV_infinity(coords.ra.deg, coords.dec.deg)
         self._ic = ic
 
         self.use_emcee = use_emcee
@@ -120,6 +124,12 @@ class StarModel(object):
             if len(self.obs.get_model_nodes())==0:
                 self.obs.define_models(ic, N=N, index=index)
                 self._add_properties(**kwargs)
+
+        if self.name is None:
+            self.name = self.obs.label
+
+        if self.obs.label is None or self.obs.label=='root':
+            self.obs.label = self.name
 
         self._priors = {'mass':salpeter_prior,
                         'feh':feh_prior,
@@ -406,19 +416,7 @@ class StarModel(object):
         Creates self.obs
         """
         logging.debug('Building ObservationTree...')
-        tree = ObservationTree()
-        for k,v in kwargs.items():
-            if k in self.ic.bands:
-                if np.size(v) != 2:
-                    logging.warning('{}={} ignored.'.format(k,v))
-                    continue
-                o = Observation('', k, 99) #bogus resolution=99
-                s = Source(v[0], v[1])
-                o.add_source(s)
-                logging.debug('Adding {} ({})'.format(s,o))
-                tree.add_observation(o)
-
-        self.obs = tree
+        self.obs = ObservationTree.from_kwargs(ic, **kwargs)
 
     def _add_properties(self, **kwargs):
         """
@@ -535,7 +533,10 @@ class StarModel(object):
         """Full path to basename
         """
         if not hasattr(self, '_mnest_basename'):
-            s = self.labelstring
+            if self.name != '':
+                s = '{}-{}'.format(self.name, self.labelstring)
+            else:
+                s = self.labelstring
             if s=='0_0':
                 s = 'single'
             elif s=='0_0-0_1':
@@ -977,6 +978,7 @@ class StarModel(object):
         tot_mags = []
         names = []
         truths = []
+        uncs = []
         rng = []
         for n in self.obs.get_obs_nodes():
             labels = [l.label for l in n.get_model_nodes()]
@@ -999,13 +1001,22 @@ class StarModel(object):
                 tot_mags.append(tot_mag)
                 truths.append(n.value[0])
 
+            uncs.append(n.value[1])
             names.append(name)
             rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)),
                         max(truths[-1], np.percentile(tot_mags[-1],99.5))))
         tot_mags = np.array(tot_mags).T
 
 
-        return corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
+        fig = corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
+
+        axes = fig.get_axes()
+        for i,(v,e) in enumerate(zip(truths, uncs)):
+            ax = axes[i*len(truths)+i]
+            ax.axvspan(v-e, v+e, color="g", alpha=0.3)
+            ax.axvline(v, color="g")
+
+        return fig
 
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
@@ -1111,6 +1122,36 @@ class StarModel(object):
         mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
         return mod
+
+class ResolvedBinaryStarModel(StarModel):
+    """A StarModel representing a fully resolved binary pair
+
+    Parameters
+    ----------
+
+    ic : Isochrone object
+
+    star1, star2 : dict
+        Dictionaries with properties of the two stars.
+    """
+    def __init__(self, ic, star1, star2, **kwargs):
+        obs1 = ObservationTree.from_kwargs(ic, **star1)
+        obs2 = ObservationTree.from_kwargs(ic, **star2)
+        obs = obs1.merge(obs2)
+
+        if 'parallax' in star1 and 'parallax' in star2:
+            plax1, sig1 = star1['parallax'] 
+            plax2, sig2 = star2['parallax']
+            
+            norm = 1./sig1**2 + 1./sig2**2
+            kwargs['parallax'] = (plax1/sig1**2 + plax2/sig2**2)/norm, 1/np.sqrt(norm)
+        elif 'parallax' in star1:
+            kwargs['parallax'] = star1['parallax']
+        elif 'parallax' in star2:
+            kwargs['parallax'] = star1['parallax']
+
+        super(ResolvedBinaryStarModel, self).__init__(ic, obs=obs, **kwargs)
+
 
 class StarModelGroup(object):
     """A collection of StarModel objects with different model node specifications
