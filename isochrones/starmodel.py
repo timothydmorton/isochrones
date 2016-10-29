@@ -975,7 +975,7 @@ class StarModel(object):
     def corner_observed(self, **kwargs):
         """Makes corner plot for each observed node magnitude
         """
-        tot_mags = []
+        values = []
         names = []
         truths = []
         uncs = []
@@ -994,21 +994,45 @@ class StarModel(object):
                 ref_labels = [l.label for l in ref.get_model_nodes()]
                 ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
                 tot_ref_mag = addmags(*ref_mags)
-                tot_mags.append(tot_mag - tot_ref_mag)
+                values.append(tot_mag - tot_ref_mag)
                 truths.append(n.value[0] - ref.value[0])
             else:
                 name = '{} {}'.format(n.instrument, n.band)
-                tot_mags.append(tot_mag)
+                values.append(tot_mag)
                 truths.append(n.value[0])
 
             uncs.append(n.value[1])
             names.append(name)
-            rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)),
-                        max(truths[-1], np.percentile(tot_mags[-1],99.5))))
-        tot_mags = np.array(tot_mags).T
+            rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
+                        max(truths[-1], np.percentile(values[-1],99.5))))
 
+        # Add spectroscopic and parallax properties here
 
-        fig = corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
+        for lbl in self.obs.spectroscopy:
+            for k,v in self.obs.spectroscopy[lbl].items():
+                name = '{}_{}'.format(k, lbl)
+                if k=='feh':
+                    name = name[:-2] # just system tag
+                values.append(self.samples[name])
+                truths.append(v[0])
+                uncs.append(v[1])
+                names.append(name)
+                rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
+                            max(truths[-1], np.percentile(values[-1],99.5))))
+
+        for s in self.obs.parallax:
+            k,v = self.obs.parallax[s]
+            name = 'parallax_{}'.format(s)
+            values.append(1000./self.samples['distance_{}'.format(s)])
+            truths.append(v[0])
+            uncs.append(v[1])
+            names.append('parallax_{}'.format(s))
+            rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
+                        max(truths[-1], np.percentile(values[-1],99.5))))
+
+        values = np.array(values).T
+
+        fig = corner.corner(values, labels=names, truths=truths, range=rng, **kwargs)
 
         axes = fig.get_axes()
         for i,(v,e) in enumerate(zip(truths, uncs)):
