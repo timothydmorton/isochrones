@@ -5,6 +5,7 @@ import itertools
 from copy import deepcopy
 import logging
 import json
+from six import string_types
 
 from .config import on_rtd
 
@@ -1085,7 +1086,7 @@ class StarModel(object):
             # store = pd.HDFStore(filename)
             attrs = store.get_storer('{}/samples'.format(path)).attrs
 
-            attrs.ic_type = type(self.ic)
+            attrs.ic_type = type(self.ic) # This doesn't work anymore
             attrs.ic_bands = list(self.ic.bands)
             attrs.use_emcee = self.use_emcee
             attrs._mnest_basename = self._mnest_basename
@@ -1120,10 +1121,25 @@ class StarModel(object):
             store.close()
             raise
 
+        # Hack to allow old buggy loading:
+        ic_type = attrs.ic_type
+        if isinstance(ic_type, string_types):
+            if re.search('DartmouthFast', ic_type):
+                from isochrones.dartmouth import DartmouthFast_Isochrone
+                ic_type = DartmouthFast_Isochrone
+            elif re.search('Dartmouth', ic_type):
+                from isochrones.dartmouth import Dartmouth_Isochrone
+                ic_type = Dartmouth_Isochrone
+            elif re.search('MIST', ic_type):
+                from isochrones.mist import MIST_Isochrone
+                ic_type = MIST_Isochrone
+        else:
+            ic_type = attrs.ic_type
+
         try:
-            ic = attrs.ic_type(attrs.ic_bands)
+            ic = ic_type(attrs.ic_bands)
         except AttributeError:
-            ic = attrs.ic_type
+            ic = ic_type
 
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
