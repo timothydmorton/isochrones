@@ -1021,8 +1021,7 @@ class StarModel(object):
                 rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
                             max(truths[-1], np.percentile(values[-1],99.5))))
 
-        for s in self.obs.parallax:
-            k,v = self.obs.parallax[s]
+        for s,v in self.obs.parallax.items():
             name = 'parallax_{}'.format(s)
             values.append(1000./self.samples['distance_{}'.format(s)])
             truths.append(v[0])
