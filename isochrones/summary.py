@@ -53,7 +53,7 @@ class quantile_worker(object):
 def make_summary_df(directory, processes=1, filename=None, **kwargs):
     """Makes summary quantile df for all starmodels (*.h5) in directory 
     """
-    filenames = [re.search('\.h5$', f).group(1) for f in os.listdir(directory)]
+    filenames = [f for f in os.listdir(directory) if f.endswith('.h5')]
     ids = [os.path.splitext(f)[0] for f in filenames]
 
     worker = quantile_worker(modeldir, **kwargs)
