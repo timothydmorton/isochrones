@@ -56,7 +56,7 @@ def make_summary_df(directory, processes=1, filename=None, **kwargs):
     filenames = [f for f in os.listdir(directory) if f.endswith('.h5')]
     ids = [os.path.splitext(f)[0] for f in filenames]
 
-    worker = quantile_worker(modeldir, **kwargs)
+    worker = quantile_worker(directory, **kwargs)
     if processes > 1:
         pool = Pool(processes=processes)
         dfs = pool.map(worker, ids)
