@@ -106,6 +106,7 @@ class StarModel(object):
             if 'maxAV' not in kwargs:
                 kwargs['maxAV'] = get_AV_infinity(coords.ra.deg, coords.dec.deg)
         self._ic = ic
+        self._ic_bands = None
 
         self.use_emcee = use_emcee
 
@@ -159,7 +160,7 @@ class StarModel(object):
     @property
     def ic(self):
         if type(self._ic)==type:
-            self._ic = self._ic()
+            self._ic = self._ic(self._ic_bands)
         return self._ic
 
     @classmethod
@@ -445,10 +446,10 @@ class StarModel(object):
         return lnl
 
     def lnprior(self, p):
-        N = self.obs.Nstars
+        N = self.Nstars
         i = 0
         lnp = 0
-        for s in self.obs.systems:
+        for s in self.systems:
             age, feh, dist, AV = p[i+N[s]:i+N[s]+4]
             for prop, val in zip(['age','feh','distance','AV'],
                                  [age, feh, dist, AV]):
@@ -498,13 +499,13 @@ class StarModel(object):
     @property
     def n_params(self):
         tot = 0
-        for _,n in self.obs.Nstars.items():
+        for _,n in self.Nstars.items():
             tot += 4+n
         return tot
 
     def mnest_prior(self, cube, ndim, nparams):
         i = 0
-        for _,n in self.obs.Nstars.items():
+        for _,n in self.Nstars.items():
             minmass, maxmass = self.bounds('mass')
             for j in xrange(n):
                 cube[i+j] = (maxmass - minmass)*cube[i+j] + minmass
@@ -522,6 +523,18 @@ class StarModel(object):
     @property
     def labelstring(self):
         return '--'.join(['-'.join([n.label for n in l.children]) for l in self.obs.get_obs_leaves()])
+
+    @property
+    def Nstars(self):
+        return self.obs.Nstars
+
+    @property
+    def systems(self):
+        return self.obs.systems
+
+    @property
+    def leaf_labels(self):
+        return self.obs.leaf_labels
 
     def fit(self, **kwargs):
         if self.use_emcee:
@@ -560,15 +573,15 @@ class StarModel(object):
         else:
             self._mnest_basename = os.path.join('chains', basename)
 
-    def polychord_lnpost(self, cube):
+    def polychord_lnpost(self, theta):
         phi = [0.0] * 0
-        theta = self.polychord_prior(cube)
+        # theta = self.polychord_prior(cube)
         return self.lnpost(theta), phi
 
     def polychord_prior(self, cube):
         i = 0
         theta = [c*0. for c in cube]
-        for _,n in self.obs.Nstars.items():
+        for _,n in self.Nstars.items():
             minmass, maxmass = self.bounds('mass')
             for j in xrange(n):
                 theta[i+j] = (maxmass - minmass)*cube[i+j] + minmass
@@ -719,7 +732,7 @@ class StarModel(object):
 
     def emcee_p0(self, nwalkers):
         p0 = []
-        for _,n in self.obs.Nstars.items():
+        for _,n in self.Nstars.items():
             m0, age0, feh0 = self.ic.random_points(nwalkers)
             _, max_distance = self.bounds('distance')
             _, max_AV = self.bounds('AV')
@@ -849,7 +862,7 @@ class StarModel(object):
         df = pd.DataFrame()
 
         i=0
-        for s,n in self.obs.Nstars.items():
+        for s,n in self.Nstars.items():
             age = chain[:,i+n]
             feh = chain[:,i+n+1]
             distance = chain[:,i+n+2]
@@ -869,7 +882,7 @@ class StarModel(object):
 
         for b in self.ic.bands:
             tot = np.inf
-            for s,n in self.obs.Nstars.items():
+            for s,n in self.Nstars.items():
                 for j in range(n):
                     tot = addmags(tot,df[b + '_mag_{}_{}'.format(s,j)])
             df[b + '_mag'] = tot
@@ -899,6 +912,82 @@ class StarModel(object):
             df = self._samples
 
         return df
+
+    @property
+    def posterior_predictive(self):
+        values, _, truths, uncs, _ = self.observed_property_info
+        chi2 = np.array([((v-t)/u)**2 for v,t,u in zip(values, truths, uncs)]).sum(axis=0)
+        return np.mean(chi2) / len(truths)
+
+    @property
+    def observed_property_info(self):
+        """Returns information about the properties used to constrain model.
+
+        Returns
+        ------
+        values : list of arrays of predicted samples
+        names : names corresponding to values
+        truths : mean of observed quantity
+        uncs : uncertainty of observed quantity
+        rng : range of properties (to be passed to corner.corner)
+        """
+
+        values = []
+        names = []
+        truths = []
+        uncs = []
+        rng = []
+        for n in self.obs.get_obs_nodes():
+            labels = [l.label for l in n.get_model_nodes()]
+            band = n.band
+            mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
+            tot_mag = addmags(*mags)
+
+            if n.relative:
+                name = '{} $\Delta${}'.format(n.instrument, n.band)
+                ref = n.reference
+                if ref is None:
+                    continue
+                ref_labels = [l.label for l in ref.get_model_nodes()]
+                ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
+                tot_ref_mag = addmags(*ref_mags)
+                values.append((tot_mag - tot_ref_mag).values)
+                truths.append(n.value[0] - ref.value[0])
+            else:
+                name = '{} {}'.format(n.instrument, n.band)
+                values.append(tot_mag)
+                truths.append(n.value[0])
+
+            uncs.append(n.value[1])
+            names.append(name)
+            rng.append((min(truths[-1]-uncs[-1], np.percentile(values[-1],0.5)),
+                        max(truths[-1]+uncs[-1], np.percentile(values[-1],99.5))))
+
+        # Add spectroscopic and parallax properties here
+
+        for lbl in self.obs.spectroscopy:
+            for k,v in self.obs.spectroscopy[lbl].items():
+                name = '{}_{}'.format(k, lbl)
+                if k=='feh':
+                    name = name[:-2] # just system tag
+                values.append(self.samples[name].values)
+                truths.append(v[0])
+                uncs.append(v[1])
+                names.append(name)
+                rng.append((min(truths[-1]-uncs[-1], np.percentile(values[-1],0.5)),
+                            max(truths[-1]+uncs[-1], np.percentile(values[-1],99.5))))
+
+        for s,v in self.obs.parallax.items():
+            name = 'parallax_{}'.format(s)
+            values.append(1000./self.samples['distance_{}'.format(s)].values)
+            truths.append(v[0])
+            uncs.append(v[1])
+            names.append('parallax_{}'.format(s))
+            rng.append((min(truths[-1]-uncs[-1], np.percentile(values[-1],0.5)),
+                        max(truths[-1]+uncs[-1], np.percentile(values[-1],99.5))))
+
+        return values, names, truths, uncs, rng
+
 
     def random_samples(self, n):
         """
@@ -962,8 +1051,8 @@ class StarModel(object):
         indiv_props = [p for p in props if p not in collective_props]
         sys_props = [p for p in props if p in collective_props]
 
-        props = ['{}_{}'.format(p,l) for p in indiv_props for l in self.obs.leaf_labels]
-        props += ['{}_{}'.format(p,s) for p in sys_props for s in self.obs.systems]
+        props = ['{}_{}'.format(p,l) for p in indiv_props for l in self.leaf_labels]
+        props += ['{}_{}'.format(p,s) for p in sys_props for s in self.systems]
 
         if 'range' not in kwargs:
             rng = [0.995 for p in props]
@@ -976,59 +1065,7 @@ class StarModel(object):
     def corner_observed(self, **kwargs):
         """Makes corner plot for each observed node magnitude
         """
-        values = []
-        names = []
-        truths = []
-        uncs = []
-        rng = []
-        for n in self.obs.get_obs_nodes():
-            labels = [l.label for l in n.get_model_nodes()]
-            band = n.band
-            mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
-            tot_mag = addmags(*mags)
-
-            if n.relative:
-                name = '{} $\Delta${}'.format(n.instrument, n.band)
-                ref = n.reference
-                if ref is None:
-                    continue
-                ref_labels = [l.label for l in ref.get_model_nodes()]
-                ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
-                tot_ref_mag = addmags(*ref_mags)
-                values.append(tot_mag - tot_ref_mag)
-                truths.append(n.value[0] - ref.value[0])
-            else:
-                name = '{} {}'.format(n.instrument, n.band)
-                values.append(tot_mag)
-                truths.append(n.value[0])
-
-            uncs.append(n.value[1])
-            names.append(name)
-            rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
-                        max(truths[-1], np.percentile(values[-1],99.5))))
-
-        # Add spectroscopic and parallax properties here
-
-        for lbl in self.obs.spectroscopy:
-            for k,v in self.obs.spectroscopy[lbl].items():
-                name = '{}_{}'.format(k, lbl)
-                if k=='feh':
-                    name = name[:-2] # just system tag
-                values.append(self.samples[name])
-                truths.append(v[0])
-                uncs.append(v[1])
-                names.append(name)
-                rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
-                            max(truths[-1], np.percentile(values[-1],99.5))))
-
-        for s,v in self.obs.parallax.items():
-            name = 'parallax_{}'.format(s)
-            values.append(1000./self.samples['distance_{}'.format(s)])
-            truths.append(v[0])
-            uncs.append(v[1])
-            names.append('parallax_{}'.format(s))
-            rng.append((min(truths[-1], np.percentile(values[-1],0.5)),
-                        max(truths[-1], np.percentile(values[-1],99.5))))
+        values, names, truths, uncs, rng = self.observed_property_info
 
         values = np.array(values).T
 
@@ -1041,7 +1078,6 @@ class StarModel(object):
             ax.axvline(v, color="g")
 
         return fig
-
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
@@ -1136,9 +1172,10 @@ class StarModel(object):
             ic_type = attrs.ic_type
 
         try:
-            ic = ic_type(attrs.ic_bands)
+            _ic_bands = attrs.ic_bands
         except AttributeError:
-            ic = ic_type
+            _ic_bands = None
+        ic = ic_type(_ic_bands)
 
         use_emcee = attrs.use_emcee
         basename = attrs._mnest_basename
@@ -1160,7 +1197,94 @@ class StarModel(object):
         mod._samples = samples
         mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
+        mod._ic_bands = _ic_bands
         return mod
+
+class SingleStarModel(StarModel):
+    """ A StarModel that doesn't use the ObservationTree object
+
+    in other words, back to old-school.  Should be faster.
+    """
+    _non_mag_props = ('Teff', 'logg', 'parallax', 
+                       'nu_max', 'delta_nu', 'feh')
+    n_params = 5
+    labelstring = '0_0'
+    Nstars = {0:1}
+    systems = [0]
+
+    def __init__(self, ic, name='', RA=None, dec=None, coords=None, 
+                use_emcee=False, **kwargs):
+
+        self._ic = ic
+        self.name = name
+        self.use_emcee = use_emcee
+
+        if coords is None:
+            if RA is not None and dec is not None:
+                try:
+                    coords = SkyCoord(RA, dec)
+                except:
+                    coords = SkyCoord(float(RA), float(dec), unit='deg')
+        self.coords = coords
+
+        maxAV = kwargs.pop('maxAV', None)
+        if maxAV is None and self.coords is not None:
+            maxAV = get_AV_infinity(coords.ra.deg, coords.dec.deg)
+
+        self.props = {}
+        self.mags = {}
+        for p,v in kwargs.items():
+            if p in self._non_mag_props:
+                self.props[p] = v
+            else:
+                self.mags[p] = v
+
+        self._priors = {'mass':salpeter_prior,
+                        'feh':feh_prior,
+                        'q':q_prior,
+                        'age':age_prior,
+                        'distance':distance_prior,
+                        'AV':AV_prior}
+
+        self._bounds = {'mass':None,
+                        'feh':None,
+                        'age':None,
+                        'q':(0.1,1.0),
+                        'distance':(0,3000.),
+                        'AV':(0,1.)}
+
+        if maxAV is not None:
+            self.set_bounds(AV=(0, maxAV))
+
+        self._directory = '.'
+        self._samples = None        
+
+    def lnlike(self, p, **kwargs):
+        lnl = 0.
+        props = self.ic.interp_allcols(*p[:3])
+        props.pop('feh', None)
+        props.pop('mass', None)
+        props.pop('age', None)
+        for b, v in self.mags.items():
+            mod = self.ic.mag[b](*p, **props)
+            s2 = v[1]**2
+            lnl += -0.5*(mod - v[0])**2 / s2 + np.log(1./np.sqrt(2*np.pi*s2))
+        for prop, v in self.props.items():
+            mod = props[prop]
+            s2 = v[1]**2
+            lnl += -0.5*(mod - v[0])**2 / s2 + np.log(1./np.sqrt(2*np.pi*s2))
+        return lnl
+
+    def mnest_prior(self, cube, ndim, nparams):
+        for i, par in enumerate(['mass','age','feh','distance','AV']):
+            lo, hi = self.bounds(par)
+            cube[i] = (hi - lo)*cube[i] + lo
+
+    def mnest_loglike(self, cube, ndim, nparams):
+        """loglikelihood function for multinest
+        """
+        return self.lnpost(cube)
+
 
 class ResolvedBinaryStarModel(StarModel):
     """A StarModel representing a fully resolved binary pair

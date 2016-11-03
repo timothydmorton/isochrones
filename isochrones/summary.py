@@ -5,6 +5,8 @@ import pdb
 import logging
 from multiprocessing import Pool
 
+from .starmodel import StarModel
+
 def get_quantiles(name, directory, columns=['mass','radius','Teff',
                                 'logg', 'age','feh','distance','AV'],
                  qs=[0.05,0.16,0.5,0.84,0.95],
@@ -14,7 +16,9 @@ def get_quantiles(name, directory, columns=['mass','radius','Teff',
     
     h5filename = os.path.join(directory, '{}.h5'.format(name))
     try:
-        samples = pd.read_hdf(h5filename, 'samples')
+        mod = StarModel.load_hdf(h5filename)
+        samples = mod.samples
+        # samples = pd.read_hdf(h5filename, 'samples')
     except KeyError:
         logging.error('Cannot load "samples" from {}'.format(h5filename))
         return pd.DataFrame()
@@ -40,6 +44,7 @@ def get_quantiles(name, directory, columns=['mass','radius','Teff',
             col = c + '_{:02.0f}'.format(q*100)
             df.ix[name, col] = q_df.ix[q, c]
 
+    df.ix[name, 'post_pred'] = mod.posterior_predictive
     return df
 
 class quantile_worker(object):

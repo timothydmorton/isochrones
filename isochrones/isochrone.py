@@ -74,16 +74,22 @@ class MagFunction(object):
         self.extcurve = ic.extcurve
         self.simple = simple
 
-        if not simple:
+        self._A_fn = None
+
+        self.AAV = self.extcurve(LAMBDA_EFF[self.band])
+
+    @property
+    def A_fn(self):
+        if self.simple:
+            return None
+        elif self._A_fn is None:
             try:
-                self.A_fn = get_extinction_grid(band, extinction=self.ic.extinction,
+                self._A_fn = get_extinction_grid(self.band, extinction=self.ic.extinction,
                     models=spec_models, parameter=self.ic.extinction_parameter)
             except:
                 logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
-                self.A_fn = None
-                self.simple = True
-
-        self.AAV = self.extcurve(LAMBDA_EFF[self.band])
+                self.simple=True
+        return self._A_fn
 
     def _get_mag(self, mass, age, feh, **props):
         if len(props) > 0:
@@ -288,6 +294,9 @@ class Isochrone(object):
         """
         return 3120.* (self.mass(*args) / 
                         (self.radius(*args)**2 * np.sqrt(self.Teff(*args)/5777.)))
+
+    def parallax(self, *args):
+        return 1000./args[3]        
 
     def __call__(self, mass, age, feh, 
                  distance=None, AV=0.0,
