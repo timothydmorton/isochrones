@@ -70,6 +70,7 @@ class MagFunction(object):
     def __init__(self, ic, band, spec_models='kurucz', simple=False):
         self.ic = ic
         self.band = band
+        self.spec_models = spec_models
 
         self.extcurve = ic.extcurve
         self.simple = simple
@@ -85,10 +86,10 @@ class MagFunction(object):
         elif self._A_fn is None:
             try:
                 self._A_fn = get_extinction_grid(self.band, extinction=self.ic.extinction,
-                    models=spec_models, parameter=self.ic.extinction_parameter)
-            except:
-                logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(band))
-                self.simple=True
+                    models=self.spec_models, parameter=self.ic.extinction_parameter)
+            except ValueError:
+                logging.warning('Cannot load extinction_grid for {} band.  Defaulting to simple.'.format(self.band))
+                self.simple = True
         return self._A_fn
 
     def _get_mag(self, mass, age, feh, **props):
@@ -112,7 +113,15 @@ class MagFunction(object):
                 logT = props['logTeff']
             else:
                 logT = self.ic.logTeff(m, a, f)
-            A = self.A_fn([logg, logT, f, AV])
+
+            # In case this is the first time A_fn is accessed,
+            # self.A_fn will return None if band isn't found, and that
+            # will set self.simple to True, but too late for this round...
+            try:
+                A = self.A_fn([logg, logT, f, AV])
+            except TypeError: 
+                A = AV*self.AAV
+
 
         dm = 5*np.log10(distance) - 5
         mag = self._get_mag(m, a, f, **props)
@@ -339,12 +348,6 @@ class Isochrone(object):
         if distance is not None:
             args += (distance, AV)
         mags = {band:1*self.mag[band](*args) for band in bands}
-        # if distance is not None:
-        #     dm = 5*np.log10(distance) - 5
-        #     for band in mags:
-        #         A = AV*EXTINCTION[band]
-        #         mags[band] = mags[band] + dm + A
-                
         
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
                 'logg':loggs,'Teff':Teffs,'mag':mags}        

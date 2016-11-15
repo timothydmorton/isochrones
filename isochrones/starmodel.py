@@ -33,7 +33,7 @@ if not on_rtd:
         basestring = str
 
 from .utils import addmags
-from .observation import ObservationTree, Observation, Source
+from .observation import ObservationTree, Observation, Source, DummyObsNode
 from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone, Isochrone
@@ -938,6 +938,8 @@ class StarModel(object):
         uncs = []
         rng = []
         for n in self.obs.get_obs_nodes():
+            if isinstance(n, DummyObsNode):
+                continue
             labels = [l.label for l in n.get_model_nodes()]
             band = n.band
             mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
