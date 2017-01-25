@@ -444,9 +444,9 @@ class ObsNode(Node):
         Either N and index both integers OR index is
         list of length=N
         """
-        if type(index) in [list,tuple]:
+        if hasattr(index, '__iter__'):
             if len(index) != N:
-                raise ValueError('If a list, index must be of length N.')
+                raise ValueError('If an iterable, index must be of length N.')
         else:
             index = [index]*N
 
@@ -1051,14 +1051,8 @@ class ObservationTree(Node):
         elif type(leaves)==type(''):
             leaves = self.select_leaves(leaves)
 
-        # Sort leaves by distance, to ensure system 0 will be assigned
-        # to the main reference star.
-
-
         if np.isscalar(N):
             N = (np.ones(len(leaves))*N)
-            #if np.size(index) > 1:
-            #    index = [index]
         N = np.array(N).astype(int)
 
         if np.isscalar(index):

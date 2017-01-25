@@ -89,7 +89,7 @@ class StarModel(object):
                  'PA','resolution','relative','N','index', 'id')
 
     def __init__(self, ic, obs=None, N=1, index=0,
-                 name='', use_emcee=False,
+                 name='', sample_method='emcee3',
                  RA=None, dec=None, coords=None,
                  **kwargs):
 
@@ -108,7 +108,7 @@ class StarModel(object):
         self._ic = ic
         self._ic_bands = None
 
-        self.use_emcee = use_emcee
+        self.sample_method = sample_method
 
         # If obs is not provided, build it
         if obs is None:
@@ -432,6 +432,10 @@ class StarModel(object):
                 self.obs.add_spectroscopy(**par)
 
     @property
+    def param_names(self):
+        return self.param_description
+
+    @property
     def param_description(self):
         return self.obs.param_description
 
@@ -537,10 +541,12 @@ class StarModel(object):
         return self.obs.leaf_labels
 
     def fit(self, **kwargs):
-        if self.use_emcee:
+        if self.sample_method=='emcee':
             return self.fit_mcmc(**kwargs)
-        else:
+        elif self.sample_method=='mnest':
             return self.fit_multinest(**kwargs)
+        elif self.sample_method=='emcee3':
+            return self.fit_emcee3(**kwargs)
 
     @property
     def mnest_basename(self):
@@ -697,7 +703,7 @@ class StarModel(object):
             #with open(propfile, 'w') as f:
             #    json.dump(self.properties, f, indent=2)
 
-            self._make_samples()
+            # self._make_samples() # should not be necessary to do this now.
 
     @property
     def mnest_analyzer(self):
@@ -744,6 +750,50 @@ class StarModel(object):
                 p0 += [m0 * 0.95**i]
             p0 += [age0, feh0, d0, AV0]
         return np.array(p0).T
+
+    def sample_from_prior(self, N):
+        """
+        Returns N x ndim array of prior samples
+
+        Not really sampling from priors just yet...just getting valid points
+        """
+        return self.emcee_p0(N)
+
+    @property
+    def direct_samples(self):
+        if self._direct_samples is None:
+            if self.sample_method=='mnest':
+                filename = '{}post_equal_weights.dat'.format(self.mnest_basename)
+                try:
+                    chain = np.loadtxt(filename)
+                    try:
+                        lnprob = chain[:,-1]
+                        chain = chain[:,:-1]
+                    except IndexError:
+                        lnprob = np.array([chain[-1]])
+                        chain = np.array([chain[:-1]])
+                except:
+                    logging.error('Error loading chains from {}'.format(filename))
+                    raise
+            elif self.sample_method=='emcee':
+                #select out only walkers with > 0.15 acceptance fraction
+                ok = self.sampler.acceptance_fraction > 0.15
+
+                chain = self.sampler.chain[ok,:,:]
+                chain = chain.reshape((chain.shape[0]*chain.shape[1],
+                                            chain.shape[2]))
+
+                lnprob = self.sampler.lnprobability[ok, :].ravel()
+            elif self.sample_method=='emcee3':
+                raise NotImplementedError('Need to connect to ')
+
+            self._direct_samples = chain
+        return self._direct_samples
+
+    def fit_emcee3(self, **kwargs):
+        from .fit import fit_emcee3
+        self._direct_samples = fit_emcee3(self, **kwargs)
+
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
@@ -836,7 +886,7 @@ class StarModel(object):
 
     def _make_samples(self):
 
-        if not self.use_emcee:
+        if self.sample_method=='mnest':
             filename = '{}post_equal_weights.dat'.format(self.mnest_basename)
             try:
                 chain = np.loadtxt(filename)
@@ -849,7 +899,7 @@ class StarModel(object):
             except:
                 logging.error('Error loading chains from {}'.format(filename))
                 raise
-        else:
+        elif self.sample_method=='emcee':
             #select out only walkers with > 0.15 acceptance fraction
             ok = self.sampler.acceptance_fraction > 0.15
 
@@ -858,6 +908,8 @@ class StarModel(object):
                                         chain.shape[2]))
 
             lnprob = self.sampler.lnprobability[ok, :].ravel()
+        elif self.sample_method=='emcee3':
+            chain = self._direct_samples
 
         df = pd.DataFrame()
 
@@ -901,17 +953,14 @@ class StarModel(object):
         is how chains of physical/observable parameters get produced.
 
         """
-        if not hasattr(self,'sampler') and self._samples is None:
+        if self.use_emcee and not hasattr(self,'sampler') and self._samples is None:
             raise AttributeError('Must run MCMC (or load from file) '+
                                  'before accessing samples')
 
-        if self._samples is not None:
-            df = self._samples
-        else:
+        if self._samples is None:
             self._make_samples()
-            df = self._samples
 
-        return df
+        return self._samples
 
     @property
     def posterior_predictive(self):
@@ -1323,6 +1372,17 @@ class StarModelGroup(object):
 
     Pass a single StarModel, and model nodes will be cleared and replaced with
     different variants.
+
+    Parameters
+    ----------
+
+    max_multiples : int
+        The maximimum number of observed stars that can be multiple stars.
+
+    max_stars : int
+        The maximum number of stars to put in any single unresolved multiple.
+        Generally for a system that does not have a close companion resolved,
+        this should be 3, and otherwise it should be 2.
     """
     def __init__(self, base_model, max_multiples=1, max_stars=2):
 
@@ -1331,11 +1391,17 @@ class StarModelGroup(object):
         self.max_multiples = max_multiples
         self.max_stars = max_stars
 
-        self.models = []
-        for N, index in self.model_options:
-            mod = deepcopy(self.base_model)
-            mod.obs.define_models(self.ic, N=N, index=index)
-            self.models.append(mod)
+        self._models = None
+
+    @property
+    def models(self):
+        if self._models is None:
+            self._models = []
+            for N, index in self.model_options:
+                mod = deepcopy(self.base_model)
+                mod.obs.define_models(self.ic, N=N, index=index)
+                self._models.append(mod)
+        return self._models
 
     @property
     def ic(self):
@@ -1358,7 +1424,30 @@ class StarModelGroup(object):
     def model_options(self):
         return [(N, index) for N in self.N_options for index in self.index_options]
 
+    def fit(self, **kwargs):
+        """
+        Fits each starmodel in a separate process
+        """
+        from multiprocessing import Pool
+
+        pool = Pool(processes=len(self.models))
+
+        print('Fitting {0} starmodels in {0} processes...'.format(len(self.models)))
+        worker = fit_worker(kwargs)
+        pool.map(worker, self.models)
+
+
 ########## Utility functions ###############
+
+class fit_worker(object):
+    """Worker class for fitting starmodels.
+    """
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def __call__(self, mod):
+        mod.fit(**self.kwargs)
+
 
 def N_options(N_stars, max_multiples=1, max_stars=2):
     return [N for N in itertools.product(np.arange(max_stars) + 1, repeat=N_stars)
