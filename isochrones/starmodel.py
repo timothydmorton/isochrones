@@ -507,7 +507,7 @@ class StarModel(object):
         i = 0
         for _,n in self.obs.Nstars.items():
             minmass, maxmass = self.bounds('mass')
-            for j in xrange(n):
+            for j in range(n):
                 cube[i+j] = (maxmass - minmass)*cube[i+j] + minmass
 
             for j, par in enumerate(['age','feh','distance','AV']):
@@ -1145,7 +1145,7 @@ def index_options(N_stars):
         return [0]
 
     options = []
-    for ind in itertools.product(xrange(N_stars), repeat=N_stars):
+    for ind in itertools.product(range(N_stars), repeat=N_stars):
         diffs = np.array(ind[1:]) - np.array(ind[:-1])
         if ind[0]==0 and diffs.max()<=1:
             options.append(ind)
