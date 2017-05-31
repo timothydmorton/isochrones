@@ -3,7 +3,7 @@
 import sys, os
 import pandas as pd
 import numpy as np
-import cPickle as pickle
+import _pickle as pickle
 from scipy.interpolate import LinearNDInterpolator as interpnd
 
 from ..config import ISOCHRONES
