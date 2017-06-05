@@ -63,11 +63,12 @@ import hashlib
 
 DF_SHASUM = '0515e83521f03cfe3ab8bafcb9c8187a90fd50c7'
 TRI_SHASUM = 'e05a06c799abae3d526ac83ceeea5e6df691a16d'
+TRI_SHASUM_NEW = 'f0c5700e4c69a65a6a19d0ecf45040610d0655bf'
 
 if hashlib.sha1(open(MASTERFILE, 'rb').read()).hexdigest() != DF_SHASUM:
     raise ImportError('You have a wrong/corrupted/outdated Dartmouth DataFrame!' + 
                       ' Delete {} and try re-importing to download afresh.'.format(MASTERFILE))
-if hashlib.sha1(open(TRI_FILE, 'rb').read()).hexdigest() != TRI_SHASUM:
+if hashlib.sha1(open(TRI_FILE, 'rb').read()).hexdigest() not in [TRI_SHASUM, TRI_SHASUM_NEW]:
     raise ImportError('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
                       ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 
