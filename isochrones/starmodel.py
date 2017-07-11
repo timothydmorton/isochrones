@@ -1099,6 +1099,9 @@ class StarModel(object):
         :return:
             :class:`StarModel` object.
         """
+        if not os.path.exists(filename):
+            raise IOError('{} does not exist.'.format(filename))
+            
         store = pd.HDFStore(filename)
         try:
             samples = store['{}/samples'.format(path)]
