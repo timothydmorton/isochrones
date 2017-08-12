@@ -63,7 +63,11 @@ if __name__=='__main__':
                     fout.write('{0} {0}_lo {0}_hi '.format(prop))
                 fout.write('\n')
                 for prop in PROPS:
-                    med, lo, hi = samples[prop].quantile([0.5, 
+                    if prop in ['mass', 'radius', 'Teff', 'logg']:
+                        df_prop = prop + '_0_0'
+                    else:
+                        df_prop = prop + '_0'
+                    med, lo, hi = samples[df_prop].quantile([0.5, 
                                                           0.1585,
                                                           0.8415])
                     fout.write('{:.3f} {:.3f} {:.3f} '.format(med, lo, hi))

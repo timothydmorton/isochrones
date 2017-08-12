@@ -413,7 +413,8 @@ class StarModel(object):
             if k in self.ic.bands:
                 if np.size(v) != 2:
                     logging.warning('{}={} ignored.'.format(k,v))
-                    continue
+                    # continue
+                    v = [v, np.nan] 
                 o = Observation('', k, 99) #bogus resolution=99
                 s = Source(v[0], v[1])
                 o.add_source(s)
@@ -436,6 +437,10 @@ class StarModel(object):
     @property
     def param_description(self):
         return self.obs.param_description
+
+    @property
+    def mags(self):
+        return {n.band : n.value[0] for n in self.obs.get_obs_nodes()}
 
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
@@ -939,6 +944,9 @@ class StarModel(object):
         fig2.savefig(basename + '_observed.png')
         return fig1, fig2
 
+    def triangle_plots(self, *args, **kwargs):
+        return self.corner_plots(*args, **kwargs)
+
     def corner_physical(self, props=['mass','radius','feh','age','distance','AV'], **kwargs):
         collective_props = ['feh','age','distance','AV']
         indiv_props = [p for p in props if p not in collective_props]
@@ -1061,6 +1069,8 @@ class StarModel(object):
         :return:
             :class:`StarModel` object.
         """
+        if not os.path.exists(filename):
+            raise IOError('{} does not exist.'.format(filename))
         store = pd.HDFStore(filename)
         try:
             samples = store[path+'/samples']
@@ -1095,6 +1105,26 @@ class StarModel(object):
         mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
         return mod
+
+class BinaryStarModel(StarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 2
+        super(BinaryStarModel, self).__init__(*args, **kwargs)
+
+    @classmethod
+    def from_ini(cls, *args, **kwargs):
+        kwargs['N'] = 2
+        return super(BinaryStarModel, cls).from_ini(*args, **kwargs)
+
+class TripleStarModel(StarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 3
+        super(TripleStarModel, self).__init__(*args, **kwargs)
+
+    @classmethod
+    def from_ini(cls, *args, **kwargs):
+        kwargs['N'] = 3
+        return super(TripleStarModel, cls).from_ini(*args, **kwargs)
 
 class StarModelGroup(object):
     """A collection of StarModel objects with different model node specifications

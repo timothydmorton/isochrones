@@ -74,7 +74,9 @@ def starfit(folder, multiplicities=['single'], models='mist',
                                          name=name)
                     fit_model = False
                 except:
-                    pass
+                    filename = '{}/{}'.format(folder,model_filename)
+                    if os.path.exists(filename):
+                        os.remove(filename)
 
                 if fit_model or overwrite:
                     ini_file_path = os.path.join(folder, ini_file)
@@ -91,6 +93,9 @@ def starfit(folder, multiplicities=['single'], models='mist',
                         mod.obs.print_ascii()
                     except:
                         pass
+
+                    # # Prime the jit call signature?
+                    # ichrone.mag['J'](1.0, 9.7, 0.1, 1000, 0.4)
 
                     mod.fit(verbose=verbose, overwrite=overwrite)
                     mod.save_hdf(os.path.join(folder, model_filename))
@@ -145,9 +150,5 @@ def starfit(folder, multiplicities=['single'], models='mist',
         except:
             logger.error('{} starfit calculation failed for {}.'.format(mult,folder),
                          exc_info=True)
-
-    # Don't know why this is necessary?  Haven't been able to track down where file gets left open.
-    # But this is necessary to avoid building up of open files.
-    tables.file._open_files.close_all()
 
     return mod, logger

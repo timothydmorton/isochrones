@@ -33,6 +33,9 @@ def get_ichrone(models, bands=None, default=True):
     If `default` is `True`, then will set bands
     to be the union of bands and default_bands
     """
+    if isinstance(models, Isochrone):
+        return models
+        
     def actual(bands, ictype):
         if default:
             if bands is None:
@@ -60,7 +63,7 @@ def get_ichrone(models, bands=None, default=True):
         from isochrones.basti import Basti_Isochrone
         ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone))
     else:
-        raise ValueError('Unknown stellar models: {}'.format(args.models))
+        raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone
 
 
