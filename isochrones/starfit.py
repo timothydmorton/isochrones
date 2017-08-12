@@ -74,7 +74,9 @@ def starfit(folder, multiplicities=['single'], models='mist',
                                          name=name)
                     fit_model = False
                 except:
-                    pass
+                    filename = '{}/{}'.format(folder,model_filename)
+                    if os.path.exists(filename):
+                        os.remove(filename)
 
                 if fit_model or overwrite:
                     ini_file_path = os.path.join(folder, ini_file)
