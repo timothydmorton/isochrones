@@ -1094,6 +1094,17 @@ class StarModel(object):
         mod._directory = os.path.dirname(filename)
         return mod
 
+class BinaryStarModel(StarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 2
+        super(BinaryStarModel, self).__init__(*args, **kwargs)
+
+class TripleStarModel(StarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 3
+        super(TripleStarModel, self).__init__(*args, **kwargs)
+
+
 class StarModelGroup(object):
     """A collection of StarModel objects with different model node specifications
 

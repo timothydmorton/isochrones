@@ -94,6 +94,9 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     except:
                         pass
 
+                    # # Prime the jit call signature?
+                    # ichrone.mag['J'](1.0, 9.7, 0.1, 1000, 0.4)
+
                     mod.fit(verbose=verbose, overwrite=overwrite)
                     mod.save_hdf(os.path.join(folder, model_filename))
                 else:
