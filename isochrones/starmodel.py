@@ -438,7 +438,7 @@ class StarModel(object):
 
     @property
     def mags(self):
-        return {n.band : n.value for n in self.obs.get_obs_nodes()}
+        return {n.band : n.value[0] for n in self.obs.get_obs_nodes()}
 
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
