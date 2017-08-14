@@ -1109,11 +1109,20 @@ class BinaryStarModel(StarModel):
         kwargs['N'] = 2
         super(BinaryStarModel, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def from_ini(cls, *args, **kwargs):
+        kwargs['N'] = 2
+        return super(BinaryStarModel, cls).from_ini(*args, **kwargs)
+
 class TripleStarModel(StarModel):
     def __init__(self, *args, **kwargs):
         kwargs['N'] = 3
         super(TripleStarModel, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def from_ini(cls, *args, **kwargs):
+        kwargs['N'] = 3
+        return super(TripleStarModel, cls).from_ini(*args, **kwargs)
 
 class StarModelGroup(object):
     """A collection of StarModel objects with different model node specifications
