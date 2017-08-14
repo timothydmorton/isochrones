@@ -942,6 +942,9 @@ class StarModel(object):
         fig2.savefig(basename + '_observed.png')
         return fig1, fig2
 
+    def triangle_plots(self, *args, **kwargs):
+        return self.corner_plots(*args, **kwargs)
+
     def corner_physical(self, props=['mass','radius','feh','age','distance','AV'], **kwargs):
         collective_props = ['feh','age','distance','AV']
         indiv_props = [p for p in props if p not in collective_props]
