@@ -435,6 +435,10 @@ class StarModel(object):
     def param_description(self):
         return self.obs.param_description
 
+    @property
+    def mags(self):
+        return {n.band : n.value for n in self.obs.get_obs_nodes()}
+
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
         if not np.isfinite(lnpr):
