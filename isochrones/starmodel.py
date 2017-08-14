@@ -411,7 +411,8 @@ class StarModel(object):
             if k in self.ic.bands:
                 if np.size(v) != 2:
                     logging.warning('{}={} ignored.'.format(k,v))
-                    continue
+                    # continue
+                    v = [v, np.nan] 
                 o = Observation('', k, 99) #bogus resolution=99
                 s = Source(v[0], v[1])
                 o.add_source(s)
@@ -1063,6 +1064,8 @@ class StarModel(object):
         :return:
             :class:`StarModel` object.
         """
+        if not os.path.exists(filename):
+            raise IOError('{} does not exist.'.format(filename))
         store = pd.HDFStore(filename)
         try:
             samples = store[path+'/samples']
