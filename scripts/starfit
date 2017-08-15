@@ -86,4 +86,10 @@ if __name__=='__main__':
 
         mod, logger = starfit_fn(folder, **kwargs)
 
+        # Not using this, so delete.
+        del mod
+
+        # Don't know why this is necessary?  Haven't been able to track down where file gets left open.
+        # But this is necessary to avoid building up of open files.
+        tables.file._open_files.close_all()
 

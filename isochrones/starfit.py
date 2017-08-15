@@ -151,8 +151,4 @@ def starfit(folder, multiplicities=['single'], models='mist',
             logger.error('{} starfit calculation failed for {}.'.format(mult,folder),
                          exc_info=True)
 
-    # Don't know why this is necessary?  Haven't been able to track down where file gets left open.
-    # But this is necessary to avoid building up of open files.
-    tables.file._open_files.close_all()
-
     return mod, logger
