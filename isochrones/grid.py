@@ -104,7 +104,7 @@ class ModelGrid(object):
             logging.debug('loading {} band from {}'.format(b,s))
             if s not in grids:
                 grids[s] = self.get_hdf(s)
-            if 'MMo' not in df:
+            if self.common_columns[0] not in df:
                 df[list(self.common_columns)] = grids[s][list(self.common_columns)]
             col = grids[s][b]
             n_nan = np.isnan(col).sum()
