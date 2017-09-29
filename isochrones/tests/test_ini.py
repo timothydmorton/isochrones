@@ -18,52 +18,76 @@ def test_ini():
 #################
 
 def _check_ini(ic):
-    _ini1(ic)
-    _ini2(ic)
-    _ini3(ic)
-    _ini3_2(ic)
+    single_dirs = ['star1']
+    binary_dirs = ['star2']
+    triple_dirs = ['star3', 'star4']
 
-def _ini1(ic):
-    """ Single star
-    """
-    mod = StarModel.from_ini(ic, folder=os.path.join(FOLDER, 'star1'))
-    assert mod.n_params == 5
-    assert mod.obs.systems == [0]
-    assert mod.obs.Nstars == {0:1}
-    p = [1.0, 9.4, 0.0, 100, 0.2]    
-    assert np.isfinite(mod.lnlike(p))
+    for d in single_dirs:
+        SingleCheck().check(ic, os.path.join(FOLDER, d))
+    for d in binary_dirs:
+        BinaryCheck().check(ic, os.path.join(FOLDER, d))
+        BinaryCheck_Unassoc().check(ic, os.path.join(FOLDER, d))
+    for d in triple_dirs:
+        TripleCheck().check(ic, os.path.join(FOLDER, d))
+        TripleCheck_Unassoc1().check(ic, os.path.join(FOLDER, d))
+        TripleCheck_Unassoc2().check(ic, os.path.join(FOLDER, d))
 
-def _ini2(ic):
-    """ A wide, well-resolved binary
-    """
-    mod = StarModel.from_ini(ic, folder=os.path.join(FOLDER, 'star2'))
-    assert mod.n_params == 6
-    assert mod.obs.systems == [0]
-    assert mod.obs.Nstars == {0:2}
-    p = [1.0, 0.5, 9.4, 0.0, 100, 0.2]    
-    assert np.isfinite(mod.lnlike(p))
+    # _ini1(ic)
+    # _ini2(ic)
+    # _ini3(ic)
+    # _ini3_2(ic)
+    # _ini4(ic)
 
-def _ini3(ic):
-    """ A close resolved triple (unresolved in KIC, TwoMASS)
+class IniCheck(object):
+    index = 0
+    def check(self, ic, folder):
+        mod = StarModel.from_ini(ic, folder=folder, index=self.index)
+        assert self.n_params == len(self.pars)
+        assert mod.n_params == self.n_params
+        assert mod.obs.systems == self.systems
+        assert mod.obs.Nstars == self.Nstars
+        assert np.isfinite(mod.lnlike(self.pars))
 
-    modeled as a physically associated triple
-    """
-    mod = StarModel.from_ini(ic, folder=os.path.join(FOLDER, 'star3'))
-    assert mod.n_params == 7
-    assert mod.obs.systems == [0]
-    assert mod.obs.Nstars == {0:3}
-    p = [1.0, 0.8, 0.5, 9.4, 0.0, 100, 0.2]    
-    assert np.isfinite(mod.lnlike(p))
+class SingleCheck(IniCheck):
+    pars = [1.0, 9.4, 0.0, 100, 0.2]
+    n_params = 5
+    systems = [0]
+    Nstars = {0:1}
 
-def _ini3_2(ic):
-    """ A close resolved triple (unresolved in KIC, TwoMASS)
+class BinaryCheck(IniCheck):
+    pars = [1.0, 0.5, 9.4, 0.0, 100, 0.2]
+    n_params = 6
+    systems = [0]
+    Nstars = {0:2}
 
-    modeled as a physically associated binary plus non-associated single
-    """
-    mod = StarModel.from_ini(ic, folder=os.path.join(FOLDER, 'star3'),
-                            index=[0,0,1])
-    assert mod.n_params == 11
-    assert mod.obs.systems == [0, 1]
-    assert mod.obs.Nstars == {0:2, 1:1}
-    p = [1.0, 0.8, 9.4, 0.0, 100, 0.2, 1.0, 9.7, 0.0, 200, 0.5]    
-    assert np.isfinite(mod.lnlike(p))
+class BinaryCheck_Unassoc(IniCheck):
+    pars = [1.0, 9.4, 0.0, 100, 0.2, 
+            0.8, 9.7, 0.1, 300, 0.3]
+    n_params = 10
+    index = [0, 1]
+    systems = [0, 1]
+    Nstars = {0:1, 1:1}
+
+class TripleCheck(IniCheck):
+    pars = [1.0, 0.8, 0.5, 9.4, 0.0, 100, 0.2]
+    n_params = 7
+    systems = [0]
+    Nstars = {0:3}
+
+class TripleCheck_Unassoc1(IniCheck):
+    pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2, 
+            1.0, 9.7, 0.0, 200, 0.5]
+    n_params = 11
+    index = [0, 0, 1]
+    systems = [0, 1]
+    Nstars = {0:2, 1:1}
+
+class TripleCheck_Unassoc2(IniCheck):
+    pars = [1.0, 9.4, 0.0, 100, 0.2, 
+            1.0, 0.8, 9.7, 0.0, 200, 0.5]
+    n_params = 11
+    index = [0, 1, 1]
+    systems = [0, 1]
+    Nstars = {0:1, 1:2}
+
+

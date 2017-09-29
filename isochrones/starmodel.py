@@ -323,6 +323,8 @@ class StarModel(object):
                     # For each band and each star, create a row
                     for b in bands:
                         for tag in tags:
+                            if '{}{}'.format(b, tag) not in c[k]:
+                                continue
                             row = {}
                             row['name'] = instrument
                             row['band'] = b
