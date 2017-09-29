@@ -3,7 +3,7 @@ import numpy as np
 
 from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
-from isochrones import StarModel
+from isochrones import StarModel, BinaryStarModel, TripleStarModel
 
 FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
@@ -40,13 +40,24 @@ def _check_ini(ic):
 
 class IniCheck(object):
     index = 0
-    def check(self, ic, folder):
-        mod = StarModel.from_ini(ic, folder=folder, index=self.index)
+
+    def get_mod(self, ic, folder):
+        return StarModel.from_ini(ic, folder=folder, index=self.index)
+
+    def check_asserts(self, mod):
         assert self.n_params == len(self.pars)
         assert mod.n_params == self.n_params
         assert mod.obs.systems == self.systems
         assert mod.obs.Nstars == self.Nstars
         assert np.isfinite(mod.lnlike(self.pars))
+
+    def check(self, ic, folder):
+        mod = self.get_mod(ic, folder)
+        self.check_asserts(mod)
+
+        if hasattr(self, 'get_mod_special'):
+            mod = self.get_mod_special(ic, folder)
+            self.check_asserts(mod)
 
 class SingleCheck(IniCheck):
     pars = [1.0, 9.4, 0.0, 100, 0.2]
@@ -59,6 +70,9 @@ class BinaryCheck(IniCheck):
     n_params = 6
     systems = [0]
     Nstars = {0:2}
+
+    def get_mod_special(self, ic, folder):
+        return BinaryStarModel(ic, folder=folder)
 
 class BinaryCheck_Unassoc(IniCheck):
     pars = [1.0, 9.4, 0.0, 100, 0.2, 
@@ -73,6 +87,10 @@ class TripleCheck(IniCheck):
     n_params = 7
     systems = [0]
     Nstars = {0:3}
+
+    def get_mod_special(self, ic, folder):
+        return TripleStarModel(ic, folder=folder)
+
 
 class TripleCheck_Unassoc1(IniCheck):
     pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2, 
