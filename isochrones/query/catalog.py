@@ -7,9 +7,8 @@ from astropy.coordinates import SkyCoord
 class Catalog(object):
     """ Base class for 
     """
-    def __init__(self, query, cache=False):
+    def __init__(self, query):
         self.query = query
-        self.cache = cache
         self._table = None
         self._query_coords = None
         self._coords = None

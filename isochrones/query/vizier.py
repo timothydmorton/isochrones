@@ -10,12 +10,13 @@ from .query import EmptyQueryError
 from .catalog import Catalog
 
 class VizierCatalog(Catalog):
+    columns = ('*', '_r', '_RAJ2000', '_DEJ2000')
     def _run_query(self):
         if self._empty:
             raise EmptyQueryError('{} is empty!'.format(self))            
         try:
-            self._table = Vizier.query_region(self.query_coords, radius=self.query.radius,
-                                        catalog=self.vizier_name, cache=self.cache)[0]
+            self._table = Vizier(columns=list(self.columns)).query_region(self.query_coords, radius=self.query.radius,
+                                        catalog=self.vizier_name)[0]
         except IndexError:
             self._empty = True
             raise EmptyQueryError('{} returns empty!'.format(self))
@@ -47,7 +48,7 @@ class Tycho2(VizierCatalog):
         else:
             row = self.closest
 
-        return '{}-{}-{}'.format(row['TYC1'],
+        return '{:.0f}-{:.0f}-{:.0f}'.format(row['TYC1'],
                                  row['TYC2'],
                                  row['TYC3'])
 
