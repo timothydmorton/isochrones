@@ -159,10 +159,9 @@ class ModelGrid(object):
         if not os.path.exists(cls.master_tarball_file):
             cls.download_grids()
 
-        if cls.verify_grids():
-            with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
-                logging.info('Extracting {}...'.format(cls.master_tarball_file))
-                tar.extractall(ISOCHRONES)
+        with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
+            logging.info('Extracting {}...'.format(cls.master_tarball_file))
+            tar.extractall(ISOCHRONES)
 
     @classmethod
     def extract_phot_tarball(cls, phot, **kwargs):
