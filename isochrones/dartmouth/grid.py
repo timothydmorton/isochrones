@@ -34,8 +34,10 @@ class DartmouthModelGrid(ModelGrid):
 
     default_kwargs = {'afe':'afep0', 'y':''}
     datadir = os.path.join(ISOCHRONES, 'dartmouth')
-    zenodo_record = 161241
+    zenodo_record = 1002927
     zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
+    zenodo_md5 = ('acb68d131957fe50ae4f5b64d36d6482',
+                  '570b758ea98c8a5a806149bd1b854b98')
     master_tarball_file = 'dartmouth.tgz'
 
     @classmethod

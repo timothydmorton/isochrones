@@ -45,6 +45,7 @@ class MISTModelGrid(ModelGrid):
     datadir = os.path.join(ISOCHRONES, 'mist')
     zenodo_record = 161241
     zenodo_files = ('mist.tgz',)
+    zenodo_md5 = ('0deaaca2836c7148c27ce5ba5bbdfe59',)
     master_tarball_file = 'mist.tgz'
 
     @classmethod

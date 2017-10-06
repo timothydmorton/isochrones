@@ -7,7 +7,7 @@ import logging
 from scipy.interpolate import LinearNDInterpolator as interpnd
 
 # Check to see if building on ReadTheDocs
-on_rtd = os.environ.get('READTHEDOCS') == 'True'
+from ..config import on_rtd
 
 if not on_rtd:
     import pandas as pd
@@ -25,18 +25,18 @@ if not on_rtd:
     MAXAGES = np.load(resource_filename('isochrones','data/dartmouth_maxages.npz'))
     MAXAGE = interpnd(MAXAGES['points'], MAXAGES['maxages'])
 
-    # Download data if you need to.
-    if not os.path.exists(TRI_FILE):
-        from .grid import DartmouthModelGrid
-        DartmouthModelGrid.download_grids()
+    # # Download data if you need to.
+    # if not os.path.exists(TRI_FILE):
+    #     from .grid import DartmouthModelGrid
+    #     DartmouthModelGrid.download_grids()
 
-    #Check to see if you have the right tri file
-    import hashlib
-    # tri_hash = '477f5b835c0e805810a3154922eeb3d6' # currently on zenodo
-    tri_hash = 'ebc01b529c50fe6c8145c92160e0a53e' # current one
-    if hashlib.md5(open(TRI_FILE,'rb').read()).hexdigest() != tri_hash:
-        logging.warning('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
-                          ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
+    # #Check to see if you have the right tri file
+    # import hashlib
+    # # tri_hash = '477f5b835c0e805810a3154922eeb3d6' # currently on zenodo
+    # tri_hash = 'ebc01b529c50fe6c8145c92160e0a53e' # current one
+    # if hashlib.md5(open(TRI_FILE,'rb').read()).hexdigest() != tri_hash:
+    #     logging.warning('You have a wrong/corrupted/outdated Dartmouth triangulation!' + 
+    #                       ' Delete {} and try re-importing to download afresh.'.format(TRI_FILE))
 
 
 from .grid import DartmouthModelGrid
@@ -71,6 +71,7 @@ class Dartmouth_Isochrone(Isochrone):
         global TRI
 
         if TRI is None:
+            DartmouthModelGrid.verify_grids()
             try:
                 f = open(TRI_FILE,'rb')
                 TRI = pickle.load(f)

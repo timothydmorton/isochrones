@@ -3,6 +3,7 @@ import tarfile
 import logging
 
 from .config import ISOCHRONES, on_rtd
+from .utils import download_file
 
 if not on_rtd:
     import numpy as np
@@ -118,23 +119,38 @@ class ModelGrid(object):
     @classmethod
     def download_grids(cls, overwrite=False):
         record = cls.zenodo_record
-
         paths = []
         urls = []
         for f in cls.zenodo_files:
             paths.append(os.path.join(ISOCHRONES, f))
             urls.append('https://zenodo.org/record/{}/files/{}'.format(record, f))
 
-        from six.moves import urllib
-        print('Downloading {} stellar model data (should happen only once)...'.format(cls.name))
-
+        print('Downloading files for {} model grid: {}...'.format(cls.name, cls.zenodo_files))
         for path, url in zip(paths, urls):
             if os.path.exists(path):
                 if overwrite:
                     os.remove(path)
                 else:
+                    print('{} exists; not downloading.'.format(path))
                     continue
-            urllib.request.urlretrieve(url, path)
+            download_file(url, path)
+        cls.verify_grids()
+
+    @classmethod
+    def verify_grids(cls):
+        import hashlib
+        files = [os.path.join(ISOCHRONES, f) for f in cls.zenodo_files]
+        good = True
+        for f, md5 in zip(files, cls.zenodo_md5):
+            if not os.path.exists(f):
+                raise RuntimeError('{0} does not exist.  Run "import isochrones.{1}; isochrones.{1}.download_grids()" to download.'.format(f, cls.name))
+            elif hashlib.md5(open(f,'rb').read()).hexdigest() != md5:
+                raise RuntimeError('{0} is wrong/corrupted.  Delete {0} and try again.'.format(f))
+                good = False
+            else:
+                logging.debug('{} verified.'.format(f))
+        return good
+
 
     @classmethod
     def extract_master_tarball(cls):
@@ -143,9 +159,10 @@ class ModelGrid(object):
         if not os.path.exists(cls.master_tarball_file):
             cls.download_grids()
 
-        with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
-            logging.info('Extracting {}...'.format(cls.master_tarball_file))
-            tar.extractall(ISOCHRONES)
+        if cls.verify_grids():
+            with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
+                logging.info('Extracting {}...'.format(cls.master_tarball_file))
+                tar.extractall(ISOCHRONES)
 
     @classmethod
     def extract_phot_tarball(cls, phot, **kwargs):

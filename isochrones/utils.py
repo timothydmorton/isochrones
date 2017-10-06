@@ -1,9 +1,33 @@
 from __future__ import print_function, division
 
 from .config import on_rtd
+import requests
+import os
 
 if not on_rtd:
     import numpy as np
+
+def download_file(url, path=None):
+    """
+    thanks to: https://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py
+
+    path : str
+        local path to download to.
+    """
+    if path is None:
+        local_filename = os.path.join(directory, url.split('/')[-1])
+    else:
+        local_filename = path
+        
+    # NOTE the stream=True parameter
+    r = requests.get(url, stream=True)
+    with open(local_filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024): 
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
+                #f.flush() commented by recommendation from J.F.Sebastian
+    return local_filename
+
 
 def addmags(*mags):
     """
