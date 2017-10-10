@@ -1,6 +1,8 @@
 from .config import on_rtd
 
 import os, re, sys
+import warnings
+import logging
 
 if not on_rtd:
     import pandas as pd
@@ -130,8 +132,12 @@ class Isochrone(object):
         self.ext_table = ext_table
 
         if minage is not None:
+            logging.warning("minage and maxage keywords are deprecated." + \
+                          "Use instead the .set_bounds(age=(lo, hi)) attribute of StarModel.")
             self.minage = minage
         if maxage is not None:
+            logging.warning("minage and maxage keywords are deprecated." + \
+                          "Use instead the .set_bounds(age=(lo, hi)) attribute of StarModel.")
             self.maxage = maxage
 
         L = 10**logL
