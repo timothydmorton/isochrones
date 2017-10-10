@@ -133,12 +133,15 @@ class StarModel(object):
         self._bounds = {'mass':None,
                         'feh':None,
                         'age':None,
-                        'q':(0.1,1.0),
-                        'distance':(0,3000.),
-                        'AV':(0,1.)}
+                        'q':q_prior.bounds,
+                        'distance':distance_prior.bounds,
+                        'AV':AV_prior.bounds}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
+
+        if 'max_distance' in kwargs:
+            self.set_bounds(distance=(0, kwargs['max_distance']))
 
         self._directory = '.'
         self._samples = None
@@ -382,12 +385,17 @@ class StarModel(object):
         if self._bounds[prop] is not None:
             return self._bounds[prop]
         elif prop=='mass':
-            self._bounds['mass'] = (self.ic.minmass,
-                                    self.ic.maxmass)
+            lo, hi = (self.ic.minmass, self.ic.maxmass)
+            self._bounds['mass'] = (lo, hi)
+            self._priors['mass'].bounds = (lo, hi)
         elif prop=='feh':
-            self._bounds['feh'] = (self.ic.minfeh,
-                                   self.ic.maxfeh)
+            lo, hi = (self.ic.minfeh, self.ic.maxfeh)
+            self._bounds['feh'] = (lo, hi)
+            self._priors['feh'].bounds = (lo, hi)
         elif prop=='age':
+            lo, hi = (self.ic.minage, self.ic.maxage)
+            self._bounds['age'] = (lo, hi)
+            self._priors['age'].bounds = (lo, hi)
             self._bounds['age'] = (self.ic.minage,
                                    self.ic.maxage)
         else:
@@ -399,6 +407,7 @@ class StarModel(object):
             if len(v) != 2:
                 raise ValueError('Must provide (min, max)')
             self._bounds[k] = v
+            self._priors[k].bounds = v
 
     def _build_obs(self, **kwargs):
         """
@@ -469,8 +478,7 @@ class StarModel(object):
                 lo,hi = self.bounds(prop)
                 if val < lo or val > hi:
                     return -np.inf
-                lnp += np.log(self.prior(prop, val,
-                                  bounds=self.bounds(prop)))
+                lnp += np.log(self.prior(prop, val))
                 if not np.isfinite(lnp):
                     logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
                     return -np.inf
@@ -481,8 +489,7 @@ class StarModel(object):
             masses = p[i:i+N[s]]
 
             # Mass prior for primary
-            lnp += np.log(self.prior('mass', masses[0],
-                                bounds=self.bounds('mass')))
+            lnp += np.log(self.prior('mass', masses[0]))
             if not np.isfinite(lnp):
                 logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
 
@@ -495,8 +502,7 @@ class StarModel(object):
                 #if j+1 > 1:
                 #    qmax = masses[j] / masses[0]
 
-                lnp += np.log(self.prior('q', q,
-                                         bounds=(qmin,qmax)))
+                lnp += np.log(self.prior('q', q))
                 if not np.isfinite(lnp):
                     logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
                     return -np.inf
@@ -710,20 +716,51 @@ class StarModel(object):
         fit = scipy.optimize.minimize(fn, p0, **kwargs)
         return fit
 
+    def sample_from_prior(self, n):
+        return self.emcee_p0(n)
+
     def emcee_p0(self, nwalkers):
+
+        def sample_row(nstars, n=nwalkers):
+            p = []
+            m0 = self._priors['mass'].sample(n)
+            age0 = self._priors['age'].sample(n)
+            feh0 = self._priors['feh'].sample(n)
+            d0 = self._priors['distance'].sample(n)
+            AV0 = self._priors['AV'].sample(n)
+
+            for i in range(nstars):
+                p += [m0 * 0.95**i]
+            p += [age0, feh0, d0, AV0]
+            return p
+
         p0 = []
         for _,n in self.obs.Nstars.items():
-            m0, age0, feh0 = self.ic.random_points(nwalkers)
-            _, max_distance = self.bounds('distance')
-            _, max_AV = self.bounds('AV')
-            d0 = 10**(rand.uniform(0,np.log10(max_distance),size=nwalkers))
-            AV0 = rand.uniform(0, max_AV, size=nwalkers)
+            p0 += sample_row(n)
 
-            # This will occasionally give masses outside range.
-            for i in range(n):
-                p0 += [m0 * 0.95**i]
-            p0 += [age0, feh0, d0, AV0]
-        return np.array(p0).T
+        p0 = np.array(p0).T
+
+        nbad = 1
+
+        while True:
+            ibad = []
+            for i, p in enumerate(p0):
+                if not np.isfinite(self.lnpost(p)):
+                    ibad.append(i)
+
+            nbad = len(ibad)
+            if nbad == 0:
+                break
+                
+            pnew = []
+            for _, n in self.obs.Nstars.items():
+                pnew += sample_row(n, n=nbad)
+
+            pnew = np.array(pnew).T
+
+            p0[ibad, :] = pnew
+
+        return p0
 
     def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,

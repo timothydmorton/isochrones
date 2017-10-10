@@ -51,9 +51,19 @@ class IniCheck(object):
         assert mod.obs.Nstars == self.Nstars
         assert np.isfinite(mod.lnlike(self.pars))
 
+    def check_p0(self, mod):
+        p0 = mod.emcee_p0(200)
+        nbad = 0
+        for i,p in enumerate(p0):
+            if not np.isfinite(mod.lnpost(p)):
+                print(p)
+                nbad += 1
+        assert nbad==0        
+
     def check(self, ic, folder):
         mod = self.get_mod(ic, folder)
         self.check_asserts(mod)
+        self.check_p0(mod)
 
         if hasattr(self, 'get_mod_special'):
             mod = self.get_mod_special(ic, folder)
