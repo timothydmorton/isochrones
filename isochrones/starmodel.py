@@ -1088,7 +1088,8 @@ class StarModel(object):
             attrs.ic_type = type(self.ic)
             attrs.ic_bands = list(self.ic.bands)
             attrs.use_emcee = self.use_emcee
-            attrs._mnest_basename = self._mnest_basename
+            if hasattr(self, '_mnest_basename'):
+                attrs._mnest_basename = self._mnest_basename
 
             attrs._bounds = self._bounds
             attrs._priors = self._priors
@@ -1128,7 +1129,11 @@ class StarModel(object):
             ic = attrs.ic_type
 
         use_emcee = attrs.use_emcee
-        basename = attrs._mnest_basename
+        mnest = True
+        try:
+            basename = attrs._mnest_basename
+        except AttributeError:
+            mnest = False
         bounds = attrs._bounds
         priors = attrs._priors
 
@@ -1145,7 +1150,8 @@ class StarModel(object):
         mod = cls(ic, obs=obs,
                   use_emcee=use_emcee, name=name)
         mod._samples = samples
-        mod._mnest_basename = basename
+        if mnest:
+            mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
         return mod
 
