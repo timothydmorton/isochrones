@@ -4,10 +4,6 @@ isochrones
     :target: http://dx.doi.org/10.5281/zenodo.16304
 
 Provides simple interface for interacting with stellar model grids.
-Version 1.0 is now up on PyPI, with substantial changes, most notably
-inclusion of the `MIST model grids <http://waps.cfa.harvard.edu/MIST/>`_. 
-Along with broader coverage in all parameters, these grids also provide
-synthetic photometry in the Gaia G band.
 
 Installation
 -----------
