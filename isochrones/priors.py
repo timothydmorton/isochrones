@@ -31,8 +31,9 @@ class Prior(object):
             rng = None
         hn, _ = np.histogram(x, range=rng)
         h, b = np.histogram(x, density=True, range=rng)
-        print(hn,b)
-        pdf = np.array([quad(self.pdf,l,h)[0]/(h-l) for l,h in zip(b[:-1], b[1:])])
+        logging.debug('bins: {}'.format(b))
+        logging.debug('raw: {}'.format(hn))
+        pdf = np.array([quad(self.pdf,lo,hi)[0]/(hi-lo) for lo,hi in zip(b[:-1], b[1:])])
         sigma = 1./np.sqrt(hn)
         resid = np.absolute(pdf - h) / pdf
         logging.debug('pdf: {}'.format(pdf))
@@ -45,7 +46,7 @@ class Prior(object):
             plt.plot(c, h, '_')
             plt.plot(c, pdf, 'x')
         else:
-            assert max(resid / sigma) < 4
+            assert max((resid / sigma)[hn > 50]) < 4
 
 class BoundedPrior(Prior):
     def __init__(self, bounds=None):
