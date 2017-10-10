@@ -86,12 +86,14 @@ class StarModel(object):
                   'logg','Teff','feh','density', 'separation',
                  'PA','resolution','relative','N','index', 'id')
 
+    _default_name = 'single'
+
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
                  RA=None, dec=None, coords=None,
                  **kwargs):
 
-        self.name = name
+        self.name = name if name else self._default_name
 
         if coords is None:
             if RA is not None and dec is not None:
@@ -437,6 +439,10 @@ class StarModel(object):
     @property
     def param_description(self):
         return self.obs.param_description
+
+    @property
+    def param_names(self):
+        return self.param_description
 
     @property
     def mags(self):
@@ -1107,6 +1113,7 @@ class StarModel(object):
         return mod
 
 class BinaryStarModel(StarModel):
+    _default_name = 'binary'
     def __init__(self, *args, **kwargs):
         kwargs['N'] = 2
         super(BinaryStarModel, self).__init__(*args, **kwargs)
@@ -1117,6 +1124,7 @@ class BinaryStarModel(StarModel):
         return super(BinaryStarModel, cls).from_ini(*args, **kwargs)
 
 class TripleStarModel(StarModel):
+    _default_name = 'triple'
     def __init__(self, *args, **kwargs):
         kwargs['N'] = 3
         super(TripleStarModel, self).__init__(*args, **kwargs)
