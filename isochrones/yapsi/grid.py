@@ -10,7 +10,7 @@ class YAPSIModelGrid(ModelGrid):
     
     datadir = os.path.expanduser('~/yapsi')
     default_bands = list('UBVRIJHK')
-    default_kwargs = {}
+    default_kwargs = {'Y':0.28}
     
     @classmethod
     def get_band(cls, b):
@@ -19,21 +19,39 @@ class YAPSIModelGrid(ModelGrid):
         else:
             raise ValueError('{0} not in YAPSI grids.'.format(b))
             
-    def get_filenames(self, phot='w'):
-        return glob.glob('{0}/yapsi_{1}_*.dat'.format(self.datadir, phot))
+    @classmethod
+    def _get_XYZ(cls, filename):
+        m = re.search('X(\dp\d+)_Z(\dp\d+)\.dat', filename)
+        if m:
+            X = float(m.group(1).replace('p', '.'))
+            Z = float(m.group(2).replace('p', '.'))
+            Y = 1 - X - Z
+            return X, Y, Z
+        else:
+            raise ValueError('Cannot parse XYZ from filename: {}'.format(filename))        
+
+    def get_filenames(self, phot='w', Y=0.28):
+        all_files = glob.glob('{0}/yapsi_{1}_*.dat'.format(self.datadir, phot))
+        files = []
+        for f in all_files:
+            x, y, Z = self._get_XYZ(f)
+            if np.isclose(Y, y):
+                files.append(f)
+
+        return files
+
 
     @classmethod
     def get_feh(cls, filename):
         """
         example filename: yapsi_w_X0p602357_Z0p027643.dat
         """
-        m = re.search('X(\dp\d+)_Z(\dp\d+)\.dat', filename)
-        if m:
-            X = float(m.group(1).replace('p', '.'))
-            Z = float(m.group(2).replace('p', '.'))
-            Xsun = 0.703812
-            Zsun = 0.016188
-            return np.log10((Z/X) / (Zsun/Xsun))
+        X,Y,Z = cls._get_XYZ(filename)
+
+        Xsun = 0.703812
+        Zsun = 0.016188
+
+        return np.log10((Z/X) / (Zsun/Xsun))
         
     @classmethod
     def to_df(cls, filename):
