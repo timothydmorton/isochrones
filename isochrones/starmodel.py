@@ -444,6 +444,12 @@ class StarModel(object):
             elif k in ['Teff','logg','feh']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
+            elif re.search('_', k):
+                m = re.search('^(\w+)_(\w+)$', k)
+                prop = m.group(1)
+                tag = m.group(2)
+                self.obs.add_spectroscopy(**{prop:v, 'label':'0_{}'.format(tag)})
+
 
     @property
     def param_description(self):
