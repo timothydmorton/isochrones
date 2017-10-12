@@ -36,7 +36,10 @@ class ModelGrid(object):
     `to_df`, `hdf_filename`.  See :class:`DartmouthModelGrid`
     and :class:`MISTModelGrid` for details.
     """
-    def __init__(self, bands, **kwargs):
+    def __init__(self, bands=None, **kwargs):
+        if bands is None:
+            bands = self.default_bands
+
         self.bands = sorted(bands)
         self.kwargs = kwargs
 
