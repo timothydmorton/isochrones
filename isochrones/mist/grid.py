@@ -59,9 +59,9 @@ class MISTModelGrid(ModelGrid):
         if b in ['u','g','r','i','z']:
             phot = 'SDSS'
             band = 'SDSS_{}'.format(b)
-        # elif b in ['B','V']:
-        #     phot = 'UBVRIplus'
-        #     band = 'Tycho_{}'.format(b)
+        elif b in ['Tycho_B','Tycho_V']:
+             phot = 'UBVRIplus'
+             band = b
         elif b in ['U','B','V','R','I']:
             phot = 'UBVRIplus'
             band = 'Bessell_{}'.format(b)
@@ -83,7 +83,7 @@ class MISTModelGrid(ModelGrid):
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
             if m:
-                if m.group(1) in self.phot_systems:
+                if m.group(1) in cls.phot_systems:
                     phot = m.group(1)
                     if phot=='PanSTARRS':
                         band = 'PS_{}'.format(m.group(2))
