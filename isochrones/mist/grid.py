@@ -59,9 +59,6 @@ class MISTModelGrid(ModelGrid):
         if b in ['u','g','r','i','z']:
             phot = 'SDSS'
             band = 'SDSS_{}'.format(b)
-        elif b in ['Tycho_B','Tycho_V']:
-             phot = 'UBVRIplus'
-             band = b
         elif b in ['U','B','V','R','I']:
             phot = 'UBVRIplus'
             band = 'Bessell_{}'.format(b)
@@ -92,8 +89,15 @@ class MISTModelGrid(ModelGrid):
                 elif m.group(1) in ['UK','UKIRT']:
                     phot = 'UKIDSS'
                     band = 'UKIDSS_{}'.format(m.group(2))
+
         if phot is None:
-            raise ValueError('MIST grids cannot resolve band {}!'.format(b))
+            for system, bands in cls.phot_bands.items():
+                if b in bands:
+                    phot = system
+                    band = b
+                    break
+            if phot is None:
+                raise ValueError('MIST grids cannot resolve band {}!'.format(b))
         return phot, band
 
     def phot_tarball_file(self, phot, version='1.0'):
