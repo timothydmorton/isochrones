@@ -164,11 +164,16 @@ class Isochrone(object):
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
-        d = {}
-        for b in self._mag.keys():
-            d[b] = self._mag_fn(b)
+        self.mag = {b : self._mag_fn(b) for b in self.bands}
 
-        self.mag = d
+    def __getstate__(self):
+        odict = self.__dict__.copy()
+        del odict['mag'] # This can't be pickled
+        return odict
+
+    def __setstate__(self, odict):
+        self.__dict__ = odict
+        self.__dict__['mag'] = {b : self._mag_fn(b) for b in self.bands}
 
     def _prop(self, prop, *args):
         if prop not in self._props:
