@@ -160,7 +160,7 @@ class Isochrone(object):
                     'mags':mags}
         self._props = ['mass', 'logL', 'logg', 'logTeff']
 
-        self.bands = mags.keys()
+        self.bands = list(mags.keys())
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
