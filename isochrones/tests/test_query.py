@@ -19,8 +19,9 @@ def test_queries(ra=45.03433035439128, dec=0.23539164875137225,
     tm = TwoMASS(q)
     w = WISE(q)
     tyc = Tycho2(q)
+    gaia = Gaia(q)
 
     assert tm.get_id() == b('03000819+0014074') #force byte literal b/c that's what gets returned
     assert w.get_id() == b('J030008.22+001407.4')
     assert tyc.get_id() == '55-256-1'
-
+    assert gaia.get_id() == 7632157690368
