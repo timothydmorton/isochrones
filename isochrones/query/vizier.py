@@ -10,10 +10,10 @@ from .query import EmptyQueryError
 from .catalog import Catalog
 
 class VizierCatalog(Catalog):
-    columns = ('*', '_r', '_RAJ2000', '_DEJ2000')
+    columns = ('**', '_r', '_RAJ2000', '_DEJ2000')
     def _run_query(self):
         if self._empty:
-            raise EmptyQueryError('{} is empty!'.format(self))            
+            raise EmptyQueryError('{} is empty!'.format(self))
         try:
             self._table = Vizier(columns=list(self.columns)).query_region(self.query_coords, radius=self.query.radius,
                                         catalog=self.vizier_name)[0]
@@ -29,8 +29,8 @@ class TwoMASS(VizierCatalog):
     name = 'twomass'
     vizier_name = '2mass'
     epoch = 2000.
-    bands = {'Jmag':'J', 
-             'Hmag':'H', 
+    bands = {'Jmag':'J',
+             'Hmag':'H',
              'Kmag':'K'}
     id_column = '_2MASS'
 
@@ -62,7 +62,7 @@ class Tycho2(VizierCatalog):
         BT, dBT = mags['BT']
         if (-0.25 < BT - VT < 2.0):
             (a, b, c, d) = (0.00097, 0.1334, 0.05486, 0.01998)
-            V = (VT + a - b * (BT - VT) + c * (BT - VT)**2 - 
+            V = (VT + a - b * (BT - VT) + c * (BT - VT)**2 -
                 d * (BT - VT)**3)
 
             dVdVT = 1 + b - 2*c*(BT-VT) + 3*d*(BT-VT)**2
@@ -80,15 +80,15 @@ class Tycho2(VizierCatalog):
         BT, dBT = mags['BT']
         if 0.5 < (BT-VT) < 2.0:
             (e, f, g) = (0.007813, 0.1489, 0.03384)
-            BmV = ((BT - VT) - e * (BT - VT) - 
+            BmV = ((BT - VT) - e * (BT - VT) -
                     f * (BT - VT)**2 + g * (BT - VT)**3)
 
-            dBmVdVT = -1 + e + 2*f*(BT-VT) - 3*g*(BT-VT)**2  
+            dBmVdVT = -1 + e + 2*f*(BT-VT) - 3*g*(BT-VT)**2
             dBmVdBT = -dBmVdVT
 
         elif -0.25 < (BT - VT) < 0.5:
             (h, i, j) = (0.006, 0.1069, 0.1459)
-            BmV = ((BT - VT) - h - i * (BT - VT) + 
+            BmV = ((BT - VT) - h - i * (BT - VT) +
                     j * (BT - VT)**2)
 
             dBmVdVT = -1 - i - 2*j*(BT-VT)
@@ -112,6 +112,13 @@ class WISE(VizierCatalog):
     name = 'WISE'
     vizier_name = 'allwise'
     epoch = 2000
-    bands = {'W1mag':'W1', 'W2mag':'W2', 
+    bands = {'W1mag':'W1', 'W2mag':'W2',
              'W3mag':'W3'} # W4 left out.
     id_column = 'AllWISE'
+
+class Gaia(VizierCatalog):
+    name = 'Gaia'
+    vizier_name = 'I/345/gaia2'
+    epoch = 2015.
+    bands = {'Gmag':'G'}
+    id_column = 'Source'
