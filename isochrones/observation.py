@@ -66,6 +66,15 @@ class NodeTraversal(Traversal):
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
+                if hasattr(root, 'parallax'):
+                    if node.index in root.parallax:
+                        # Warning, this not tested; may break ->
+                        plx, u_plx = root.parallax[node.index]
+                        text += ', parallax={}'.format((plx, u_plx))
+                        modval = node.evaluate(self.pars[node.label], 'parallax')
+                        lnl = -0.5*(modval - plx)**2/u_plx**2
+                        text += '; model={} ({})'.format(modval, lnl)
+
                 text += ': {}'.format(self.pars[node.label])
 
         else:
@@ -75,6 +84,8 @@ class NodeTraversal(Traversal):
                     if node.label in root.spectroscopy:
                         for k,v in root.spectroscopy[node.label].items():
                             text += ', {}={}'.format(k,v)
+                    if node.index in root.parallax:
+                        text += ', parallax={}'.format(root.parallax[node.index])
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
@@ -1249,4 +1260,3 @@ class ObservationTree(Node):
     @classmethod
     def synthetic(cls, stars, surveys):
         pass
-
