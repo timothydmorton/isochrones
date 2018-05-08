@@ -120,5 +120,5 @@ class Gaia(VizierCatalog):
     name = 'Gaia'
     vizier_name = 'I/345/gaia2'
     epoch = 2015.5
-    bands = {'Gmag':'G'}
+    bands = {'Gmag':'G', 'BPmag':'BP', 'RPmag':'RP'}
     id_column = 'Source'
