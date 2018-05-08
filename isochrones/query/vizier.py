@@ -119,6 +119,6 @@ class WISE(VizierCatalog):
 class Gaia(VizierCatalog):
     name = 'Gaia'
     vizier_name = 'I/345/gaia2'
-    epoch = 2015.
+    epoch = 2015.5
     bands = {'Gmag':'G'}
     id_column = 'Source'
