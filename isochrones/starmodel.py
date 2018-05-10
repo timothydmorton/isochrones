@@ -425,7 +425,7 @@ class StarModel(object):
                 if np.size(v) != 2:
                     logging.warning('{}={} ignored.'.format(k,v))
                     # continue
-                    v = [v, np.nan] 
+                    v = [v, np.nan]
                 o = Observation('', k, 99) #bogus resolution=99
                 s = Source(v[0], v[1])
                 o.add_source(s)
@@ -757,7 +757,7 @@ class StarModel(object):
             nbad = len(ibad)
             if nbad == 0:
                 break
-                
+
             pnew = []
             for _, n in self.obs.Nstars.items():
                 pnew += sample_row(n, n=nbad)
@@ -1070,15 +1070,12 @@ class StarModel(object):
             within the file will be updated.
         """
         if os.path.exists(filename):
-            store = pd.HDFStore(filename)
-            if path in store:
-                store.close()
-                if overwrite:
-                    os.remove(filename)
-                elif not append:
-                    raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
-                else:
-                    store.close()
+            with pd.HDFStore(filename) as store:
+                if path in store:
+                    if overwrite:
+                        os.remove(filename)
+                    elif not append:
+                        raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
 
         if self.samples is not None:
             self.samples.to_hdf(filename, path+'/samples')
