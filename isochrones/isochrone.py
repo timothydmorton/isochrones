@@ -37,7 +37,7 @@ def get_ichrone(models, bands=None, default=True):
     """
     if isinstance(models, Isochrone):
         return models
-        
+
     def actual(bands, ictype):
         if default:
             if bands is None:
@@ -82,13 +82,13 @@ class Isochrone(object):
         Array of initial mass values [msun].
     :type m_ini: array-like
 
-    :param age: 
+    :param age:
         log10(age) [yr]
 
     :param feh:
         Metallicity [dex]
 
-    :param m_act: 
+    :param m_act:
         Actual mass; same as m_ini if mass loss not implemented [msun]
 
     :param logL:
@@ -100,10 +100,10 @@ class Isochrone(object):
     :param logg:
         log10(surface gravity) [cgs]
 
-    :param mags: 
+    :param mags:
         Dictionary of absolute magnitudes in different bands
     :type mags: ``dict``
-        
+
     :param tri:
         Triangulation object used
         to initialize the interpolation functions.
@@ -115,7 +115,7 @@ class Isochrone(object):
 
     :param minage,maxage:
         If desired, a minimum or maximum age can be manually entered.
-        
+
     """
     def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
                  minage=None, maxage=None, ext_table=False):
@@ -221,7 +221,7 @@ class Isochrone(object):
 
         reference: https://arxiv.org/pdf/1312.3853v1.pdf, Eq (3)
         """
-        return 3120.* (self.mass(*args) / 
+        return 3120.* (self.mass(*args) /
                         (self.radius(*args)**2 * np.sqrt(self.Teff(*args)/5777.)))
 
     def _mag_fn(self, band):
@@ -239,7 +239,7 @@ class Isochrone(object):
         return fn
 
 
-    def __call__(self, mass, age, feh, 
+    def __call__(self, mass, age, feh,
                  distance=None, AV=0.0,
                  return_df=True, bands=None):
         """
@@ -263,12 +263,14 @@ class Isochrone(object):
         :param bands: (optional)
             List of photometric bands in which to return magnitudes.
             Must be subset of ``self.bands``.  If not set, then will
-            default to returning all available bands. 
+            default to returning all available bands.
 
         :return:
             Either a :class:`pandas.DataFrame` or a dictionary containing
             model values evaluated at input points.
         """
+        # Broadcast inputs to the same shape
+        mass, age, feh = [np.array(a) for a in np.broadcast_arrays(mass, age, feh)]
         args = (mass, age, feh)
         Ms = self.mass(*args)*1
         Rs = self.radius(*args)*1
@@ -285,10 +287,10 @@ class Isochrone(object):
         #     for band in mags:
         #         A = AV*EXTINCTION[band]
         #         mags[band] = mags[band] + dm + A
-                
-        
+
+
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
-                'logg':loggs,'Teff':Teffs,'mag':mags}        
+                'logg':loggs,'Teff':Teffs,'mag':mags}
 
         if not return_df:
             return props
@@ -300,10 +302,7 @@ class Isochrone(object):
                         d['{}_mag'.format(m)] = props['mag'][m]
                 else:
                     d[key] = props[key]
-            try:
-                df = pd.DataFrame(d)
-            except ValueError:
-                df = pd.DataFrame(d, index=[0])
+            df = pd.DataFrame(d)
             return df
 
     def agerange(self, m, feh=0.0):
@@ -320,28 +319,28 @@ class Isochrone(object):
         """
         Returns evolution track for a single initial mass and feh.
 
-        :param m: 
+        :param m:
             Initial mass of desired evolution track.
 
-        :param feh: (optional) 
+        :param feh: (optional)
             Metallicity of desired track.  Default = 0.0 (solar)
 
         :param minage, maxage: (optional)
             Minimum and maximum log(age) of desired track. Will default
-            to min and max age of model isochrones. 
+            to min and max age of model isochrones.
 
         :param dage: (optional)
             Spacing in log(age) at which to evaluate models.  Default = 0.02
 
         :param return_df: (optional)
             Whether to return a ``DataFrame`` or dicionary.  Default is ``True``.
-            
+
 
         :return:
             Either a :class:`pandas.DataFrame` or dictionary
             representing the evolution
             track---fixed mass, sampled at chosen range of ages.
-        
+
         """
         if minage is None:
             minage = self.minage
@@ -374,13 +373,13 @@ class Isochrone(object):
                 df = pd.DataFrame(d, index=[0])
             return df
 
-            
+
     def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
                   return_df=True,distance=None,AV=0.0):
         """
         Returns stellar models at constant age and feh, for a range of masses
 
-        :param age: 
+        :param age:
             log10(age) of desired isochrone.
 
         :param feh: (optional)
@@ -394,17 +393,17 @@ class Isochrone(object):
 
         :param return_df: (optional)
             Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.
-        
+
         :param distance:
             Distance in pc.  If passed, then mags will be converted to
             apparent mags based on distance (and ``AV``).
 
         :param AV:
-            V-band extinction (magnitudes).            
-        
+            V-band extinction (magnitudes).
+
         :return:
             :class:`pandas.DataFrame` or dictionary containing results.
-        
+
         """
         if minm is None:
             minm = self.minmass
@@ -428,8 +427,8 @@ class Isochrone(object):
                 mags[band] = mags[band] + dm + A
 
         props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
-                'Teff':Teffs,'mag':mags}        
-        
+                'Teff':Teffs,'mag':mags}
+
         if not return_df:
             return props
         else:
@@ -445,7 +444,7 @@ class Isochrone(object):
             except ValueError:
                 df = pd.DataFrame(d, index=[0])
             return df
-       
+
     def random_points(self,n,minmass=None,maxmass=None,
                       minage=None,maxage=None,
                       minfeh=None,maxfeh=None):
@@ -464,7 +463,7 @@ class Isochrone(object):
 
         :param minfehs, maxfeh: (optional)
             Desired allowed range.  Default is feh range of ``self``.
-                        
+
         :return:
             :class:`np.ndarray` arrays of randomly selected mass, log10(age),
             and feh values
@@ -521,7 +520,7 @@ class MagFunction(object):
         if self.ext_table:
             self.AAV = EXTINCTION[self.band]
         else:
-            self.AAV = ext(LAMBDA_EFF[self.band])        
+            self.AAV = ext(LAMBDA_EFF[self.band])
 
     def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None, ext_table=False):
         if x_ext is not None:
@@ -533,7 +532,7 @@ class MagFunction(object):
             if ext_table:
                 AAV = EXTINCTION[self.band]
             else:
-                AAV = ext(LAMBDA_EFF[self.band])        
+                AAV = ext(LAMBDA_EFF[self.band])
         else:
             AAV = self.AAV
 
@@ -545,15 +544,15 @@ class MagFunction(object):
 class FastIsochrone(Isochrone):
     """Alternative isochrone implementation for large grids, faster likelihoods
 
-    This implementation allows faster point interpolations than 
+    This implementation allows faster point interpolations than
     the triangulation method in the base :class:`Isochrone` class;
     however, for simulating large populations (passing arrays of parameters
-    at a time), the base :class:`Isochrone` is still faster.  This is 
-    also the go-to implementation for grids that are too large to make the 
+    at a time), the base :class:`Isochrone` is still faster.  This is
+    also the go-to implementation for grids that are too large to make the
     Delaunay method feasible (e.g., significantly over 100,000 points in the grid.)
 
     However, edge effects might be a bit more problematic here than in the base class,
-    meaning fitting very evolved stars might be an issue. Also, don't trust this subclass 
+    meaning fitting very evolved stars might be an issue. Also, don't trust this subclass
     for the :function:`Isochrone.agerange` function, for the same reason.
 
     Subclasses must set the appropriate attributes, and then things should work.
@@ -581,7 +580,7 @@ class FastIsochrone(Isochrone):
         self.ext_table = ext_table
         self.debug = debug
 
-    
+
         self._fehs = None
         self._ages = None
         self._Nfeh = None
@@ -593,7 +592,7 @@ class FastIsochrone(Isochrone):
         self._maxmass = None
         self._minfeh = None
         self._maxfeh = None
-    
+
         n_common_cols = len(self.modelgrid.common_columns)
         self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
         self.mag = {b: MagFunction(self, b, i)
@@ -602,7 +601,7 @@ class FastIsochrone(Isochrone):
         #organized array
         self._grid = None
         self._grid_Ns = None
-    
+
     def _initialize(self):
         for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
                      'minage','maxage','minfeh','maxfeh','minmass','maxmass']:
@@ -614,17 +613,17 @@ class FastIsochrone(Isochrone):
         if self._df is None:
             self._df = self.modelgrid(self.bands).df
         return self._df
-    
+
     @property
     def Ncols(self):
         return self.df.shape[1]
-    
+
     @property
     def fehs(self):
         if self._fehs is None:
             self._fehs = self.df.iloc[:, self.feh_col].unique()
         return self._fehs
-    
+
     @property
     def ages(self):
         if self._ages is None:
@@ -642,13 +641,13 @@ class FastIsochrone(Isochrone):
         if self._Nage is None:
             self._Nage = len(self.ages)
         return self._Nage
-    
+
     @property
     def minage(self):
         if self._minage is None:
             self._minage = self.ages.min()
         return self._minage
-    
+
     @property
     def maxage(self):
         if self._maxage is None:
@@ -660,7 +659,7 @@ class FastIsochrone(Isochrone):
         if self._minfeh is None:
             self._minfeh = self.fehs.min()
         return self._minfeh
-    
+
     @property
     def maxfeh(self):
         if self._maxfeh is None:
@@ -672,12 +671,12 @@ class FastIsochrone(Isochrone):
         if self._minmass is None:
             self._minmass = self.df.iloc[:, self.mass_col].min()
         return self._minmass
-    
+
     @property
     def maxmass(self):
         if self._maxmass is None:
             self._maxmass = self.df.iloc[:, self.mass_col].max()
-        return self._maxmass    
+        return self._maxmass
 
     def logTeff(self, mass, age, feh):
         return self.interp_value(mass, age, feh, self.loggTeff_col)
@@ -699,16 +698,16 @@ class FastIsochrone(Isochrone):
         if self._grid is None:
             self._make_grid()
         return self._grid
-    
+
     @property
     def grid_Ns(self):
         if self._grid_Ns is None:
             self._make_grid()
         return self._grid_Ns
-        
+
     @property
     def _npz_filename(self):
-        return os.path.join(ISOCHRONES, self.name, '{}.npz'.format('-'.join(self.bands)))   
+        return os.path.join(ISOCHRONES, self.name, '{}.npz'.format('-'.join(self.bands)))
 
     def _make_grid(self, recalc=False):
         # Read from file if available.
@@ -718,7 +717,7 @@ class FastIsochrone(Isochrone):
             self._grid_Ns = d['grid_Ns']
         else:
             df_list = [[self.df.ix[f,a] for f in self.fehs] for a in self.ages]
-            lens = np.array([[len(df_list[i][j]) for j in range(self.Nfeh)] 
+            lens = np.array([[len(df_list[i][j]) for j in range(self.Nfeh)]
                              for i in range(self.Nage)]).T #just because
             data = np.zeros((self.Nfeh, self.Nage, lens.max(), self.Ncols))
 
@@ -731,7 +730,7 @@ class FastIsochrone(Isochrone):
             np.savez(self._npz_filename, grid=data, grid_Ns=lens)
             self._grid = data
             self._grid_Ns = lens
-                
+
     def interp_value(self, mass, age, feh, icol): # 4 is log_g
         if self._ages is None:
             self._initialize()
@@ -752,4 +751,3 @@ class FastIsochrone(Isochrone):
             return interp_values(mass, age, feh, icol,
                                 self.grid, self.mass_col,
                                 self.ages, self.fehs, self.grid_Ns)
-

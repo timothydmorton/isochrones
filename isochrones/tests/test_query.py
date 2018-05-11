@@ -1,4 +1,4 @@
-from isochrones.query import Query, TwoMASS, WISE, Tycho2
+from isochrones.query import Query, TwoMASS, WISE, Tycho2, Gaia
 
 import sys
 if sys.version_info < (3,):

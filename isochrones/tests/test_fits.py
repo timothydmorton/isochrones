@@ -1,6 +1,8 @@
 import os, glob
 import numpy as np
 import tempfile
+import tables as tb
+
 
 from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
@@ -31,10 +33,14 @@ def test_fitting():
 def _check_saving(mod):
     filename = os.path.join(chainsdir, '{}.h5'.format(np.random.randint(1000000)))
     mod.save_hdf(filename)
+    assert len(tb.file._open_files.get_handlers_by_name(filename)) == 0
+
     newmod = StarModel.load_hdf(filename)
+    assert len(tb.file._open_files.get_handlers_by_name(filename)) == 0
 
     assert np.allclose(mod.samples, newmod.samples)
     assert mod.ic.bands == newmod.ic.bands
+
 
     os.remove(filename)
 
