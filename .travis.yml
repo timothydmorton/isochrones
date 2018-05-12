@@ -15,4 +15,4 @@ install:
     - source .ci/travis.sh
 
 script:
-    - nosetests isochrones
+    - nosetests -v isochrones
