@@ -188,7 +188,8 @@ def interp_value(mass, age, feh, icol,
     TODO:  fix situation where there is exact match in age, feh, so we just
     interpolate along the track, not between...
     """
-
+    if np.isnan(mass) or np.isnan(age) or np.isnan(feh):
+        return np.nan
 
     Nage = len(ages)
     Nfeh = len(fehs)
