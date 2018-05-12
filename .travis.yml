@@ -5,13 +5,9 @@ matrix:
 
         # Linux
         - os: linux
-          env: PYTHON_VERSION=2.7
-        - os: linux
           env: PYTHON_VERSION=3.6
 
         # OSX
-        - os: osx
-          env: PYTHON_VERSION=2.7
         - os: osx
           env: PYTHON_VERSION=3.6
 
