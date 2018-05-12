@@ -72,6 +72,10 @@ def _basic_ic_checks(ic):
     # Make sure no ZeroDivisionError for on-the-grid calls (Github issue #64)
     ic.isochrone(8.0, feh=0.)
 
+    # Make sure that passing nan returns nan (Github issue #65)
+    assert np.isnan(ic.radius(1.0, np.nan, 0.1))
+
+
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
     assert np.isfinite(mod.lnlike([1.0, 9.6, 0.1, 200, 0.2]))
