@@ -9,7 +9,7 @@ matrix:
 
         # OSX
         - os: osx
-          env: PYTHON_VERSION=3.6 MPLBACKEND=Qt4Agg
+          env: PYTHON_VERSION=3.6 MPLBACKEND=Agg
 
 install:
     - source .ci/travis.sh
