@@ -7,7 +7,7 @@ from ..config import ISOCHRONES
 from ..grid import ModelGrid
 
 class DartmouthModelGrid(ModelGrid):
-    """Grid of Dartmouth Models.  
+    """Grid of Dartmouth Models.
 
     The following photometric systems are included::
 
@@ -19,13 +19,13 @@ class DartmouthModelGrid(ModelGrid):
               UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
 
     You may add additional ones by putting the ``phot_system.tgz`` file
-    into ``.isochrones/dartmouth`` alongside the others.  If you do 
+    into ``.isochrones/dartmouth`` alongside the others.  If you do
     this, you must edit the object definition accordingly so the ``get_band``
     function returns the correct information.
     """
     name = 'dartmouth'
     common_columns = ('EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh')
-    phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
+    phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS','HST_WFC3')
     phot_bands = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
                   UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
                   WISE=['W4', 'W3', 'W2', 'W1'],
@@ -40,9 +40,13 @@ class DartmouthModelGrid(ModelGrid):
                   '570b758ea98c8a5a806149bd1b854b98')
     master_tarball_file = 'dartmouth.tgz'
 
+    default_bands = ('B','V','g','r','i','z',
+                     'J','H','K',
+                     'W1','W2','W3','Kepler')
+
     @classmethod
     def get_band(cls, b):
-        """Defines what a "shortcut" band name refers to.  
+        """Defines what a "shortcut" band name refers to.
 
         """
         phot = None
@@ -97,7 +101,7 @@ class DartmouthModelGrid(ModelGrid):
         if m:
             sign = 1 if m.group(1)=='p' else -1
             return float(m.group(2))/10 * sign
-        
+
     @classmethod
     def to_df(cls, filename):
         try:
@@ -106,7 +110,7 @@ class DartmouthModelGrid(ModelGrid):
             print('Error reading {}!'.format(filename))
             raise RuntimeError
         df = pd.DataFrame(rec)
-        
+
         n = len(df)
         ages = np.zeros(n)
         curage = 0
@@ -132,10 +136,9 @@ class DartmouthModelGrid(ModelGrid):
         df = df.sort_values(by=['feh','age','MMo','EEP'])
         df.index = [df.feh, df.age]
         return df
-        
+
     def hdf_filename(self, phot):
         afe = self.kwargs['afe']
         y = self.kwargs['y']
         afe_str = '_{}'.format(afe) if afe!='afep0' else ''
         return os.path.join(self.datadir,'{}{}.h5'.format(phot, afe_str, y))
-
