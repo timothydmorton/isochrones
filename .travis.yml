@@ -1,5 +1,5 @@
 sudo: false
-language: c
+language: generic
 matrix:
     include:
 
@@ -9,7 +9,7 @@ matrix:
 
         # OSX
         - os: osx
-          env: PYTHON_VERSION=3.6
+          env: PYTHON_VERSION=3.6 MPLBACKEND=Qt4Agg
 
 install:
     - source .ci/travis.sh
