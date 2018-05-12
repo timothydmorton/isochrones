@@ -69,6 +69,9 @@ def _basic_ic_checks(ic):
     for b in ic.bands:
         assert np.isfinite(ic.mag[b](*args))
 
+    # Make sure no ZeroDivisionError for on-the-grid calls (Github issue #64)
+    ic.isochrone(8.0, feh=0.)
+
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
     assert np.isfinite(mod.lnlike([1.0, 9.6, 0.1, 200, 0.2]))

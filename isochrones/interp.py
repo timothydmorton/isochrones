@@ -6,25 +6,33 @@ import numpy as np
 def interp_box(x, y, z, box, values):
     """
     box is 8x3 array, though not really a box
-    
+
     values is length-8 array, corresponding to values at the "box" coords
 
     TODO: should make power `p` an argument
     """
-    
+
     # Calculate the distance to each vertex
-    
+
     val = 0
     norm = 0
     for i in range(8):
         # Inv distance, or Inv-dsq weighting
-        w = 1./sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
-        # w = 1./((x-box[i,0])*(x-box[i,0]) + 
-        #         (y-box[i,1])*(y-box[i,1]) + 
+        distance = sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
+
+        # If you happen to land on exactly a corner, you're done.
+        if distance == 0:
+            val = values[i]
+            norm = 1.
+            break
+
+        w = 1./distance
+        # w = 1./((x-box[i,0])*(x-box[i,0]) +
+        #         (y-box[i,1])*(y-box[i,1]) +
         #         (z-box[i, 2])*(z-box[i, 2]))
         val += w * values[i]
         norm += w
-    
+
     return val/norm
 
 @jit(nopython=True)
@@ -46,7 +54,7 @@ def searchsorted(arr, N, x):
         if L>R:
             done = True
     return L
-        
+
 @jit(nopython=True)
 def searchsorted_many(arr, values):
     N = len(arr)
@@ -70,7 +78,7 @@ def searchsorted_many(arr, values):
     return inds
 
 @jit(nopython=True)
-def interp_values(mass_arr, age_arr, feh_arr, icol, 
+def interp_values(mass_arr, age_arr, feh_arr, icol,
                  grid, mass_col, ages, fehs, grid_Ns):
     """mass_arr, age_arr, feh_arr are all arrays at which values are desired
 
@@ -80,9 +88,9 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
     ages is grid of ages
     fehs is grid of fehs
     grid_Ns keeps track of nmass in each slice (beyond this are nans)
-    
+
     """
-    
+
     N = len(mass_arr)
     results = np.zeros(N)
 
@@ -90,7 +98,7 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
     Nfeh = len(fehs)
 
     for i in range(N):
-        results[i] = interp_value(mass_arr[i], age_arr[i], feh_arr[i], icol, 
+        results[i] = interp_value(mass_arr[i], age_arr[i], feh_arr[i], icol,
                                  grid, mass_col, ages, fehs, grid_Ns, False)
 
         ## Things are slightly faster if the below is used, but for consistency,
@@ -122,7 +130,7 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
         # vals[1] = grid[i_f, i_a, imass-1, icol]
 
         # i_f = ifeh - 1
-        # i_a = iage 
+        # i_a = iage
         # Nmass = grid_Ns[i_f, i_a]
         # imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
         # pts[2, 0] = grid[i_f, i_a, imass, mass_col]
@@ -147,7 +155,7 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
         # pts[5, 2] = fehs[i_f]
         # vals[5] = grid[i_f, i_a, imass-1, icol]
 
-        # i_f = ifeh 
+        # i_f = ifeh
         # i_a = iage
         # Nmass = grid_Ns[i_f, i_a]
         # imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
@@ -159,13 +167,13 @@ def interp_values(mass_arr, age_arr, feh_arr, icol,
         # pts[7, 1] = ages[i_a]
         # pts[7, 2] = fehs[i_f]
         # vals[7] = grid[i_f, i_a, imass-1, icol]
-        
+
         # results[i] = interp_box(mass, age, feh, pts, vals)
-        
+
     return results
 
 @jit(nopython=True)
-def interp_value(mass, age, feh, icol, 
+def interp_value(mass, age, feh, icol,
                  grid, mass_col, ages, fehs, grid_Ns, debug):
                  # return_box):
     """mass, age, feh are *single values* at which values are desired
@@ -176,11 +184,11 @@ def interp_value(mass, age, feh, icol,
     ages is grid of ages
     fehs is grid of fehs
     grid_Ns keeps track of nmass in each slice (beyond this are nans)
-    
+
     TODO:  fix situation where there is exact match in age, feh, so we just
     interpolate along the track, not between...
     """
-    
+
 
     Nage = len(ages)
     Nfeh = len(fehs)
@@ -207,7 +215,7 @@ def interp_value(mass, age, feh, icol,
     vals[1] = grid[i_f, i_a, imass-1, icol]
 
     i_f = ifeh - 1
-    i_a = iage 
+    i_a = iage
     Nmass = grid_Ns[i_f, i_a]
     imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
     pts[2, 0] = grid[i_f, i_a, imass, mass_col]
@@ -232,7 +240,7 @@ def interp_value(mass, age, feh, icol,
     pts[5, 2] = fehs[i_f]
     vals[5] = grid[i_f, i_a, imass-1, icol]
 
-    i_f = ifeh 
+    i_f = ifeh
     i_a = iage
     Nmass = grid_Ns[i_f, i_a]
     imass = searchsorted(grid[i_f, i_a, :, mass_col], Nmass, mass)
@@ -244,7 +252,7 @@ def interp_value(mass, age, feh, icol,
     pts[7, 1] = ages[i_a]
     pts[7, 2] = fehs[i_f]
     vals[7] = grid[i_f, i_a, imass-1, icol]
-    
+
     # if debug:
     #     result = np.zeros((8,4))
     #     for i in range(8):
@@ -255,4 +263,3 @@ def interp_value(mass, age, feh, icol,
     #     return result
     # else:
     return interp_box(mass, age, feh, pts, vals)
-
