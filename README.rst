@@ -1,6 +1,7 @@
 isochrones
 ==========
-[![Build Status](https://travis-ci.com/timothydmorton/isochrones.svg?branch=master)](https://travis-ci.com/timothydmorton/isochrones)
+.. image:: https://travis-ci.com/timothydmorton/isochrones.svg?branch=master
+    :target: https://travis-ci.com/timothydmorton/isochrones
 
 Provides simple interface for interacting with stellar model grids.
 
