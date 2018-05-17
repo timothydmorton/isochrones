@@ -169,6 +169,10 @@ class ModelGrid(object):
     @classmethod
     def extract_phot_tarball(cls, phot, **kwargs):
         phot_tarball = cls.phot_tarball_file(phot)
+        if not os.path.exists(phot_tarball):
+            url = '{}/{}.tgz'.format(cls.extra_url_base, phot)
+            logging.info('Downloading {}...'.format(url))
+            download_file(url, phot_tarball)
         with tarfile.open(phot_tarball) as tar:
             logging.info('Extracting {}.tgz...'.format(phot))
             tar.extractall(cls.datadir)
@@ -193,4 +197,3 @@ class ModelGrid(object):
         df.to_hdf(h5file,'df')
         print('{} written.'.format(h5file))
         return df
-

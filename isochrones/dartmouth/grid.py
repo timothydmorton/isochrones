@@ -30,7 +30,20 @@ class DartmouthModelGrid(ModelGrid):
                   UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
                   WISE=['W4', 'W3', 'W2', 'W1'],
                   LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
-                  UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
+                  UKIDSS=['Y', 'H', 'K', 'J', 'Z'],
+                  HST_WFC3=['uvf200l', 'uvf218w', 'uvf225w', 'uvf275w', 'uvf280n', 'uvf300x',
+                            'uvf336w', 'uvf343n', 'uvf350l', 'uvf373n', 'uvf390m', 'uvf390w',
+                            'uvf395n', 'uvf410m', 'uvf438w', 'uvf467m', 'uvf469n', 'uvf475w',
+                            'uvf475x', 'uvf487n', 'uvf502n', 'uvf547m', 'uvf555w', 'uvf600l',
+                            'uvf606w', 'uvf621m', 'uvf625w', 'uvf631n', 'uvf645n', 'uvf656n',
+                            'uvf657n', 'uvf658n', 'uvf665n', 'uvf673n', 'uvf680n', 'uvf689m',
+                            'uvf763m', 'uvf775w', 'uvf814w', 'uvf845m', 'uvf850l', 'uvf953n',
+                            'uvfq232', 'uvfq243', 'uvfq378', 'uvfq387', 'uvfq422', 'uvfq436',
+                            'uvfq437', 'uvfq492', 'uvfq508', 'uvfq575', 'uvfq619', 'uvfq634',
+                            'uvfq672', 'uvfq674', 'uvfq727', 'uvfq750', 'uvfq889', 'uvfq906',
+                            'uvfq924', 'uvfq937', 'irf098m', 'irf105w', 'irf110w', 'irf125w',
+                            'irf126n', 'irf127m', 'irf128n', 'irf130n', 'irf132n', 'irf139m',
+                            'irf140w', 'irf153m', 'irf160w', 'irf164n', 'irf167n'])
 
     default_kwargs = {'afe':'afep0', 'y':''}
     datadir = os.path.join(ISOCHRONES, 'dartmouth')
@@ -43,6 +56,8 @@ class DartmouthModelGrid(ModelGrid):
     default_bands = ('B','V','g','r','i','z',
                      'J','H','K',
                      'W1','W2','W3','Kepler')
+
+    extra_url_base = 'http://stellar.dartmouth.edu/models/isochrones'
 
     @classmethod
     def get_band(cls, b):
@@ -66,6 +81,9 @@ class DartmouthModelGrid(ModelGrid):
             band = 'Kp'
         elif b in ['W1','W2','W3','W4']:
             phot = 'WISE'
+            band = b
+        elif re.match('uvf', b) or re.match('irf', b):
+            phot = 'HST_WFC3'
             band = b
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
