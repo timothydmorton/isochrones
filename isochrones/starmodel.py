@@ -1049,7 +1049,7 @@ class StarModel(object):
         return corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
 
 
-    def save_hdf(self, filename, path='', overwrite=False, append=False):
+    def save_hdf(self, filename=None, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
 
         Samples are saved to /samples location under given path,
@@ -1069,6 +1069,9 @@ class StarModel(object):
             If ``True``, then if a file exists, then just the path
             within the file will be updated.
         """
+        if filename is None:
+            filename = self.default_filename
+
         if os.path.exists(filename):
             with pd.HDFStore(filename) as store:
                 if path in store:
@@ -1157,6 +1160,13 @@ class StarModel(object):
             mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
         return mod
+
+    @property
+    def default_filename(self):
+        return os.path.join(self.directory,
+                            '{}-{}.h5'.format(self.ic.name,
+                                              self.labelstring))
+
 
 class BinaryStarModel(StarModel):
     _default_name = 'binary'
