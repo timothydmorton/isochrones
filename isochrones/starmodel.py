@@ -987,7 +987,10 @@ class StarModel(object):
     def triangle_physical(self, *args, **kwargs):
         return self.corner_physical(*args, **kwargs)
 
-    def corner_plots(self, basename, **kwargs):
+    def corner_plots(self, basename=None, **kwargs):
+        if basename is None:
+            basename = self.default_basename
+            
         fig1, fig2 = self.corner_physical(**kwargs), self.corner_observed(**kwargs)
         fig1.savefig(basename + '_physical.png')
         fig2.savefig(basename + '_observed.png')
@@ -1070,7 +1073,7 @@ class StarModel(object):
             within the file will be updated.
         """
         if filename is None:
-            filename = self.default_filename
+            filename = '{}.h5'.format(self.default_basename)
 
         if os.path.exists(filename):
             with pd.HDFStore(filename) as store:
@@ -1162,10 +1165,10 @@ class StarModel(object):
         return mod
 
     @property
-    def default_filename(self):
+    def default_basename(self):
         return os.path.join(self.directory,
-                            '{}-{}.h5'.format(self.ic.name,
-                                              self.labelstring))
+                            '{}-{}'.format(self.ic.name,
+                                           self.labelstring))
 
 
 class BinaryStarModel(StarModel):
