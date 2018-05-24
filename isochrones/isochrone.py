@@ -607,6 +607,12 @@ class FastIsochrone(Isochrone):
                      'minage','maxage','minfeh','maxfeh','minmass','maxmass']:
             _ = getattr(self, attr)
 
+    def __getstate__(self):
+        odict = self.__dict__.copy()
+        return odict
+
+    def __setstate__(self, odict):
+        self.__dict__ = odict
 
     @property
     def df(self):
