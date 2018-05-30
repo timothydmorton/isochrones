@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+"""
+A command-line program to fit a StarModel using the isochrones package
+
+Input argument is name of a folder that contains a file
+called ``star.ini``, which is a config file containing all
+the observed properties of the star on which the model should
+be conditioned.  Multiple folder names can also be passed.
+
+"""
+
+if __name__=='__main__':
+
+    import matplotlib
+    matplotlib.use('agg')
+
+    import argparse
+    import schwimmbad
+
+    from isochrones.starfit import starfit_group
+
+    parser = argparse.ArgumentParser(description='Fit multiple physical properties of a star conditioned on observed quantities.')
+
+    parser.add_argument('folders', nargs='*', default=['.'])
+    parser.add_argument('--models', default='mist')
+    parser.add_argument('--emcee', action='store_true')
+    parser.add_argument('--plot_only', action='store_true')
+    parser.add_argument('-o','--overwrite', action='store_true')
+    parser.add_argument('-v','--verbose', action='store_true')
+    parser.add_argument('--test', action='store_true')
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--ncores", dest="n_cores", default=1,
+                       type=int, help="Number of processes (uses multiprocessing).")
+    group.add_argument("--mpi", dest="mpi", default=False,
+                       action="store_true", help="Run with MPI.")
+
+
+    args = parser.parse_args()
+
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
+
+    try:
+        import pymultinest
+    except ImportError:
+        args.emcee = True
+
+    logger = None #dummy
+
+    for i,folder in enumerate(args.folders):
+        print('{} of {}: {}'.format(i+1, len(args.folders), folder))
+        kwargs = dict(ic=args.models,
+                      use_emcee=args.emcee, overwrite=args.overwrite,
+                      verbose=args.verbose, logger=logger)
+
+        if args.test:
+            kwargs.update(dict(n_live_points=5, max_iter=50))
+
+        logger = starfit_group(folder, pool=pool, **kwargs)
