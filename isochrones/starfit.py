@@ -167,7 +167,7 @@ class fit_worker(object):
 
 
 def starfit_group(folder, ini_file='star.ini', pool=None, ic='mist',
-                  logger=None, **kwargs):
+                  logger=None, use_emcee=False, **kwargs):
 
     #initialize logger for folder
     logfile = os.path.join(folder, 'starfit-group.log')
@@ -176,8 +176,11 @@ def starfit_group(folder, ini_file='star.ini', pool=None, ic='mist',
     group = StarModelGroup.from_ini(ic, folder, ini_file=ini_file)
 
     print('Fitting {} ({} models)'.format(folder, len(group.models)))
-    
+
     worker = fit_worker(**kwargs)
-    pool.map(worker, group.models)
+    if pool is not None:
+        pool.map(worker, group.models)
+    else:
+        map(worker, group.models)
 
     return logger

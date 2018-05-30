@@ -57,3 +57,5 @@ if __name__=='__main__':
             kwargs.update(dict(n_live_points=5, max_iter=50))
 
         logger = starfit_group(folder, pool=pool, **kwargs)
+
+    pool.close()
