@@ -990,7 +990,7 @@ class StarModel(object):
     def corner_plots(self, basename=None, **kwargs):
         if basename is None:
             basename = self.default_basename
-            
+
         fig1, fig2 = self.corner_physical(**kwargs), self.corner_observed(**kwargs)
         fig1.savefig(basename + '_physical.png')
         fig2.savefig(basename + '_observed.png')
@@ -1170,6 +1170,10 @@ class StarModel(object):
                             '{}-{}'.format(self.ic.name,
                                            self.labelstring))
 
+    @property
+    def default_filename(self):
+        return '{}.h5'.format(self.default_basename)
+
 
 class BinaryStarModel(StarModel):
     _default_name = 'binary'
@@ -1211,6 +1215,13 @@ class StarModelGroup(object):
             mod = deepcopy(self.base_model)
             mod.obs.define_models(self.ic, N=N, index=index)
             self.models.append(mod)
+
+    @classmethod
+    def from_ini(cls, *args, **kwargs):
+        max_multiples = kwargs.pop('max_multiples', 1)
+        max_stars = kwargs.pop('max_stars', 2)
+        mod = StarModel.from_ini(*args, **kwargs)
+        return cls(mod, max_multiples=max_multiples, max_stars=max_stars)
 
     @property
     def ic(self):

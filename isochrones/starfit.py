@@ -9,7 +9,7 @@ if not on_rtd:
     import matplotlib.pyplot as plt
 
 from configobj import ConfigObj
-from .starmodel import StarModel
+from .starmodel import StarModel, StarModelGroup
 from .isochrone import get_ichrone
 
 def initLogging(filename, logger):
@@ -32,7 +32,7 @@ def initLogging(filename, logger):
 
 def starfit(folder, multiplicities=['single'], models='mist',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
-            logger=None, starmodel_type=None, ini_file='star.ini'):
+            logger=None, starmodel_type=None, ini_file='star.ini', **kwargs):
     """ Runs starfit routine for a given folder.
     """
     nstars = {'single':1,
@@ -61,16 +61,16 @@ def starfit(folder, multiplicities=['single'], models='mist',
             start = time.time()
             if plot_only:
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
                                            name=name)
                 except:
                     pass
             else:
                 # Only try to fit model if it doesn't exist, unless overwrite is set
                 fit_model = True
-                
+
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
                                          name=name)
                     fit_model = False
                 except:
@@ -97,16 +97,16 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     # # Prime the jit call signature?
                     # ichrone.mag['J'](1.0, 9.7, 0.1, 1000, 0.4)
 
-                    mod.fit(verbose=verbose, overwrite=overwrite)
+                    mod.fit(verbose=verbose, overwrite=overwrite, **kwargs)
                     mod.save_hdf(os.path.join(folder, model_filename))
                 else:
                     logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
 
-            # Only make corner plots if they are older 
+            # Only make corner plots if they are older
             #  than the starmodel hdf file
             make_corners = False
             for x in ['physical', 'observed']:
-                f = os.path.join(folder, 
+                f = os.path.join(folder,
                                  '{}_corner_{}_{}.png'.format(models, mult, x))
                 if not os.path.exists(f):
                     make_corners = True
@@ -136,7 +136,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
             if make_magplot:
                 fig = mod.mag_plot()
                 plt.savefig(os.path.join(folder,'{}_mags_{}.png'.format(models, mult)))
-                
+
             end = time.time()
             if plot_only:
                 logger.info('{} starfit successful (plots only) for '.format(mult) +
@@ -152,3 +152,32 @@ def starfit(folder, multiplicities=['single'], models='mist',
                          exc_info=True)
 
     return mod, logger
+
+class fit_worker(object):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def __call__(self, mod):
+        print('Model {}:'.format(mod.labelstring))
+        mod.print_ascii()
+
+        mod.fit(**self.kwargs)
+        mod.save_hdf()
+        mod.corner_plots()
+
+
+def starfit_group(folder, ini_file='star.ini', pool=None, ic='mist',
+                  logger=None, **kwargs):
+
+    #initialize logger for folder
+    logfile = os.path.join(folder, 'starfit-group.log')
+    logger = initLogging(logfile, logger)
+
+    group = StarModelGroup.from_ini(ic, folder, ini_file=ini_file)
+
+    print('Fitting {} ({} models)'.format(folder, len(group.models)))
+    
+    worker = fit_worker(**kwargs)
+    pool.map(worker, group.models)
+
+    return logger
