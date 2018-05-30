@@ -164,7 +164,7 @@ class fit_worker(object):
         print('Model {}:'.format(mod.labelstring))
         mod.print_ascii()
 
-        mod.fit(overwrite=overwrite, **self.kwargs)
+        mod.fit(overwrite=self.overwrite, **self.kwargs)
         mod.save_hdf(overwrite=True)
         mod.corner_plots()
 
