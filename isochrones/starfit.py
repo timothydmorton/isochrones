@@ -154,7 +154,10 @@ def starfit(folder, multiplicities=['single'], models='mist',
     return mod, logger
 
 class fit_worker(object):
-    def __init__(self, **kwargs):
+    def __init__(self, use_emcee=False, overwrite=False,
+                **kwargs):
+        self.use_emcee = use_emcee
+        self.overwrite = overwrite
         self.kwargs = kwargs
 
     def __call__(self, mod):
@@ -162,12 +165,12 @@ class fit_worker(object):
         mod.print_ascii()
 
         mod.fit(**self.kwargs)
-        mod.save_hdf()
+        mod.save_hdf(overwrite=True)
         mod.corner_plots()
 
 
 def starfit_group(folder, ini_file='star.ini', pool=None, ic='mist',
-                  logger=None, use_emcee=False, **kwargs):
+                  logger=None, use_emcee=False, overwrite=False, **kwargs):
 
     #initialize logger for folder
     logfile = os.path.join(folder, 'starfit-group.log')
@@ -177,7 +180,8 @@ def starfit_group(folder, ini_file='star.ini', pool=None, ic='mist',
 
     print('Fitting {} ({} models)'.format(folder, len(group.models)))
 
-    worker = fit_worker(**kwargs)
+    worker = fit_worker(use_emcee=use_emcee, overwrite=overwrite,
+                        **kwargs)
     if pool is not None:
         pool.map(worker, group.models)
     else:
