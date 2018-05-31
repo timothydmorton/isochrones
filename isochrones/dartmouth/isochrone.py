@@ -42,7 +42,7 @@ class Dartmouth_Isochrone(Isochrone):
     default_bands = DartmouthModelGrid.default_bands
 
     def __init__(self,bands=None,
-                 afe='afep0', y='', **kwargs): # minage=9 removed
+                 afe='afep0', y='', verify=True, **kwargs): # minage=9 removed
         if bands is None:
             bands = list(self.default_bands)
 
@@ -55,7 +55,8 @@ class Dartmouth_Isochrone(Isochrone):
         global TRI
 
         if TRI is None:
-            DartmouthModelGrid.verify_grids()
+            if verify:
+                DartmouthModelGrid.verify_grids()
             try:
                 f = open(TRI_FILE,'rb')
                 TRI = pickle.load(f)
@@ -68,9 +69,10 @@ class Dartmouth_Isochrone(Isochrone):
 
         mags = {b:df[b].values for b in bands}
 
-        Isochrone.__init__(self,df['MMo'].values, df['age'].values,
-                           df['feh'].values,df['MMo'].values, df['LogLLo'].values,
-                           10**df['LogTeff'].values,df['LogG'].values,mags,tri=TRI,
+        Isochrone.__init__(self, df['MMo'].values, df['age'].values,
+                           df['feh'].values, df['MMo'].values, df['LogLLo'].values,
+                           10**df['LogTeff'].values, df['LogG'].values, mags,
+                           eep=df['EEP'], tri=TRI,
                            **kwargs)
 
     def agerange(self, m, feh=0.0):
