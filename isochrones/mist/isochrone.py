@@ -15,6 +15,7 @@ class MIST_Isochrone(FastIsochrone):
 
     """
     name = 'mist'
+    eep_col = 0
     age_col = 1
     feh_col = 7
     mass_col = 2

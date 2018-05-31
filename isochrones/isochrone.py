@@ -433,7 +433,7 @@ class Isochrone(object):
         mags = {band:self.mag[band](*args) for band in self.bands}
 
         props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
-                'Teff':Teffs,'mag':mags}
+                'Teff':Teffs,'mag':mags, 'EEP':eeps}
 
         if not return_df:
             return props
@@ -563,6 +563,7 @@ class FastIsochrone(Isochrone):
     """
     name = 'default'
     modelgrid = ModelGrid
+    eep_col = None
     age_col = None
     feh_col = None
     mass_col = None
@@ -589,6 +590,7 @@ class FastIsochrone(Isochrone):
         self._ages = None
         self._Nfeh = None
         self._Nage = None
+        self._eeps = None
 
         self._minage = None
         self._maxage = None
@@ -706,20 +708,17 @@ class FastIsochrone(Isochrone):
             self._maxmass = self.df.iloc[:, self.mass_col].max()
         return self._maxmass
 
-    def logTeff(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, self.loggTeff_col)
+    def logTeff(self, eep, age, feh):
+        return self.interp_value(eep, age, feh, self.loggTeff_col)
 
-    def logg(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, self.logg_col)
+    def logg(self, eep, age, feh):
+        return self.interp_value(eep, age, feh, self.logg_col)
 
-    def logL(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, self.logL_col)
+    def logL(self, eep, age, feh):
+        return self.interp_value(eep, age, feh, self.logL_col)
 
-    def mass(self, *args):
-        if np.size(args[0]) > 1:
-            return np.array(args[0])
-        else:
-            return args[0]
+    def mass(self, eep, age, feh):
+        return self.interp_value(eep, age, feh, self.mass_col)
 
     @property
     def grid(self):
@@ -768,23 +767,23 @@ class FastIsochrone(Isochrone):
             self._grid = data
             self._grid_Ns = lens
 
-    def interp_value(self, mass, age, feh, icol): # 4 is log_g
+    def interp_value(self, eep, age, feh, icol): # 4 is log_g
         if self._ages is None:
             self._initialize()
 
         try:
-            return interp_value(float(mass), float(age), float(feh), icol,
-                                self.grid, self.mass_col,
+            return interp_value(float(eep), float(age), float(feh), icol,
+                                self.grid, self.eep_col,
                                 self.ages, self.fehs, self.grid_Ns, self.debug)
 
         except:
             # First, broadcast to common shape.
-            b = np.broadcast(mass, age, feh)
-            mass = np.resize(mass, b.shape).astype(float)
+            b = np.broadcast(eep, age, feh)
+            eep = np.resize(eep, b.shape).astype(float)
             age = np.resize(age, b.shape).astype(float)
             feh = np.resize(feh, b.shape).astype(float)
 
             # Then pass to helper function
-            return interp_values(mass, age, feh, icol,
-                                self.grid, self.mass_col,
+            return interp_values(eep, age, feh, icol,
+                                self.grid, self.eep_col,
                                 self.ages, self.fehs, self.grid_Ns)
