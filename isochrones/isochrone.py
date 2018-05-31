@@ -116,7 +116,8 @@ class Isochrone(object):
         If desired, a minimum or maximum age can be manually entered.
 
     """
-    def __init__(self,m_ini,age,feh,m_act,logL,Teff,logg,mags,tri=None,
+    def __init__(self, m_ini, age, feh, m_act, logL, Teff, logg, mags,
+                 eep=None, tri=None,
                  minage=None, maxage=None, ext_table=False):
         """Warning: if tri object not provided, this will be very slow to be created.
         """
@@ -156,7 +157,8 @@ class Isochrone(object):
                     'logL':logL,
                     'logg':logg,
                     'logTeff':np.log10(Teff),
-                    'mags':mags}
+                    'mags':mags,
+                    'eep':eep}
         self._props = ['mass', 'logL', 'logg', 'logTeff']
 
         self.bands = list(mags.keys())
@@ -164,6 +166,8 @@ class Isochrone(object):
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
         self.mag = {b : self._mag_fn(b) for b in self.bands}
+
+        self._eeps = None
 
     def __getstate__(self):
         odict = self.__dict__.copy()
@@ -182,6 +186,12 @@ class Isochrone(object):
             setattr(self, attr, interpnd(self.tri, self._data[prop]))
         fn = getattr(self, attr)
         return fn(*args)
+
+    @property
+    def eeps(self):
+        if self._eeps is None:
+            self._eeps = np.sort(np.unique(self._data['eep']))
+        return self._eeps
 
     def mass(self, *args):
         return self._prop('mass', *args)
@@ -408,22 +418,19 @@ class Isochrone(object):
             minm = self.minmass
         if maxm is None:
             maxm = self.maxmass
-        ms = np.arange(minm,maxm,dm)
-        ages = np.ones(ms.shape)*age
 
-        Ms = self.mass(ms,ages,feh)
-        Rs = self.radius(ms,ages,feh)
-        logLs = self.logL(ms,ages,feh)
-        loggs = self.logg(ms,ages,feh)
-        Teffs = self.Teff(ms,ages,feh)
-        mags = {band:self.mag[band](ms,ages,feh) for band in self.bands}
-        #for band in self.bands:
-        #    mags[band] = self.mag[band](ms,ages)
+        eeps = self.eeps
+
+        args = (eeps, age, feh)
+        Ms = self.mass(*args)
+        Rs = self.radius(*args)
+        logLs = self.logL(*args)
+        loggs = self.logg(*args)
+        Teffs = self.Teff(*args)
+
         if distance is not None:
-            dm = 5*np.log10(distance) - 5
-            for band in mags:
-                A = AV*EXTINCTION[band]
-                mags[band] = mags[band] + dm + A
+            args = args + (distance, AV)
+        mags = {band:self.mag[band](*args) for band in self.bands}
 
         props = {'M':Ms,'R':Rs,'logL':logLs,'logg':loggs,
                 'Teff':Teffs,'mag':mags}
@@ -438,10 +445,8 @@ class Isochrone(object):
                         d['{}_mag'.format(m)] = props['mag'][m]
                 else:
                     d[key] = props[key]
-            try:
-                df = pd.DataFrame(d)
-            except ValueError:
-                df = pd.DataFrame(d, index=[0])
+            df = pd.DataFrame(d, index=eeps).dropna()
+
             return df
 
     def random_points(self,n,minmass=None,maxmass=None,
@@ -591,6 +596,8 @@ class FastIsochrone(Isochrone):
         self._maxmass = None
         self._minfeh = None
         self._maxfeh = None
+        self._mineep = None
+        self._maxeep = None
 
         n_common_cols = len(self.modelgrid.get_common_columns(**kwargs))
         self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
@@ -633,6 +640,12 @@ class FastIsochrone(Isochrone):
         return self._ages
 
     @property
+    def eeps(self):
+        if self._eeps is None:
+            self._eeps = np.sort(self.df['EEP'].unique())
+        return self._eeps
+
+    @property
     def Nfeh(self):
         if self._Nfeh is None:
             self._Nfeh = len(self.fehs)
@@ -643,6 +656,19 @@ class FastIsochrone(Isochrone):
         if self._Nage is None:
             self._Nage = len(self.ages)
         return self._Nage
+
+    @property
+    def mineep(self):
+        if self._mineep is None:
+            self._mineep = self.eeps.min()
+        return self._mineep
+
+    @property
+    def maxeep(self):
+        if self._maxeep is None:
+            self._maxeep = self.eeps.max()
+        return self._maxeep
+
 
     @property
     def minage(self):
