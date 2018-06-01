@@ -29,7 +29,7 @@ else:
 from .config import ISOCHRONES
 from .grid import ModelGrid
 
-def get_ichrone(models, bands=None, default=True):
+def get_ichrone(models, bands=None, default=False, **kwargs):
     """Gets Isochrone Object by name, or type, with the right bands
 
     If `default` is `True`, then will set bands
@@ -39,11 +39,10 @@ def get_ichrone(models, bands=None, default=True):
         return models
 
     def actual(bands, ictype):
-        if default:
-            if bands is None:
-                return list(ictype.default_bands)
-            else:
-                return list(set(bands).union(set(ictype.default_bands)))
+        if bands is None:
+            return list(ictype.default_bands)
+        elif default:
+            return list(set(bands).union(set(ictype.default_bands)))
         else:
             return bands
 
@@ -51,19 +50,19 @@ def get_ichrone(models, bands=None, default=True):
         ichrone = models(actual(bands, models))
     elif models=='dartmouth':
         from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone))
+        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone), **kwargs)
     elif models=='dartmouthfast':
         from isochrones.dartmouth import Dartmouth_FastIsochrone
-        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone))
+        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone), **kwargs)
     elif models=='mist':
         from isochrones.mist import MIST_Isochrone
-        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone))
+        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone), **kwargs)
     elif models=='padova':
         from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone))
+        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone), **kwargs)
     elif models=='basti':
         from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone))
+        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone), **kwargs)
     else:
         raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone
@@ -567,7 +566,7 @@ class FastIsochrone(Isochrone):
     logL_col = None
     default_bands = ('g')
 
-    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False):
+    def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False, **kwargs):
         # df should be indexed by [feh, age]
 
         if bands is None:
@@ -593,7 +592,7 @@ class FastIsochrone(Isochrone):
         self._minfeh = None
         self._maxfeh = None
 
-        n_common_cols = len(self.modelgrid.common_columns)
+        n_common_cols = len(self.modelgrid.get_common_columns(**kwargs))
         self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
         self.mag = {b: MagFunction(self, b, i)
                             for b,i in self._mag_cols.items()}
@@ -601,6 +600,9 @@ class FastIsochrone(Isochrone):
         #organized array
         self._grid = None
         self._grid_Ns = None
+
+        # kwargs to pass to self.modelgrid
+        self.modelgrid_kwargs = kwargs
 
     def _initialize(self):
         for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
@@ -611,7 +613,7 @@ class FastIsochrone(Isochrone):
     @property
     def df(self):
         if self._df is None:
-            self._df = self.modelgrid(self.bands).df
+            self._df = self.modelgrid(self.bands, **self.modelgrid_kwargs).df
         return self._df
 
     @property
@@ -707,7 +709,16 @@ class FastIsochrone(Isochrone):
 
     @property
     def _npz_filename(self):
-        return os.path.join(ISOCHRONES, self.name, '{}.npz'.format('-'.join(self.bands)))
+        keys = list(self.modelgrid_kwargs.keys())
+        keys.sort()
+
+        filename = os.path.join(ISOCHRONES, self.name, '{}'.format('-'.join(self.bands)))
+
+        for k in keys:
+            filename += '_{}{}'.format(k, self.modelgrid_kwargs[k])
+
+        filename += '.npz'
+        return filename
 
     def _make_grid(self, recalc=False):
         # Read from file if available.

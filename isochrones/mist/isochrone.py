@@ -3,7 +3,7 @@ from ..isochrone import FastIsochrone
 from .grid import MISTModelGrid
 
 class MIST_Isochrone(FastIsochrone):
-    """MESA Isochrones and Stellar Tracks 
+    """MESA Isochrones and Stellar Tracks
 
     :param bands: (optional)
         List of desired photometric bands.  Default list of bands is
@@ -24,7 +24,18 @@ class MIST_Isochrone(FastIsochrone):
     modelgrid = MISTModelGrid
     default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
 
+    def __init__(self, *args, **kwargs):
+        self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
+        if self.version == '1.1':
+            self.mass_col = 3
+            self.loggTeff_col = 4
+            self.logg_col = 5
+            self.logL_col = 6
+            self.feh_col = 7
+
+            self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
+
+        super().__init__(*args, **kwargs)
+
     def Z_surf(self, mass, age, feh):
         return self.interp_value(mass, age, feh, 6)
-
-

@@ -11,23 +11,32 @@ from isochrones import StarModel, get_ichrone
 DAR = Dartmouth_Isochrone()
 MIST = MIST_Isochrone()
 
-def test_dartmouth_basic(bands=['z', 'B', 'W3', 'LSST_r', 'J', 'UK_J']):
+def test_dartmouth_basic(bands=['J']):
     dar = Dartmouth_Isochrone(bands)
     _basic_ic_checks(dar)
-    print('{} ({})'.format(dar.radius(1., 9.5, 0.0), 0.95409593462955189))
+
     assert np.isclose(dar.radius(1., 9.5, 0.0), 0.95409593462955189)
     assert np.isclose(dar.radius(1.01, 9.72, 0.02), 1.0435559519926865)
     assert np.isclose(dar.radius(1.21, 9.38, 0.11), 1.2762022494652547)
     assert np.isclose(dar.radius(0.61, 9.89, -0.22), 0.5964945760402941)
 
-def test_mist_basic(bands=['G','B','V','J','H','K','W1','W2','W3']):
-    ic = MIST_Isochrone(bands)
+def test_mist_basic(bands=['J']):
+    ic = MIST_Isochrone(bands, version='1.0')
+    ic2 = MIST_Isochrone(bands + ['TESS', 'BP', 'RP'], version='1.1')
+
     _basic_ic_checks(ic)
-    print('{} ({})'.format(ic.radius(1.0, 9.5, 0.0), 0.9764494078461442))
+    _basic_ic_checks(ic2)
+
     assert np.isclose(ic.radius(1.0, 9.5, 0.0), 0.9764494078461442)
     assert np.isclose(ic.radius(1.01, 9.72, 0.02), 1.0671791635014685)
-    assert np.isclose(ic.radius(1.21, 9.38, 0.11), 1.2836469028034225)
-    assert np.isclose(ic.radius(0.61, 9.89, -0.22), 0.59475269177846402)
+    assert np.isclose(ic.radius(1.21, 9.38, 0.11), 1.2963342261673843)
+    assert np.isclose(ic.radius(0.61, 9.89, -0.22), 0.5873830516268735)
+
+    assert np.isclose(ic2.radius(1.0, 9.5, 0.0), 0.9765234978729515)
+    assert np.isclose(ic2.radius(1.01, 9.72, 0.02), 1.0671845393364638)
+    assert np.isclose(ic2.radius(1.21, 9.38, 0.11), 1.2963536270911573)
+    assert np.isclose(ic2.radius(0.61, 9.89, -0.22), 0.5873849015685695)
+
 
 def test_spec():
     _check_spec(DAR)
@@ -38,9 +47,9 @@ def test_AV():
     AV = get_AV_infinity(299.268036, 45.227428)
     assert np.isclose(AV, 1.216)
 
-def test_get_ichrone(models=['dartmouth','dartmouthfast','mist']):
+def test_get_ichrone(models=['dartmouth','dartmouthfast','mist'], bands=['J']):
     for m in models:
-        get_ichrone(m)
+        get_ichrone(m, bands=bands)
 
 ##########
 

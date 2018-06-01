@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import logging
 import tarfile
+from distutils.version import StrictVersion
 
 from ..config import ISOCHRONES
 from ..grid import ModelGrid
@@ -17,7 +18,7 @@ class MISTModelGrid(ModelGrid):
 
     phot_bands = dict(UBVRIplus=['Bessell_U', 'Bessell_B', 'Bessell_V',
                         'Bessell_R', 'Bessell_I', '2MASS_J', '2MASS_H', '2MASS_Ks',
-                        'Kepler_Kp', 'Kepler_D51', 'Hipparcos_Hp', 
+                        'Kepler_Kp', 'Kepler_D51', 'Hipparcos_Hp',
                         'Tycho_B', 'Tycho_V', 'Gaia_G'],
                       WISE=['WISE_W1', 'WISE_W2', 'WISE_W3', 'WISE_W4'],
                       CFHT=['CFHT_u', 'CFHT_g', 'CFHT_r',
@@ -41,15 +42,54 @@ class MISTModelGrid(ModelGrid):
                                 'UKIDSS_H', 'UKIDSS_K'],
                       SDSS=['SDSS_u', 'SDSS_g', 'SDSS_r', 'SDSS_i', 'SDSS_z'])
 
-    default_kwargs = {'version':'1.0'}
+    default_kwargs = {'version':'1.1', 'vvcrit':0.0}
     datadir = os.path.join(ISOCHRONES, 'mist')
     zenodo_record = 161241
-    zenodo_files = ('mist.tgz',)
+    zenodo_files = ()#('mist.tgz',)
     zenodo_md5 = ('0deaaca2836c7148c27ce5ba5bbdfe59',)
     master_tarball_file = 'mist.tgz'
 
+    default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
+
+    def __init__(self, *args, **kwargs):
+        version = kwargs.get('version', self.default_kwargs['version'])
+        version = StrictVersion(str(version))
+
+        if version > '1.0':
+            self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
+
+        super().__init__(*args, **kwargs)
+
     @classmethod
-    def get_band(cls, b):
+    def get_common_columns(cls, version=None, **kwargs):
+        if version is None:
+            version = cls.default_kwargs['version']
+
+        version = StrictVersion(str(version))
+
+        if version == '1.0':
+            return ('EEP', 'log10_isochrone_age_yr', 'initial_mass',
+                        'log_Teff', 'log_g', 'log_L', 'Z_surf', 'feh', 'phase')
+        elif version >= '1.1':
+            return ('EEP', 'log10_isochrone_age_yr', 'initial_mass', 'star_mass',
+                    'log_Teff', 'log_g', 'log_L', '[Fe/H]_init', '[Fe/H]')
+
+    @property
+    def version(self):
+        return StrictVersion(str(self.kwargs['version']))
+
+    @property
+    def common_columns(self):
+        return self.get_common_columns(self.version)
+
+    def phot_tarball_url(self, phot):
+        version = self.kwargs['version']
+        vvcrit = self.kwargs['vvcrit']
+        url = 'http://waps.cfa.harvard.edu/MIST/data/tarballs_v{0}/MIST_v{0}_vvcrit{1}_{2}.tar.gz'.format(version, vvcrit, phot)
+        return url
+
+    @classmethod
+    def get_band(cls, b, **kwargs):
         """Defines what a "shortcut" band name refers to.  Returns phot_system, band
 
         """
@@ -71,12 +111,18 @@ class MISTModelGrid(ModelGrid):
         elif b in ['kep','Kepler','Kp']:
             phot = 'UBVRIplus'
             band = 'Kepler_Kp'
+        elif b=='TESS':
+            phot = 'UBVRIplus'
+            band = 'TESS'
         elif b in ['W1','W2','W3','W4']:
             phot = 'WISE'
             band = 'WISE_{}'.format(b)
-        elif b=='G':
+        elif b in ('G', 'BP', 'RP'):
             phot = 'UBVRIplus'
-            band = 'Gaia_G'
+            band = 'Gaia_{}'.format(b)
+            if 'version' in kwargs:
+                if kwargs['version']=='1.1':
+                    band += '_DR2Rev'
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
             if m:
@@ -100,21 +146,25 @@ class MISTModelGrid(ModelGrid):
                 raise ValueError('MIST grids cannot resolve band {}!'.format(b))
         return phot, band
 
-    def phot_tarball_file(self, phot, version='1.0'):
-        return os.path.join(self.datadir, 'MIST_v{}_{}.tar.gz'.format(version, phot))
+    def phot_tarball_file(self, phot):
+        version = self.kwargs['version']
+        vvcrit = self.kwargs['vvcrit']
+        return os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}.tar.gz'.format(version, vvcrit, phot))
 
-    def extract_phot_tarball(self, phot, version='1.0'):
-        phot_tarball = self.phot_tarball_file(phot)
-        with tarfile.open(phot_tarball) as tar:
-            logging.info('Extracting {}...'.format(phot_tarball))
-            tar.extractall(self.datadir)
+    # def extract_phot_tarball(self, phot):
+    #     version = self.kwargs['version']
+    #     phot_tarball = self.phot_tarball_file(phot)
+    #     with tarfile.open(phot_tarball) as tar:
+    #         logging.info('Extracting {}...'.format(phot_tarball))
+    #         tar.extractall(self.datadir)
 
-    def get_filenames(self, phot, version='1.0'):
-        d = os.path.join(self.datadir, 'MIST_v{}_{}'.format(version, phot))
+    def get_filenames(self, phot):
+        version = self.kwargs['version']
+        vvcrit = self.kwargs['vvcrit']
+        d = os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}'.format(version, vvcrit, phot))
         if not os.path.exists(d):
-            if not os.path.exists(self.phot_tarball_file(phot, version=version)):
-                self.extract_master_tarball()
-            self.extract_phot_tarball(phot, version=version)
+            if not os.path.exists(self.phot_tarball_file(phot)):
+                self.extract_phot_tarball(phot)
 
         return [os.path.join(d,f) for f in os.listdir(d) if re.search('\.cmd$', f)]
 
@@ -129,7 +179,7 @@ class MISTModelGrid(ModelGrid):
 
     @classmethod
     def to_df(cls, filename):
-        with open(filename, 'r') as fin:
+        with open(filename, 'r', encoding='latin-1') as fin:
             while True:
                 line = fin.readline()
                 if re.match('# EEP', line):
@@ -141,14 +191,13 @@ class MISTModelGrid(ModelGrid):
         df['feh'] = feh
         return df
 
-    def df_all(self, phot):
+    def df_all(self, phot, **kwargs):
         df = super(MISTModelGrid, self).df_all(phot)
         df = df.sort_values(by=['feh','log10_isochrone_age_yr','initial_mass'])
         df.index = [df.feh, df.log10_isochrone_age_yr]
         return df
-        
-    def hdf_filename(self, phot, version='1.0'):
-        return os.path.join(self.datadir, 'MIST_v{}_{}.h5'.format(version, phot))
 
-
-
+    def hdf_filename(self, phot):
+        version = self.kwargs['version']
+        vvcrit = self.kwargs['vvcrit']
+        return os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}.h5'.format(version, vvcrit, phot))

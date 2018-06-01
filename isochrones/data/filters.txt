@@ -31,11 +31,15 @@ UK_H 16588.4
 UK_K 21897.7
 # LSST
 LSST_u 3693.2
-LSST_g 4797.3 
+LSST_g 4797.3
 LSST_r 6195.8
 LSST_i 7515.3
 LSST_z 8664.4
 LSST_y 9710.3
 Kepler 6417
 # Gaia
-G 7000.0
+G 6397.4
+BP 5130 # in between bright and faint
+RP 7830.5
+# TESS
+TESS 8000.

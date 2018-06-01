@@ -48,9 +48,8 @@ class DartmouthModelGrid(ModelGrid):
     default_kwargs = {'afe':'afep0', 'y':''}
     datadir = os.path.join(ISOCHRONES, 'dartmouth')
     zenodo_record = 1002927
-    zenodo_files = ('dartmouth.tgz', 'dartmouth.tri')
-    zenodo_md5 = ('acb68d131957fe50ae4f5b64d36d6482',
-                  '570b758ea98c8a5a806149bd1b854b98')
+    zenodo_files = ('dartmouth.tri',)
+    zenodo_md5 = ('570b758ea98c8a5a806149bd1b854b98',)
     master_tarball_file = 'dartmouth.tgz'
 
     default_bands = ('B','V','g','r','i','z',
@@ -60,7 +59,7 @@ class DartmouthModelGrid(ModelGrid):
     extra_url_base = 'http://stellar.dartmouth.edu/models/isochrones'
 
     @classmethod
-    def get_band(cls, b):
+    def get_band(cls, b, **kwargs):
         """Defines what a "shortcut" band name refers to.
 
         """
@@ -108,8 +107,9 @@ class DartmouthModelGrid(ModelGrid):
     def get_filenames(self, phot, afe='afep0', y=''):
         if not os.path.exists(os.path.join(self.datadir, 'isochrones', phot)):
             if not os.path.exists(self.phot_tarball_file(phot, afe=afe, y=y)):
-                self.extract_master_tarball()
-            self.extract_phot_tarball(phot)
+                self.extract_phot_tarball(phot)
+                # self.extract_master_tarball()
+            # self.extract_phot_tarball(phot)
 
         return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,self.datadir))
 
