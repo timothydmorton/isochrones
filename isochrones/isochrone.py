@@ -38,31 +38,23 @@ def get_ichrone(models, bands=None, default=False, **kwargs):
     if isinstance(models, Isochrone):
         return models
 
-    def actual(bands, ictype):
-        if bands is None:
-            return list(ictype.default_bands)
-        elif default:
-            return list(set(bands).union(set(ictype.default_bands)))
-        else:
-            return bands
-
     if type(models) is type(type):
-        ichrone = models(actual(bands, models))
+        ichrone = models(bands)
     elif models=='dartmouth':
         from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone(bands=actual(bands, Dartmouth_Isochrone), **kwargs)
+        ichrone = Dartmouth_Isochrone(bands=bands, **kwargs)
     elif models=='dartmouthfast':
         from isochrones.dartmouth import Dartmouth_FastIsochrone
-        ichrone = Dartmouth_FastIsochrone(bands=actual(bands, Dartmouth_FastIsochrone), **kwargs)
+        ichrone = Dartmouth_FastIsochrone(bands=bands, **kwargs)
     elif models=='mist':
         from isochrones.mist import MIST_Isochrone
-        ichrone = MIST_Isochrone(bands=actual(bands, MIST_Isochrone), **kwargs)
+        ichrone = MIST_Isochrone(bands=bands, **kwargs)
     elif models=='padova':
         from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone(bands=actual(bands, Padova_Isochrone), **kwargs)
+        ichrone = Padova_Isochrone(bands=bands, **kwargs)
     elif models=='basti':
         from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone(bands=actual(bands, Basti_Isochrone), **kwargs)
+        ichrone = Basti_Isochrone(bands=bands, **kwargs)
     else:
         raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone
