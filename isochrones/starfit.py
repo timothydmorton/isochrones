@@ -61,16 +61,16 @@ def starfit(folder, multiplicities=['single'], models='mist',
             start = time.time()
             if plot_only:
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
                                            name=name)
                 except:
                     pass
             else:
                 # Only try to fit model if it doesn't exist, unless overwrite is set
                 fit_model = True
-                
+
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename), 
+                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
                                          name=name)
                     fit_model = False
                 except:
@@ -83,7 +83,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     c = ConfigObj(ini_file_path)
 
                     if ichrone is None:
-                        bands = StarModel.get_bands(ini_file)
+                        bands = StarModel.get_bands(ini_file_path)
                         ichrone = get_ichrone(models, bands)
 
                     N = nstars[mult] if 'N' not in c else None
@@ -102,11 +102,11 @@ def starfit(folder, multiplicities=['single'], models='mist',
                 else:
                     logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
 
-            # Only make corner plots if they are older 
+            # Only make corner plots if they are older
             #  than the starmodel hdf file
             make_corners = False
             for x in ['physical', 'observed']:
-                f = os.path.join(folder, 
+                f = os.path.join(folder,
                                  '{}_corner_{}_{}.png'.format(models, mult, x))
                 if not os.path.exists(f):
                     make_corners = True
@@ -136,7 +136,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
             if make_magplot:
                 fig = mod.mag_plot()
                 plt.savefig(os.path.join(folder,'{}_mags_{}.png'.format(models, mult)))
-                
+
             end = time.time()
             if plot_only:
                 logger.info('{} starfit successful (plots only) for '.format(mult) +
