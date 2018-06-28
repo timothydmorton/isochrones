@@ -32,7 +32,8 @@ def initLogging(filename, logger):
 
 def starfit(folder, multiplicities=['single'], models='mist',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
-            logger=None, starmodel_type=None, ini_file='star.ini'):
+            logger=None, starmodel_type=None, ini_file='star.ini',
+            no_plots=False, **kwargs):
     """ Runs starfit routine for a given folder.
     """
     nstars = {'single':1,
@@ -97,8 +98,8 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     # # Prime the jit call signature?
                     # ichrone.mag['J'](1.0, 9.7, 0.1, 1000, 0.4)
 
-                    mod.fit(verbose=verbose, overwrite=overwrite)
-                    mod.save_hdf(os.path.join(folder, model_filename))
+                    mod.fit(verbose=verbose, overwrite=overwrite, **kwargs)
+                    mod.save_hdf(os.path.join(folder, model_filename), overwrite=overwrite)
                 else:
                     logger.info('{} exists.  Use -o to overwrite.'.format(model_filename))
 
@@ -117,7 +118,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     if t_mod > t_plot:
                         make_corners=True
 
-            if make_corners or plot_only:
+            if (make_corners or plot_only) and not no_plots:
                 corner_base = os.path.join(folder, '{}_corner_{}'.format(models, mult))
                 fig1,fig2 = mod.corner_plots(corner_base)
 
