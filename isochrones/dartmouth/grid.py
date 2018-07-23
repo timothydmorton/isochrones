@@ -152,7 +152,7 @@ class DartmouthModelGrid(ModelGrid):
         df = super(DartmouthModelGrid, self).df_all(phot)
         df.loc[:,'age'] = np.log10(df.age * 1e9) # convert to log10(age)
         df = df.sort_values(by=['feh','age','MMo','EEP'])
-        df.index = [df.feh, df.age]
+        df.index = [df.feh, df.age, df.EEP]
         return df
 
     def hdf_filename(self, phot):
