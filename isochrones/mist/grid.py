@@ -194,7 +194,7 @@ class MISTModelGrid(ModelGrid):
     def df_all(self, phot, **kwargs):
         df = super(MISTModelGrid, self).df_all(phot)
         df = df.sort_values(by=['feh','log10_isochrone_age_yr','initial_mass'])
-        df.index = [df.feh, df.log10_isochrone_age_yr]
+        df.index = [df.feh, df.log10_isochrone_age_yr, df.EEP]
         return df
 
     def hdf_filename(self, phot):
