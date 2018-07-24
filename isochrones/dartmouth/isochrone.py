@@ -83,12 +83,11 @@ class Dartmouth_Isochrone(Isochrone):
 
 class Dartmouth_FastIsochrone(FastIsochrone):
     name = 'dartmouth'
-    age_col = 5
-    feh_col = 6
-    mass_col = 1
-    loggTeff_col = 2
-    logg_col = 3
-    logL_col = 4
+
+    mass_col = 'MMo'
+    loggTeff_col = 'LogTeff'
+    logg_col = 'LogG'
+    logL_col = 'LogLLo'
     modelgrid = DartmouthModelGrid
     default_bands = DartmouthModelGrid.default_bands
 
