@@ -1,4 +1,4 @@
-__version__ = '1.2.1'
+__version__ = '1.2.2dev'
 
 try:
     __ISOCHRONES_SETUP__
