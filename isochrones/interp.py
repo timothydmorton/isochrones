@@ -49,6 +49,7 @@ def searchsorted(arr, N, x):
         elif arr[m] > x:
             R = m - 1
         elif arr[m] == x:
+            L = m
             done = True
         m = (L+R)//2
         if L>R:
