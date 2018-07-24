@@ -19,7 +19,7 @@ if not on_rtd:
     RSUN = const.R_sun.cgs.value
 
     from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
-    from .interp import interp_value, interp_values
+    from .interp import interp_value, interp_values, DFInterpolator
 
 else:
     G = 6.67e-11
@@ -375,7 +375,7 @@ class Isochrone(object):
             return df
 
 
-    def isochrone(self,age,feh=0.0,minm=None,maxm=None,dm=0.02,
+    def isochrone(self, age, feh=0.0, thin=5,
                   return_df=True,distance=None,AV=0.0):
         """
         Returns stellar models at constant age and feh, for a range of masses
@@ -406,12 +406,8 @@ class Isochrone(object):
             :class:`pandas.DataFrame` or dictionary containing results.
 
         """
-        if minm is None:
-            minm = self.minmass
-        if maxm is None:
-            maxm = self.maxmass
 
-        eeps = self.eeps
+        eeps = self.eeps[::thin]
 
         args = (eeps, age, feh)
         Ms = self.mass(*args)
@@ -502,10 +498,10 @@ class Isochrone(object):
 
 
 class MagFunction(object):
-    def __init__(self, ic, band, icol):
+    def __init__(self, ic, band):
         self.ic = ic
         self.band = band
-        self.icol = icol
+
         self.x_ext = ic.x_ext
         self.ext_table = ic.ext_table
 
@@ -518,7 +514,7 @@ class MagFunction(object):
         else:
             self.AAV = ext(LAMBDA_EFF[self.band])
 
-    def __call__(self, mass, age, feh, distance=10, AV=0.0, x_ext=None, ext_table=False):
+    def __call__(self, eep, age, feh, distance=10, AV=0.0, x_ext=None, ext_table=False):
         if x_ext is not None:
             if x_ext==0.:
                 ext = extcurve_0
@@ -534,7 +530,7 @@ class MagFunction(object):
 
         A = AV*AAV
         dm = 5*np.log10(distance) - 5
-        mag = self.ic.interp_value(mass, age, feh, self.icol)
+        mag = self.ic.interp_value(eep, age, feh, self.band)
         return mag + dm + A
 
 class FastIsochrone(Isochrone):
@@ -555,14 +551,15 @@ class FastIsochrone(Isochrone):
     """
     name = 'default'
     modelgrid = ModelGrid
-    eep_col = None
-    age_col = None
-    feh_col = None
-    mass_col = None
-    loggTeff_col = None
-    logg_col = None
-    logL_col = None
-    default_bands = ('g')
+
+    eep_col = 'EEP'
+    age_col = 'age'
+    feh_col = 'feh'
+    mass_col = 'mass'
+    logTeff_col = 'logTeff'
+    logg_col = 'logg'
+    logL_col = 'logL'
+    default_bands = ('g',)
 
     def __init__(self, bands=None, x_ext=0., ext_table=False, debug=False, **kwargs):
         # df should be indexed by [feh, age]
@@ -593,10 +590,7 @@ class FastIsochrone(Isochrone):
         self._mineep = None
         self._maxeep = None
 
-        n_common_cols = len(self.modelgrid.get_common_columns(**kwargs))
-        self._mag_cols = {b:n_common_cols+i for i,b in enumerate(self.bands)}
-        self.mag = {b: MagFunction(self, b, i)
-                            for b,i in self._mag_cols.items()}
+        self.mag = {b: MagFunction(self, b) for b in self.bands}
 
         #organized array
         self._grid = None
@@ -604,6 +598,8 @@ class FastIsochrone(Isochrone):
 
         # kwargs to pass to self.modelgrid
         self.modelgrid_kwargs = kwargs
+
+        self.interp = DFInterpolator(self.df, filename=self._npy_filename)
 
     def _initialize(self):
         for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
@@ -701,7 +697,7 @@ class FastIsochrone(Isochrone):
         return self._maxmass
 
     def logTeff(self, eep, age, feh):
-        return self.interp_value(eep, age, feh, self.loggTeff_col)
+        return self.interp_value(eep, age, feh, self.logTeff_col)
 
     def logg(self, eep, age, feh):
         return self.interp_value(eep, age, feh, self.logg_col)
@@ -713,19 +709,7 @@ class FastIsochrone(Isochrone):
         return self.interp_value(eep, age, feh, self.mass_col)
 
     @property
-    def grid(self):
-        if self._grid is None:
-            self._make_grid()
-        return self._grid
-
-    @property
-    def grid_Ns(self):
-        if self._grid_Ns is None:
-            self._make_grid()
-        return self._grid_Ns
-
-    @property
-    def _npz_filename(self):
+    def _npy_filename(self):
         keys = list(self.modelgrid_kwargs.keys())
         keys.sort()
 
@@ -734,32 +718,12 @@ class FastIsochrone(Isochrone):
         for k in keys:
             filename += '_{}{}'.format(k, self.modelgrid_kwargs[k])
 
-        filename += '.npz'
+        filename += '.npy'
         return filename
 
-    def _make_grid(self, recalc=False):
-        # Read from file if available.
-        if os.path.exists(self._npz_filename) and not recalc:
-            d = np.load(self._npz_filename)
-            self._grid = d['grid']
-            self._grid_Ns = d['grid_Ns']
-        else:
-            df_list = [[self.df.ix[f,a] for f in self.fehs] for a in self.ages]
-            lens = np.array([[len(df_list[i][j]) for j in range(self.Nfeh)]
-                             for i in range(self.Nage)]).T #just because
-            data = np.zeros((self.Nfeh, self.Nage, lens.max(), self.Ncols))
+    def interp_value(self, eep, age, feh, prop): # 4 is log_g
+        return self.interp([feh, age, eep], prop)
 
-            for i in range(self.Nage):
-                for j in range(self.Nfeh):
-                    N = lens[j,i]
-                    data[j, i, :N, :] = df_list[i][j].values
-                    data[j, i, N:, :] = np.nan
-
-            np.savez(self._npz_filename, grid=data, grid_Ns=lens)
-            self._grid = data
-            self._grid_Ns = lens
-
-    def interp_value(self, eep, age, feh, icol): # 4 is log_g
         if self._ages is None:
             self._initialize()
 

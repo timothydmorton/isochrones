@@ -15,28 +15,19 @@ class MIST_Isochrone(FastIsochrone):
 
     """
     name = 'mist'
-    eep_col = 0
-    age_col = 1
-    feh_col = 7
-    mass_col = 2
-    loggTeff_col = 3
-    logg_col = 4
-    logL_col = 5
+    eep_col = 'EEP'
+    age_col = 'log10_isochrone_age_yr'
+    feh_col = '[Fe/H]'
+    mass_col = 'star_mass'
+    logTeff_col = 'log_Teff'
+    logg_col = 'log_g'
+    logL_col = 'log_L'
     modelgrid = MISTModelGrid
     default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
 
     def __init__(self, *args, **kwargs):
         self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
         if self.version == '1.1':
-            self.mass_col = 3
-            self.loggTeff_col = 4
-            self.logg_col = 5
-            self.logL_col = 6
-            self.feh_col = 7
-
             self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
 
         super().__init__(*args, **kwargs)
-
-    def Z_surf(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, 6)
