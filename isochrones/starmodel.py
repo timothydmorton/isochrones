@@ -492,7 +492,8 @@ class StarModel(object):
             # Note: this is just assuming proper order.
             #  Is this OK?  Should keep eye out for bugs here.
 
-            masses = p[i:i+N[s]]
+            # Compute masses from eeps
+            masses = [self.ic.mass(eep, age, feh) for eep in p[i:i+N[s]]]
 
             # Mass prior for primary
             lnp += np.log(self.prior('mass', masses[0]))
