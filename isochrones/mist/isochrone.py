@@ -19,6 +19,7 @@ class MIST_Isochrone(FastIsochrone):
     age_col = 'log10_isochrone_age_yr'
     feh_col = '[Fe/H]'
     mass_col = 'star_mass'
+    initial_mass_col = 'initial_mass'
     logTeff_col = 'log_Teff'
     logg_col = 'log_g'
     logL_col = 'log_L'
@@ -31,3 +32,12 @@ class MIST_Isochrone(FastIsochrone):
             self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
 
         super().__init__(*args, **kwargs)
+
+    @property
+    def fehs(self):
+        if self._fehs is None:
+            self._fehs = self.df.loc[:, '[Fe/H]_init'].unique().astype(float)
+        return self._fehs
+
+    def Z_surf(self, mass, age, feh):
+        return self.interp_value(mass, age, feh, '[Fe/H]')
