@@ -33,7 +33,7 @@ if not on_rtd:
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
-from .priors import age_prior, distance_prior, AV_prior, q_prior
+from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone, Isochrone
 
@@ -128,14 +128,16 @@ class StarModel(object):
                         'q':q_prior,
                         'age':age_prior,
                         'distance':distance_prior,
-                        'AV':AV_prior}
+                        'AV':AV_prior,
+                        'eep':FlatPrior(bounds=(self.ic.mineep, self.ic.maxeep))}
 
         self._bounds = {'mass':None,
                         'feh':None,
                         'age':None,
                         'q':q_prior.bounds,
                         'distance':distance_prior.bounds,
-                        'AV':AV_prior.bounds}
+                        'AV':AV_prior.bounds,
+                        'eep':(self.ic.mineep, self.ic.maxeep)}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -489,16 +491,29 @@ class StarModel(object):
                     logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
                     return -np.inf
 
-            # Note: this is just assuming proper order.
+            # Note: this all is just assuming proper order for multiple stars.
             #  Is this OK?  Should keep eye out for bugs here.
 
-            # Compute masses from eeps
-            masses = [self.ic.mass(eep, age, feh) for eep in p[i:i+N[s]]]
 
-            # Mass prior for primary
-            lnp += np.log(self.prior('mass', masses[0]))
+            # Need to compute EEP prior:
+            #  p(eep) = p(mass) * d(mass)/d(eep)
+
+            # Compute masses from eeps
+            eeps = [eep for eep in p[i:i+N[s]]]
+            masses = [self.ic.initial_mass(eep, age, feh) for eep in eeps]
+
+            # Compute prior for primary
+            mass_lnprior = np.log(self.prior('mass', masses[0]))
             if not np.isfinite(lnp):
                 logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
+
+            # Get d(m)/d(eep) at correct point
+            dm_deep = self.ic.interp_value(eeps[0], age, feh, 'dm_deep')
+
+            # Change of variables
+            eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deep))
+
+            lnp += eep_lnprior
 
             # Priors for mass ratios
             for j in range(N[s]-1):
@@ -532,9 +547,9 @@ class StarModel(object):
     def mnest_prior(self, cube, ndim, nparams):
         i = 0
         for _,n in self.obs.Nstars.items():
-            minmass, maxmass = self.bounds('mass')
+            mineep, maxeep = self.bounds('eep')
             for j in range(n):
-                cube[i+j] = (maxmass - minmass)*cube[i+j] + minmass
+                cube[i+j] = (maxeep - mineep)*cube[i+j] + mineep
 
             for j, par in enumerate(['age','feh','distance','AV']):
                 lo, hi = self.bounds(par)
@@ -997,7 +1012,7 @@ class StarModel(object):
     def triangle_plots(self, *args, **kwargs):
         return self.corner_plots(*args, **kwargs)
 
-    def corner_physical(self, props=['mass','radius','feh','age','distance','AV'], **kwargs):
+    def corner_physical(self, props=['eep', 'mass','radius','feh','age','distance','AV'], **kwargs):
         collective_props = ['feh','age','distance','AV']
         indiv_props = [p for p in props if p not in collective_props]
         sys_props = [p for p in props if p in collective_props]

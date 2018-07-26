@@ -1,6 +1,7 @@
 import os,re, glob
 import tarfile
 import logging
+import itertools
 
 from .config import ISOCHRONES, on_rtd
 from .utils import download_file
@@ -119,6 +120,7 @@ class ModelGrid(object):
             df.loc[:, bnd] = col.values #dunno why it has to be this way; something
                                         # funny with indexing.
 
+        df['dm_deep'] = self.get_dm_deep()
         return df
 
     @classmethod
@@ -205,3 +207,34 @@ class ModelGrid(object):
         df.to_hdf(h5file,'df')
         logging.info('{} written.'.format(h5file))
         return df
+
+    @classmethod
+    def get_dm_deep(cls):
+        filename = os.path.join(cls.datadir, 'dm_deep.h5')
+
+        compute = not os.path.exists(filename)
+
+        if not compute:
+            try:
+                dm_deep = pd.read_hdf(filename, 'dm_deep')
+            except:
+                compute = True
+
+        if compute:
+            # need minimal grid to work with
+            grid = cls(bands=[cls.default_bands[0]])
+            df = grid.df
+
+            # Make bucket for derivative to go in
+            df['dm_deep'] = np.nan
+
+            # Compute derivative for each (feh, age) isochrone, and fill in
+            for f,a in itertools.product(*df.index.levels[:2]):
+                subdf = df.loc[f,a]
+                deriv = np.gradient(np.gradient(subdf['initial_mass'], subdf['EEP']))
+                subdf.loc[:, 'dm_deep'] = deriv
+
+            df.dm_deep.to_hdf(filename, 'dm_deep')
+            dm_deep = pd.read_hdf(filename, 'dm_deep')
+
+        return dm_deep

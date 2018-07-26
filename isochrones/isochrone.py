@@ -240,7 +240,7 @@ class Isochrone(object):
         return fn
 
 
-    def __call__(self, mass, age, feh,
+    def __call__(self, eep, age, feh,
                  distance=None, AV=0.0,
                  return_df=True, bands=None):
         """
@@ -271,8 +271,8 @@ class Isochrone(object):
             model values evaluated at input points.
         """
         # Broadcast inputs to the same shape
-        mass, age, feh = [np.array(a) for a in np.broadcast_arrays(mass, age, feh)]
-        args = (mass, age, feh)
+        eep, age, feh = [np.array(a) for a in np.broadcast_arrays(eep, age, feh)]
+        args = (eep, age, feh)
         Ms = self.mass(*args)*1
         Rs = self.radius(*args)*1
         logLs = self.logL(*args)*1
@@ -291,7 +291,7 @@ class Isochrone(object):
 
 
         props = {'age':age,'mass':Ms,'radius':Rs,'logL':logLs,
-                'logg':loggs,'Teff':Teffs,'mag':mags}
+                'logg':loggs,'Teff':Teffs,'mag':mags, 'eep':eep}
 
         if not return_df:
             return props
@@ -556,6 +556,7 @@ class FastIsochrone(Isochrone):
     age_col = 'age'
     feh_col = 'feh'
     mass_col = 'mass'
+    initial_mass_col = 'mass'
     logTeff_col = 'logTeff'
     logg_col = 'logg'
     logL_col = 'logL'
@@ -613,6 +614,7 @@ class FastIsochrone(Isochrone):
             self._df = self.modelgrid(self.bands, **self.modelgrid_kwargs).df
         return self._df
 
+
     @property
     def Ncols(self):
         return self.df.shape[1]
@@ -620,19 +622,19 @@ class FastIsochrone(Isochrone):
     @property
     def fehs(self):
         if self._fehs is None:
-            self._fehs = self.df.iloc[:, self.feh_col].unique()
+            self._fehs = self.df.loc[:, self.feh_col].unique().astype(float)
         return self._fehs
 
     @property
     def ages(self):
         if self._ages is None:
-            self._ages = self.df.iloc[:, self.age_col].unique()
+            self._ages = self.df.loc[:, self.age_col].unique().astype(float)
         return self._ages
 
     @property
     def eeps(self):
         if self._eeps is None:
-            self._eeps = np.sort(self.df['EEP'].unique())
+            self._eeps = np.sort(self.df['EEP'].unique()).astype(float)
         return self._eeps
 
     @property
@@ -687,13 +689,13 @@ class FastIsochrone(Isochrone):
     @property
     def minmass(self):
         if self._minmass is None:
-            self._minmass = self.df.iloc[:, self.mass_col].min()
+            self._minmass = self.df.loc[:, self.mass_col].min()
         return self._minmass
 
     @property
     def maxmass(self):
         if self._maxmass is None:
-            self._maxmass = self.df.iloc[:, self.mass_col].max()
+            self._maxmass = self.df.loc[:, self.mass_col].max()
         return self._maxmass
 
     def logTeff(self, eep, age, feh):
@@ -707,6 +709,9 @@ class FastIsochrone(Isochrone):
 
     def mass(self, eep, age, feh):
         return self.interp_value(eep, age, feh, self.mass_col)
+
+    def initial_mass(self, eep, age, feh):
+        return self.interp_value(eep, age, feh, self.initial_mass_col)
 
     @property
     def _npy_filename(self):

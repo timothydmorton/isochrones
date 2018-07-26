@@ -1110,7 +1110,7 @@ class ObservationTree(Node):
         pars = []
         for s in self.systems:
             for j in xrange(N[s]):
-                pars.append('mass_{}_{}'.format(s,j))
+                pars.append('eep_{}_{}'.format(s,j))
             for p in ['age', 'feh', 'distance', 'AV']:
                 pars.append('{}_{}'.format(p,s))
         return pars
