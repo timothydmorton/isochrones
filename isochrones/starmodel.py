@@ -82,7 +82,7 @@ class StarModel(object):
     """
 
     # These are allowable parameters that are not photometric bands
-    _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax',
+    _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax','AV',
                   'logg','Teff','feh','density', 'separation',
                  'PA','resolution','relative','N','index', 'id')
 
@@ -443,6 +443,8 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
+            elif k=='AV':
+                self.obs.add_AV(v)
             elif k in ['Teff','logg','feh']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
