@@ -74,6 +74,14 @@ class NodeTraversal(Traversal):
                         modval = node.evaluate(self.pars[node.label], 'parallax')
                         lnl = -0.5*(modval - plx)**2/u_plx**2
                         text += '; model={} ({})'.format(modval, lnl)
+                if hasattr(root, 'AV'):
+                    if node.index in root.AV:
+                        # Warning, this not tested; may break ->
+                        AV, u_AV = root.AV[node.index]
+                        text += ', AV={}'.format((AV, u_AV))
+                        modval = node.evaluate(self.pars[node.label], 'AV')
+                        lnl = -0.5*(modval - plx)**2/u_AV**2
+                        text += '; model={} ({})'.format(modval, lnl)
 
                 text += ': {}'.format(self.pars[node.label])
 
@@ -86,6 +94,8 @@ class NodeTraversal(Traversal):
                             text += ', {}={}'.format(k,v)
                     if node.index in root.parallax:
                         text += ', parallax={}'.format(root.parallax[node.index])
+                    if node.index in root.AV:
+                        text += ', AV={}'.format(root.AV[node.index])
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
@@ -751,6 +761,9 @@ class ObservationTree(Node):
         # Parallax measurements
         self.parallax = {}
 
+        # AV priors
+        self.AV = {}
+
         # This will be calculated and set at first access
         self._Nstars = None
 
@@ -851,6 +864,7 @@ class ObservationTree(Node):
             attrs = store.get_storer(path+'/df').attrs
             attrs.spectroscopy = self.spectroscopy
             attrs.parallax = self.parallax
+            attrs.AV = self.AV
             attrs.N = self._N
             attrs.index = self._index
             store.close()
@@ -880,6 +894,7 @@ class ObservationTree(Node):
         new.define_models(ic, N=attrs.N, index=attrs.index)
         new.spectroscopy = attrs.spectroscopy
         new.parallax = attrs.parallax
+        new.AV = attrs.AV
         store.close()
         return new
 
@@ -965,6 +980,16 @@ class ObservationTree(Node):
 
         self.parallax[system] = plax
         self._clear_cache()
+
+    def add_AV(self, AV, system=0):
+        if len(AV)!=2:
+            raise ValueError('Must enter (value,uncertainty).')
+        if system not in self.systems:
+            raise ValueError('{} not in systems ({}).'.format(system,self.systems))
+
+        self.AV[system] = AV
+        self._clear_cache()
+
 
     def define_models(self, ic, leaves=None, N=1, index=0):
         """
@@ -1181,6 +1206,11 @@ class ObservationTree(Node):
             dist = pardict['{}_0'.format(s)][3]
             mod = 1./dist * 1000.
             lnl += -0.5*(val-mod)**2/err**2
+
+        # lnlike from AV
+        for s,(val,err) in self.AV.items():
+            AV = pardict['{}_0'.format(s)][4]
+            lnl += -0.5*(val-AV)**2/err**2
 
         if not np.isfinite(lnl):
             self._cache_val = -np.inf
