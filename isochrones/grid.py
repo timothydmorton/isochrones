@@ -99,7 +99,7 @@ class ModelGrid(object):
 
         return self._df
 
-    def _get_df(self):
+    def _get_df(self, dm_deep=True):
         """Returns stellar model grid with desired bandpasses and with standard column names
 
         bands must be iterable, and are parsed according to :func:``get_band``
@@ -120,7 +120,8 @@ class ModelGrid(object):
             df.loc[:, bnd] = col.values #dunno why it has to be this way; something
                                         # funny with indexing.
 
-        df['dm_deep'] = self.get_dm_deep()
+        if dm_deep:
+            df['dm_deep'] = self.get_dm_deep()
         return df
 
     @classmethod
@@ -223,7 +224,7 @@ class ModelGrid(object):
         if compute:
             # need minimal grid to work with
             grid = cls(bands=[cls.default_bands[0]])
-            df = grid.df
+            df = grid._get_df(dm_deep=False)
 
             # Make bucket for derivative to go in
             df['dm_deep'] = np.nan
