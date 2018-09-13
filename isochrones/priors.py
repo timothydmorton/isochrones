@@ -1,11 +1,11 @@
 from __future__ import print_function, division
-import logging 
+import logging
 
 from .config import on_rtd
 
 if not on_rtd:
     import numpy as np
-    from scipy.stats import uniform 
+    from scipy.stats import uniform
     from scipy.integrate import quad
     import matplotlib.pyplot as plt
 
@@ -107,26 +107,26 @@ class PowerLawPrior(BoundedPrior):
             = C * [x**(a+1) / (a+1)] | x=lo..x
             = C * ([x**(a+1) / (a+1)] - [lo**(a+1) / (a+1)])
          u  =
-         
+
          u/C + [lo**(a+1) / (a+1)] = x**(a+1) / (a+1)
          (a+1) * (u/C + [lo**(a+1) / (a+1)]) = x**(a+1)
-         [(a+1) * (u/C + [lo**(a+1) / (a+1)])] ** (1/(a+1)) = x 
+         [(a+1) * (u/C + [lo**(a+1) / (a+1)])] ** (1/(a+1)) = x
         """
         lo, hi = self.bounds
         C = (1 + self.alpha)/(hi**(1 + self.alpha) - lo**(1 + self.alpha))
         u = np.random.random(n)
         a = self.alpha
-        return ((a+1) * (u/C + (lo**(a+1) / (a+1))))**(1/(a+1))        
+        return ((a+1) * (u/C + (lo**(a+1) / (a+1))))**(1/(a+1))
 
 class FehPrior(Prior):
     """feh PDF based on local SDSS distribution
-    
+
     From Jo Bovy:
     https://github.com/jobovy/apogee/blob/master/apogee/util/__init__.py#L3
     2D gaussian fit based on Casagrande (2011)
     """
 
-    def __init__(self, halo_fraction=0.001):   
+    def __init__(self, halo_fraction=0.001):
         self.halo_fraction = halo_fraction
         super(FehPrior, self).__init__()
 
@@ -163,11 +163,11 @@ class FehPrior(Prior):
         x[m2] = xhalo[m2]
         return x
 
+
 #  Uniform true age prior; where 'age' is actually log10(age)
 age_prior = FlatLogPrior(bounds=(9, 10.15))
-distance_prior = PowerLawPrior(alpha=2., bounds=(0,3000))
+distance_prior = PowerLawPrior(alpha=2., bounds=(0,10000))
 AV_prior = FlatPrior(bounds=(0., 1.))
 q_prior = PowerLawPrior(alpha=0.3, bounds=(0.1, 1))
 salpeter_prior = PowerLawPrior(alpha=-2.35, bounds=(0.1, 10))
 feh_prior = FehPrior(halo_fraction=0.001)
-
