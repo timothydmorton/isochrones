@@ -8,9 +8,6 @@ from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel, get_ichrone
 
-DAR = Dartmouth_Isochrone()
-MIST = MIST_Isochrone()
-
 def test_dartmouth_basic(bands=['J']):
     dar = Dartmouth_Isochrone(bands)
     _basic_ic_checks(dar)
@@ -21,16 +18,16 @@ def test_dartmouth_basic(bands=['J']):
     assert np.isclose(dar.radius(0.61, 9.89, -0.22), 0.5964945760402941)
 
 def test_mist_basic(bands=['J']):
-    ic = MIST_Isochrone(bands, version='1.0')
+    # ic = MIST_Isochrone(bands, version='1.0')
     ic2 = MIST_Isochrone(bands + ['TESS', 'BP', 'RP'], version='1.1')
 
-    _basic_ic_checks(ic)
+    # _basic_ic_checks(ic)
     _basic_ic_checks(ic2)
 
-    assert np.isclose(ic.radius(1.0, 9.5, 0.0), 0.9764494078461442)
-    assert np.isclose(ic.radius(1.01, 9.72, 0.02), 1.0671791635014685)
-    assert np.isclose(ic.radius(1.21, 9.38, 0.11), 1.2963342261673843)
-    assert np.isclose(ic.radius(0.61, 9.89, -0.22), 0.5873830516268735)
+    # assert np.isclose(ic.radius(1.0, 9.5, 0.0), 0.9764494078461442)
+    # assert np.isclose(ic.radius(1.01, 9.72, 0.02), 1.0671791635014685)
+    # assert np.isclose(ic.radius(1.21, 9.38, 0.11), 1.2963342261673843)
+    # assert np.isclose(ic.radius(0.61, 9.89, -0.22), 0.5873830516268735)
 
     assert np.isclose(ic2.radius(1.0, 9.5, 0.0), 0.9765234978729515)
     assert np.isclose(ic2.radius(1.01, 9.72, 0.02), 1.0671845393364638)
@@ -38,9 +35,11 @@ def test_mist_basic(bands=['J']):
     assert np.isclose(ic2.radius(0.61, 9.89, -0.22), 0.5873849015685695)
 
 
-def test_spec():
-    _check_spec(DAR)
-    _check_spec(MIST)
+def test_spec(bands=['J']):
+    dar = get_ichrone('dartmouthfast', bands=bands)
+    mist = get_ichrone('mist', bands=bands)
+    _check_spec(dar)
+    _check_spec(mist)
 
 def test_AV():
     from isochrones.extinction import get_AV_infinity
