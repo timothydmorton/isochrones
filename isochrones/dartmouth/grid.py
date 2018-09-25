@@ -44,6 +44,8 @@ class DartmouthModelGrid(ModelGrid):
                             'uvfq924', 'uvfq937', 'irf098m', 'irf105w', 'irf110w', 'irf125w',
                             'irf126n', 'irf127m', 'irf128n', 'irf130n', 'irf132n', 'irf139m',
                             'irf140w', 'irf153m', 'irf160w', 'irf164n', 'irf167n'])
+    mass_column = 'MMo'
+    eep_column = 'EEP'
 
     default_kwargs = {'afe':'afep0', 'y':''}
     datadir = os.path.join(ISOCHRONES, 'dartmouth')

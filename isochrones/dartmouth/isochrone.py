@@ -85,7 +85,8 @@ class Dartmouth_FastIsochrone(FastIsochrone):
     name = 'dartmouth'
 
     mass_col = 'MMo'
-    loggTeff_col = 'LogTeff'
+    initial_mass_col = 'MMo'
+    logTeff_col = 'LogTeff'
     logg_col = 'LogG'
     logL_col = 'LogLLo'
     modelgrid = DartmouthModelGrid
