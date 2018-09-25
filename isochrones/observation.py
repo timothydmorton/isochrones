@@ -1129,6 +1129,19 @@ class ObservationTree(Node):
             i += N[s] + 4
         return d
 
+    def pardict2p(self, pardict):
+        """Convert from dictionary back to flat parameter vector
+        """
+        pars = []
+        N = self.Nstars
+        for s in self.systems:
+            for i in range(N[s]):
+                star = '{}_{}'.format(s,i)
+                pars.append(pardict[star][0])
+            pars += pardict['{}_0'.format(s)][1:]
+
+        return pars
+
     @property
     def param_description(self):
         N = self.Nstars
