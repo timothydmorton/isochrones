@@ -255,6 +255,7 @@ class ModelGrid(object):
 
         if compute:
             # need minimal grid to work with
+            cls = type(self)
             grid = cls(bands=[cls.default_bands[0]])
             df = grid._get_df(dm_deep=False)
 
