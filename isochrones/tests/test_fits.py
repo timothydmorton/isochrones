@@ -20,7 +20,7 @@ except:
 chainsdir = tempfile.gettempdir()
 
 props = dict(Teff=(5800, 100), logg=(4.5, 0.1),
-             B=(5.7,0.05), V=(5.0, 0.05))
+             J=(3.58,0.05), K=(3.22, 0.05))
 
 def test_fitting():
     mod_dar = _check_fitting(StarModel(Dartmouth_Isochrone, **props))
