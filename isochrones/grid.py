@@ -121,8 +121,7 @@ class ModelGrid(object):
             n_nan = np.isnan(col).sum()
             if n_nan > 0:
                 logging.debug('{} NANs in {} column'.format(n_nan, b))
-            df.loc[:, bnd] = col.values #dunno why it has to be this way; something
-                                        # funny with indexing.
+            df[bnd] = col
 
         if dm_deep:
             df['dm_deep'] = self.get_dm_deep()
