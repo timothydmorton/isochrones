@@ -236,9 +236,12 @@ class ModelGrid(object):
         logging.info('{} written.'.format(h5file))
         return df
 
-    @classmethod
-    def get_dm_deep(cls):
-        filename = os.path.join(cls.datadir, 'dm_deep.h5')
+    @property
+    def kwarg_tag(self):
+        return ''
+
+    def get_dm_deep(self):
+        filename = os.path.join(self.datadir, 'dm_deep{}.h5'.format(self.kwarg_tag))
 
         compute = not os.path.exists(filename)
 
