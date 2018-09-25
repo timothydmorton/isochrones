@@ -759,14 +759,15 @@ class StarModel(object):
 
         def sample_row(nstars, n=nwalkers):
             p = []
-            m0 = self._priors['mass'].sample(n)
+            eep0 = (np.random.random(n) * (self.ic.maxeep - self.ic.mineep)
+                    + self.ic.mineep) # Should define an EEP prior function
             age0 = self._priors['age'].sample(n)
             feh0 = self._priors['feh'].sample(n)
             d0 = self._priors['distance'].sample(n)
             AV0 = self._priors['AV'].sample(n)
 
             for i in range(nstars):
-                p += [m0 * 0.95**i]
+                p += [eep0]
             p += [age0, feh0, d0, AV0]
             return p
 
