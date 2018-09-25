@@ -446,6 +446,7 @@ class StarModel(object):
                 logging.debug('Adding {} ({})'.format(s,o))
                 tree.add_observation(o)
 
+
         self.obs = tree
 
     def _add_properties(self, **kwargs):
@@ -457,7 +458,7 @@ class StarModel(object):
                 self.obs.add_parallax(v)
             elif k=='AV':
                 self.obs.add_AV(v)
-            elif k in ['Teff','logg','feh']:
+            elif k in ['Teff','logg','feh', 'density']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
