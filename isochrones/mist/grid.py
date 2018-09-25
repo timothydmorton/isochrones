@@ -42,14 +42,17 @@ class MISTModelGrid(ModelGrid):
                                 'UKIDSS_H', 'UKIDSS_K'],
                       SDSS=['SDSS_u', 'SDSS_g', 'SDSS_r', 'SDSS_i', 'SDSS_z'])
 
-    default_kwargs = {'version':'1.1', 'vvcrit':0.0}
+    mass_column = 'initial_mass'
+    eep_column = 'EEP'
+
+    default_kwargs = {'version':'1.2', 'vvcrit':0.0}
     datadir = os.path.join(ISOCHRONES, 'mist')
     zenodo_record = 161241
     zenodo_files = ()#('mist.tgz',)
     zenodo_md5 = ('0deaaca2836c7148c27ce5ba5bbdfe59',)
     master_tarball_file = 'mist.tgz'
 
-    default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
+    default_bands = ('G','BP','RP','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler', 'TESS')
 
     def __init__(self, *args, **kwargs):
         version = kwargs.get('version', self.default_kwargs['version'])
@@ -121,7 +124,7 @@ class MISTModelGrid(ModelGrid):
             phot = 'UBVRIplus'
             band = 'Gaia_{}'.format(b)
             if 'version' in kwargs:
-                if kwargs['version']=='1.1':
+                if kwargs['version'] in ('1.1', '1.2'):
                     band += '_DR2Rev'
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)',b)
