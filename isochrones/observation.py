@@ -580,7 +580,7 @@ class ModelNode(Node):
             return p[1]
         elif prop=='feh':
             return p[2]
-        elif prop in ['Teff','logg','radius']:
+        elif prop in ['Teff', 'logg', 'radius', 'density']:
             return getattr(self.ic, prop)(*p[:3])
         else:
             raise ValueError('property {} cannot be evaluated by Isochrone.'.format(prop))
@@ -731,7 +731,7 @@ class ObservationTree(Node):
     but should *usually* do the right thing.  Check out `obs.print_ascii()`
     to visualize what this has done.
     """
-    spec_props = ['Teff', 'logg', 'feh']
+    spec_props = ['Teff', 'logg', 'feh', 'density']
 
     def __init__(self, observations=None, name=None):
 
