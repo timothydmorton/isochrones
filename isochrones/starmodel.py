@@ -437,7 +437,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k in self.ic.bands:
                 if np.size(v) != 2:
-                    logging.warning('{}={} ignored.'.format(k,v))
+                    logging.warning('{}={} ignored (no uncertainty).'.format(k,v))
                     # continue
                     v = [v, np.nan]
                 o = Observation('', k, 99) #bogus resolution=99
