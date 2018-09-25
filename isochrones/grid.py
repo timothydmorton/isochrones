@@ -265,7 +265,7 @@ class ModelGrid(object):
             # Compute derivative for each (feh, age) isochrone, and fill in
             for f,a in itertools.product(*df.index.levels[:2]):
                 subdf = df.loc[f,a]
-                deriv = np.gradient(np.gradient(subdf['initial_mass'], subdf['EEP']))
+                deriv = np.gradient(np.gradient(subdf[cls.mass_column], subdf['EEP']))
                 subdf.loc[:, 'dm_deep'] = deriv
 
             df.dm_deep.to_hdf(filename, 'dm_deep')
