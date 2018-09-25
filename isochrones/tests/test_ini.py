@@ -45,11 +45,12 @@ class IniCheck(object):
         return StarModel.from_ini(ic, folder=folder, index=self.index)
 
     def check_asserts(self, mod):
-        assert self.n_params == len(self.pars)
+        eep_pars = mod.convert_pars_to_eep(self.pars)
+        assert self.n_params == len(eep_pars)
         assert mod.n_params == self.n_params
         assert mod.obs.systems == self.systems
         assert mod.obs.Nstars == self.Nstars
-        assert np.isfinite(mod.lnlike(self.pars))
+        assert np.isfinite(mod.lnlike(eep_pars))
 
     def check_p0(self, mod):
         p0 = mod.emcee_p0(200)
@@ -58,7 +59,7 @@ class IniCheck(object):
             if not np.isfinite(mod.lnpost(p)):
                 print(p)
                 nbad += 1
-        assert nbad==0        
+        assert nbad==0
 
     def check(self, ic, folder):
         mod = self.get_mod(ic, folder)
@@ -85,8 +86,8 @@ class BinaryCheck(IniCheck):
         return BinaryStarModel(ic, folder=folder)
 
 class BinaryCheck_Unassoc(IniCheck):
-    pars = [1.0, 9.4, 0.0, 100, 0.2, 
-            0.8, 9.7, 0.1, 300, 0.3]
+    pars = [1.0, 9.4, 0.0, 100, 0.2,
+             0.8, 9.7, 0.1, 300, 0.3]
     n_params = 10
     index = [0, 1]
     systems = [0, 1]
@@ -103,7 +104,7 @@ class TripleCheck(IniCheck):
 
 
 class TripleCheck_Unassoc1(IniCheck):
-    pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2, 
+    pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2,
             1.0, 9.7, 0.0, 200, 0.5]
     n_params = 11
     index = [0, 0, 1]
@@ -111,11 +112,9 @@ class TripleCheck_Unassoc1(IniCheck):
     Nstars = {0:2, 1:1}
 
 class TripleCheck_Unassoc2(IniCheck):
-    pars = [1.0, 9.4, 0.0, 100, 0.2, 
+    pars = [1.0, 9.4, 0.0, 100, 0.2,
             1.0, 0.8, 9.7, 0.0, 200, 0.5]
     n_params = 11
     index = [0, 1, 1]
     systems = [0, 1]
     Nstars = {0:1, 1:2}
-
-
