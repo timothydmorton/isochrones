@@ -383,6 +383,18 @@ class StarModel(object):
         """
         return self.obs.print_ascii()
 
+    def convert_pars_to_eep(self, pars):
+        """Replaces old parameter vectors containing mass with the closest EEP equivalent
+        """
+        pardict = self.obs.p2pardict(pars)
+        eeps = {s : self.ic.eep_from_mass(*p[0:3]) for s,p in pardict.items()}
+
+        new_pardict = pardict.copy()
+        for s in pardict:
+            new_pardict[s][0] = eeps[s]
+
+        return self.obs.pardict2p(new_pardict)
+
     def bounds(self, prop):
         if self._bounds[prop] is not None:
             return self._bounds[prop]
