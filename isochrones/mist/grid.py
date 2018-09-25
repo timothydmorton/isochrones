@@ -147,9 +147,7 @@ class MISTModelGrid(ModelGrid):
         return phot, band
 
     def phot_tarball_file(self, phot):
-        version = self.kwargs['version']
-        vvcrit = self.kwargs['vvcrit']
-        return os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}.tar.gz'.format(version, vvcrit, phot))
+        return os.path.join(self.datadir, 'MIST{}_{}.tar.gz'.format(self.kwarg_tag, phot))
 
     # def extract_phot_tarball(self, phot):
     #     version = self.kwargs['version']
@@ -158,14 +156,11 @@ class MISTModelGrid(ModelGrid):
     #         logging.info('Extracting {}...'.format(phot_tarball))
     #         tar.extractall(self.datadir)
 
-    def get_filenames(self, phot):
-        version = self.kwargs['version']
-        vvcrit = self.kwargs['vvcrit']
-        d = os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}'.format(version, vvcrit, phot))
-        if not os.path.exists(d):
-            if not os.path.exists(self.phot_tarball_file(phot)):
-                self.extract_phot_tarball(phot)
+    def get_directory_path(self, phot, **kwargs):
+        return os.path.join(self.datadir, 'MIST{}_{}'.format(self.kwarg_tag, phot))
 
+    def _get_existing_filenames(self, phot, **kwargs):
+        d = self.get_directory_path(phot, **kwargs)
         return [os.path.join(d,f) for f in os.listdir(d) if re.search('\.cmd$', f)]
 
     @classmethod

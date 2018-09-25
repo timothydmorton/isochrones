@@ -104,13 +104,10 @@ class DartmouthModelGrid(ModelGrid):
     def phot_tarball_file(cls, phot, **kwargs):
         return os.path.join(cls.datadir, '{}.tgz'.format(phot))
 
-    def get_filenames(self, phot, afe='afep0', y=''):
-        if not os.path.exists(os.path.join(self.datadir, 'isochrones', phot)):
-            if not os.path.exists(self.phot_tarball_file(phot, afe=afe, y=y)):
-                self.extract_phot_tarball(phot)
-                # self.extract_master_tarball()
-            # self.extract_phot_tarball(phot)
+    def get_directory_path(self, phot, **kwargs):
+        return os.path.join(self.datadir, 'isochrones', phot)
 
+    def _get_existing_filenames(self, phot, afe='afep0', y=''):
         return glob.glob('{3}/isochrones/{0}/*{1}{2}.{0}*'.format(phot,afe,y,self.datadir))
 
     @classmethod

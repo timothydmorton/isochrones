@@ -70,10 +70,14 @@ class ModelGrid(object):
         """
         raise NotImplementedError
 
+    def _get_existing_filenames(self, phot, **kwargs):
+        raise NotImplementedError
+
     def get_filenames(self, phot, **kwargs):
         """ Returns list of all filenames corresponding to phot system and kwargs.
         """
-        raise NotImplementedError
+        self._ensure_phot_extraction(phot, **kwargs)
+        return self._get_existing_filenames(phot, **kwargs)
 
     @classmethod
     def get_feh(cls, filename):
@@ -176,7 +180,22 @@ class ModelGrid(object):
         url = '{}/{}.tgz'.format(self.extra_url_base, phot)
         return url
 
-    def extract_phot_tarball(self, phot, **kwargs):
+    def get_directory_path(self, phot, **kwargs):
+        raise NotImplementedError
+
+    def _ensure_phot_extraction(self, phot, **kwargs):
+        d = self.get_directory_path(phot, **kwargs)
+        if not os.path.exists(d):
+            if not os.path.exists(self.phot_tarball_file(phot, **kwargs)):
+                self.download_phot_tarball(phot)
+            try:
+                self.extract_phot_tarball(phot)
+            except EOFError:
+                self.download_phot_tarball(phot)
+                self.extract_phot_tarball(phot)
+
+
+    def download_phot_tarball(self, phot, **kwargs):
         if not os.path.exists(self.datadir):
             os.makedirs(self.datadir)
         phot_tarball = self.phot_tarball_file(phot)
@@ -184,9 +203,17 @@ class ModelGrid(object):
             url = self.phot_tarball_url(phot)
             logging.info('Downloading {}...'.format(url))
             download_file(url, phot_tarball)
+
+
+    def extract_phot_tarball(self, phot, **kwargs):
+        phot_tarball = self.phot_tarball_file(phot)
+        if not os.path.exists(phot_tarball):
+            self.download_phot_tarball(phot, **kwargs)
+
         with tarfile.open(phot_tarball) as tar:
             logging.info('Extracting {}.tgz...'.format(phot))
             tar.extractall(self.datadir)
+
 
     def df_all(self, phot):
         """Subclasses may want to sort this
