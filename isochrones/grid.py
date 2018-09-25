@@ -38,6 +38,9 @@ class ModelGrid(object):
     and :class:`MISTModelGrid` for details.
     """
 
+    mass_column = 'initial_mass'
+    eep_column = None
+
     def __init__(self, bands=None, **kwargs):
         if bands is None:
             bands = self.default_bands
