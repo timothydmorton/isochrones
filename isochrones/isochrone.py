@@ -571,6 +571,7 @@ class FastIsochrone(Isochrone):
         self.bands = bands
 
         self._df = None
+        self._kwarg_tag = None
         self.x_ext = 0.
         self.ext_table = ext_table
         self.debug = debug
@@ -611,9 +612,16 @@ class FastIsochrone(Isochrone):
     @property
     def df(self):
         if self._df is None:
-            self._df = self.modelgrid(self.bands, **self.modelgrid_kwargs).df
+            grid = self.modelgrid(self.bands, **self.modelgrid_kwargs)
+            self._df = grid.df
+            self._kwarg_tag = grid.kwarg_tag
         return self._df
 
+    @property
+    def kwarg_tag(self):
+        if self._kwarg_tag is None:
+            self.df
+        return self._kwarg_tag
 
     @property
     def Ncols(self):
@@ -715,15 +723,9 @@ class FastIsochrone(Isochrone):
 
     @property
     def _npy_filename(self):
-        keys = list(self.modelgrid_kwargs.keys())
-        keys.sort()
-
         filename = os.path.join(ISOCHRONES, self.name, '{}'.format('-'.join(self.bands)))
+        filename += '{}.npy'.format(self.kwarg_tag)
 
-        for k in keys:
-            filename += '_{}{}'.format(k, self.modelgrid_kwargs[k])
-
-        filename += '.npy'
         return filename
 
     def interp_value(self, eep, age, feh, prop): # 4 is log_g

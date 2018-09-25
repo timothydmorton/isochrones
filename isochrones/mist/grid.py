@@ -193,6 +193,8 @@ class MISTModelGrid(ModelGrid):
         return df
 
     def hdf_filename(self, phot):
-        version = self.kwargs['version']
-        vvcrit = self.kwargs['vvcrit']
-        return os.path.join(self.datadir, 'MIST_v{}_vvcrit{}_{}.h5'.format(version, vvcrit, phot))
+        return os.path.join(self.datadir, 'MIST{}_{}.h5'.format(self.kwarg_tag, phot))
+
+    @property
+    def kwarg_tag(self):
+        return '_v{version}_vvcrit{vvcrit}'.format(**self.kwargs)
