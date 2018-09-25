@@ -92,6 +92,8 @@ class Dartmouth_FastIsochrone(FastIsochrone):
     modelgrid = DartmouthModelGrid
     default_bands = DartmouthModelGrid.default_bands
 
+Dartmouth_Isochrone = Dartmouth_FastIsochrone
+
 #### Old utility function.  this needs to be updated.
 
 def write_maxages(fehs=[-2.5,-2.0,-1.5,-1.0,-0.5,0.0, 0.15, 0.3, 0.5],
