@@ -75,7 +75,7 @@ def _basic_ic_checks(ic):
     assert np.isnan(ic.radius(1.0, np.nan, 0.1))
 
 
-def _check_spec(ic, eep):
+def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
     assert np.isfinite(mod.lnlike([eep, 9.6, 0.1, 200, 0.2]))
 
