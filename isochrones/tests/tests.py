@@ -77,6 +77,7 @@ def _basic_ic_checks(ic):
 
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700,100), logg=(4.5, 0.1), feh=(0.0, 0.2))
+    eep = ic.eep_from_mass(1., 9.6, 0.1)
     assert np.isfinite(mod.lnlike([eep, 9.6, 0.1, 200, 0.2]))
 
 if __name__=='__main__':

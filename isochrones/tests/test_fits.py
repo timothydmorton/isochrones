@@ -2,7 +2,9 @@ import os, glob
 import numpy as np
 import tempfile
 import tables as tb
+import logging
 
+from pandas.util.testing import assert_frame_equal
 
 from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
@@ -23,10 +25,10 @@ props = dict(Teff=(5800, 100), logg=(4.5, 0.1),
              J=(3.58,0.05), K=(3.22, 0.05))
 
 def test_fitting():
-    mod_dar = _check_fitting(StarModel(Dartmouth_Isochrone, **props))
+    # mod_dar = _check_fitting(StarModel(Dartmouth_Isochrone, **props))
     mod_mist = _check_fitting(StarModel(MIST_Isochrone, **props))
 
-    _check_saving(mod_dar)
+    # _check_saving(mod_dar)
     _check_saving(mod_mist)
 
 def test_starfit():
@@ -59,7 +61,7 @@ def _check_saving(mod):
     newmod = StarModel.load_hdf(filename)
     assert len(tb.file._open_files.get_handlers_by_name(filename)) == 0
 
-    assert np.allclose(mod.samples, newmod.samples)
+    assert_frame_equal(mod.samples, newmod.samples)
     assert mod.ic.bands == newmod.ic.bands
 
 
@@ -82,5 +84,5 @@ def _fit_mnest(mod):
 
 def _fit_emcee(mod):
     mod.use_emcee = True
-    mod.fit_mcmc(nburn=20, niter=10, ninitial=10)
+    mod.fit_mcmc(nburn=20, niter=20, ninitial=20)
     mod.samples
