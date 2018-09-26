@@ -516,6 +516,8 @@ class StarModel(object):
             # Compute masses from eeps
             eeps = [eep for eep in p[i:i+N[s]]]
             masses = [self.ic.initial_mass(eep, age, feh) for eep in eeps]
+            if any(np.isnan(masses)):
+                return -np.inf
 
             # Compute prior for primary
             mass_lnprior = np.log(self.prior('mass', masses[0]))
@@ -864,9 +866,9 @@ class StarModel(object):
                 i,j = np.unravel_index(sampler.lnprobability.argmax(),
                                         sampler.shape)
                 p0_best = sampler.chain[i,j,:]
-                print("After initial burn, p0={}".format(p0_best))
+                logging.debug("After initial burn, p0={}".format(p0_best))
                 p0 = p0_best * (1 + rand.normal(size=p0.shape)*0.001)
-                print(p0)
+                logging.debug(p0)
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
