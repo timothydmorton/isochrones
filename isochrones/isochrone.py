@@ -35,6 +35,9 @@ def get_ichrone(models, bands=None, default=False, **kwargs):
     If `default` is `True`, then will set bands
     to be the union of bands and default_bands
     """
+    if not bands:
+        bands = None
+        
     if isinstance(models, Isochrone):
         return models
 
