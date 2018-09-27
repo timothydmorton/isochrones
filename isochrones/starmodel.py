@@ -1043,13 +1043,16 @@ class StarModel(object):
     def corner_observed(self, **kwargs):
         """Makes corner plot for each observed node magnitude
         """
-        tot_mags = []
+        samples = []
         names = []
         truths = []
         rng = []
         for n in self.obs.get_obs_nodes():
             labels = [l.label for l in n.get_model_nodes()]
-            band = n.band
+            try:
+                band = n.band
+            except AttributeError: # only root node
+                continue
             mags = [self.samples['{}_mag_{}'.format(band, l)] for l in labels]
             tot_mag = addmags(*mags)
 
@@ -1061,20 +1064,35 @@ class StarModel(object):
                 ref_labels = [l.label for l in ref.get_model_nodes()]
                 ref_mags = [self.samples['{}_mag_{}'.format(band, l)] for l in ref_labels]
                 tot_ref_mag = addmags(*ref_mags)
-                tot_mags.append(tot_mag - tot_ref_mag)
+                samples.append(tot_mag - tot_ref_mag)
                 truths.append(n.value[0] - ref.value[0])
             else:
                 name = '{} {}'.format(n.instrument, n.band)
-                tot_mags.append(tot_mag)
+                samples.append(tot_mag)
                 truths.append(n.value[0])
 
             names.append(name)
-            rng.append((min(truths[-1], np.percentile(tot_mags[-1],0.5)),
-                        max(truths[-1], np.percentile(tot_mags[-1],99.5))))
-        tot_mags = np.array(tot_mags).T
+            rng.append((min(truths[-1], np.percentile(samples[-1],0.5)),
+                        max(truths[-1], np.percentile(samples[-1],99.5))))
 
+        for s,d in self.obs.spectroscopy.items():
+            for k in d:
+                try:
+                    name = '{}_{}'.format(k, s)
+                    samples.append(self.samples[name])
+                except KeyError:
+                    # Use system tag if star tag doesn't exist
+                    name = '{}_{}'.format(k, s[0])
+                    samples.append(self.samples[name])
+                truths.append(d[k][0])
 
-        return corner.corner(tot_mags, labels=names, truths=truths, range=rng, **kwargs)
+                rng.append((min(truths[-1], np.percentile(samples[-1],0.5)),
+                            max(truths[-1], np.percentile(samples[-1],99.5))))
+                names.append(name)
+
+        samples = np.array(samples).T
+
+        return corner.corner(samples, labels=names, truths=truths, range=rng, **kwargs)
 
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
