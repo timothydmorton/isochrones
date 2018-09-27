@@ -28,7 +28,7 @@ class MIST_Isochrone(FastIsochrone):
 
     def __init__(self, *args, **kwargs):
         self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
-        if self.version == '1.1':
+        if self.version in ('1.1', '1.2'):
             self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
 
         super().__init__(*args, **kwargs)
