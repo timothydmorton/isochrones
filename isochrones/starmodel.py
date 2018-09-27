@@ -907,6 +907,7 @@ class StarModel(object):
                 logging.error('Error loading chains from {}'.format(filename))
                 raise
         else:
+            chain = self.sampler.flatchain
             lnprob = self.sampler.lnprobability.ravel()
 
         df = pd.DataFrame()
