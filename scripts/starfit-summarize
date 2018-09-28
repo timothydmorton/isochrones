@@ -36,7 +36,7 @@ if __name__=='__main__':
     parser.add_argument('--modelname', default='mist_starmodel_single')
     parser.add_argument('-o', '--outfile', default='summary.h5')
     parser.add_argument('--rootdir', default='.')
-    parser.add_argument('-p', '--processes', default=1)
+    parser.add_argument('-p', '--processes', default=1, type=int)
 
     args = parser.parse_args()
 
