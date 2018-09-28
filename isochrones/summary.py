@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from .starmodel import StarModel
 
 
-def get_quantiles(rootdir, name, columns=['mass','age','feh','distance','AV'],
+def get_quantiles(name, rootdir='.', columns=['mass','age','feh','distance','AV'],
                  qs=[0.05,0.16,0.5,0.84,0.95], modelname='mist_starmodel_single',
                  verbose=False, raise_exceptions=False):
     """Returns parameter quantiles for starmodel
@@ -47,13 +47,15 @@ class quantile_worker(object):
     def __call__(self, name):
         return get_quantiles(name, **self.kwargs)
 
-def make_summary_df(names=None, processes=1, filename=None, **kwargs):
+def get_summary_df(names=None, processes=1, **kwargs):
 
     pool = Pool(processes=processes)
     worker = quantile_worker(**kwargs)
     dfs = pool.map(worker, names)
 
     df = pd.concat(dfs)
+    return df
+
     if filename is None:
         filename = 'summary.h5'
     df.to_hdf(filename, 'df')
