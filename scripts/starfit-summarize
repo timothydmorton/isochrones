@@ -38,7 +38,14 @@ if __name__=='__main__':
     parser.add_argument('--rootdir', default='.')
     parser.add_argument('-p', '--processes', default=1, type=int)
 
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--ncores", dest="n_cores", default=1,
+                       type=int, help="Number of processes (uses multiprocessing).")
+    group.add_argument("--mpi", dest="mpi", default=False,
+                       action="store_true", help="Run with MPI.")
     args = parser.parse_args()
+
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
 
     # Generate and write summary dataframe
     if args.filename is not None:
@@ -46,7 +53,7 @@ if __name__=='__main__':
             names = fin.read().splitlines()
 
         df = get_summary_df(names, rootdir=args.rootdir, modelname=args.modelname,
-                            processes=args.processes)
+                            pool=pool)
         df.write_hdf(os.path.join(args.rootdir, args.outfile))
         sys.exit(0)
 
