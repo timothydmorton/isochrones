@@ -19,6 +19,7 @@ import argparse
 #from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
 import pandas as pd
 
+import schwimmbad
 from isochrones.summary import get_summary_df
 
 PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'age', 'distance', 'AV']
