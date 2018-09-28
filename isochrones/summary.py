@@ -47,11 +47,15 @@ class quantile_worker(object):
     def __call__(self, name):
         return get_quantiles(name, **self.kwargs)
 
-def get_summary_df(names=None, processes=1, **kwargs):
+def get_summary_df(names=None, pool=None, **kwargs):
 
-    pool = Pool(processes=processes)
+    if pool is None:
+        map_fn = map
+    else:
+        map_fn = pool.map
+
     worker = quantile_worker(**kwargs)
-    dfs = pool.map(worker, names)
+    dfs = map_fn(worker, names)
 
     df = pd.concat(dfs)
     return df
