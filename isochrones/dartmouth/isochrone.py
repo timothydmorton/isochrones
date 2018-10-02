@@ -92,6 +92,9 @@ class Dartmouth_FastIsochrone(FastIsochrone):
     modelgrid = DartmouthModelGrid
     default_bands = DartmouthModelGrid.default_bands
 
+    mineep = 2
+    maxeep = 370
+
 Dartmouth_Isochrone = Dartmouth_FastIsochrone
 
 #### Old utility function.  this needs to be updated.

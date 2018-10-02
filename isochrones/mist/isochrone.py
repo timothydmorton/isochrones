@@ -26,6 +26,9 @@ class MIST_Isochrone(FastIsochrone):
     modelgrid = MISTModelGrid
     default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
 
+    mineep = 0
+    maxeep = 1710
+
     def __init__(self, *args, **kwargs):
         self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
         if self.version in ('1.1', '1.2'):
