@@ -55,7 +55,7 @@ if __name__=='__main__':
 
         df = get_summary_df(names, rootdir=args.rootdir, modelname=args.modelname,
                             pool=pool)
-        df.write_hdf(os.path.join(args.rootdir, args.outfile))
+        df.to_hdf(os.path.join(args.rootdir, args.outfile), 'df')
         sys.exit(0)
 
 
