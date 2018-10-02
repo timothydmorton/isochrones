@@ -37,7 +37,7 @@ def get_ichrone(models, bands=None, default=False, **kwargs):
     """
     if not bands:
         bands = None
-        
+
     if isinstance(models, Isochrone):
         return models
 
@@ -607,7 +607,13 @@ class FastIsochrone(Isochrone):
         # kwargs to pass to self.modelgrid
         self.modelgrid_kwargs = kwargs
 
-        self.interp = DFInterpolator(self.df, filename=self._npy_filename)
+        self._interp = None
+
+    @property
+    def interp(self):
+        if self._interp is None:
+            self._interp = DFInterpolator(self.df, filename=self._npy_filename)
+        return self._interp
 
     def _initialize(self):
         for attr in ['df','Ncols','fehs','ages','Nfeh','Nage',
