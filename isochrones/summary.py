@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from .starmodel import StarModel
 
 
-def get_quantiles(name, rootdir='.', columns=['mass','age','feh','distance','AV'],
+def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh','distance','AV'],
                  qs=[0.05,0.16,0.5,0.84,0.95], modelname='mist_starmodel_single',
                  verbose=False, raise_exceptions=False):
     """Returns parameter quantiles for starmodel
