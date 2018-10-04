@@ -189,7 +189,7 @@ class Isochrone(object):
         return self._eeps
 
     def eep_from_mass(self, mass, age, feh):
-        return self.eeps[np.nanargmin((self.intial_mass(self.eeps, age, feh) - mass)**2)]
+        return self.eeps[np.nanargmin((self.initial_mass(self.eeps, age, feh) - mass)**2)]
 
     def mass(self, *args):
         return self._prop('mass', *args)
