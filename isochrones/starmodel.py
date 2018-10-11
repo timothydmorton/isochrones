@@ -454,7 +454,9 @@ class StarModel(object):
         Adds non-photometry properties to ObservationTree
         """
         for k,v in kwargs.items():
-            if k=='parallax':
+            if k in self.ic.bands:
+                continue
+            elif k=='parallax':
                 self.obs.add_parallax(v)
             elif k=='AV':
                 self.obs.add_AV(v)
