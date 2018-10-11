@@ -1,9 +1,10 @@
 import os
+import itertools
+
 from numba import jit, float64, TypingError
 from math import sqrt
 import numpy as np
 import pandas as pd
-import itertools
 
 @jit(nopython=True)
 def interp_box(x, y, z, box, values):
@@ -284,10 +285,11 @@ class DFInterpolator(object):
         icol = self.columns.index(col)
         args = (*p, self.grid, icol, *self.index_columns)
 
-        try:
+        types = (float, int)
+        if type(p[0]) in types and type(p[1]) in types and type(p[2]) in types:
             return interp_value(*args)
 
-        except TypingError:
+        else:
             b = np.broadcast(*p)
             pp = [np.resize(x, b.shape).astype(float) for x in p]
 
