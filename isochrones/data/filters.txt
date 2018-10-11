@@ -43,3 +43,10 @@ BP 5130 # in between bright and faint
 RP 7830.5
 # TESS
 TESS 8000.
+# DECam
+DECam_u 3685.0
+DECam_g 4725.0
+DECam_r 6375.0
+DECam_i 7725.0
+DECam_z 9200.0
+DECam_Y 10000.0
