@@ -13,8 +13,8 @@ def test_dartmouth_basic(bands='JHK'):
     _basic_ic_checks(dar)
 
     assert np.isclose(dar.logg(73, 9.69897, -0.5), 4.4635)  # Grid point
-    assert np.isclose(dar.logg(80, 9.3, 0.1), 3.9494549811008874)
-    assert np.isclose(dar.logg(250, 9.32, 0.02), 1.5873518379443958)
+    assert np.isclose(dar.logg(80, 9.3, 0.1), 3.965464155771754)
+    assert np.isclose(dar.logg(250, 9.32, 0.02), 1.5926304991625002)
 
 def test_mist_basic(bands='JHK'):
     ic = MIST_Isochrone(bands)

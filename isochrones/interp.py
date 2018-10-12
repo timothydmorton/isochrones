@@ -321,7 +321,9 @@ class DFInterpolator(object):
         icol = self.columns.index(col)
         args = (*p, self.grid, icol, *self.index_columns)
 
-        if isinstance(p[0], float) and isinstance(p[1], float) and isinstance(p[2], float):
+        if ((isinstance(p[0], float) or isinstance(p[0], int)) and
+            (isinstance(p[1], float) or isinstance(p[1], int)) and
+            (isinstance(p[2], float) or isinstance(p[2], int))):
             return interp_value(*args)
 
         else:
