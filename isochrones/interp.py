@@ -1,5 +1,6 @@
 import os
 import itertools
+import logging
 
 from numba import jit, float64, TypingError
 from math import sqrt
@@ -285,8 +286,7 @@ class DFInterpolator(object):
         icol = self.columns.index(col)
         args = (*p, self.grid, icol, *self.index_columns)
 
-        types = (float, int)
-        if type(p[0]) in types and type(p[1]) in types and type(p[2]) in types:
+        if isinstance(p[0], float) and isinstance(p[1], float) and isinstance(p[2], float):
             return interp_value(*args)
 
         else:
