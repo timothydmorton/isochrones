@@ -12,6 +12,21 @@ def interp_box(x, y, z, box, values):
     """
     box is 8x3 array, though not really a box
 
+    Implementing trilinear interpolation according to
+
+    https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+    Corners are organized as follows in following order in 'box' and 'values'
+
+    000
+    001
+    010
+    011
+    100
+    101
+    110
+    111
+
     values is length-8 array, corresponding to values at the "box" coords
 
     TODO: should make power `p` an argument
@@ -19,26 +34,46 @@ def interp_box(x, y, z, box, values):
 
     # Calculate the distance to each vertex
 
-    val = 0
-    norm = 0
-    for i in range(8):
-        # Inv distance, or Inv-dsq weighting
-        distance = sqrt((x-box[i,0])**2 + (y-box[i,1])**2 + (z-box[i, 2])**2)
+    x0 = box[0, 0]
+    x1 = box[4, 0]
+    y0 = box[0, 1]
+    y1 = box[2, 1]
+    z0 = box[0, 2]
+    z1 = box[1, 2]
 
-        # If you happen to land on exactly a corner, you're done.
-        if distance == 0:
-            val = values[i]
-            norm = 1.
-            break
+    if x1 == x0:
+        xd = 0
+    else:
+        xd = (x - x0) / (x1 - x0)
 
-        w = 1./distance
-        # w = 1./((x-box[i,0])*(x-box[i,0]) +
-        #         (y-box[i,1])*(y-box[i,1]) +
-        #         (z-box[i, 2])*(z-box[i, 2]))
-        val += w * values[i]
-        norm += w
+    if y1 == y0:
+        yd = 0
+    else:
+        yd = (y - y0) / (y1 - y0)
 
-    return val/norm
+    if z1 == z0:
+        zd = 0
+    else:
+        zd = (z - z0) / (z1 - z0)
+
+    c000 = values[0]
+    c001 = values[1]
+    c010 = values[2]
+    c011 = values[3]
+    c100 = values[4]
+    c101 = values[5]
+    c110 = values[6]
+    c111 = values[7]
+
+    c00 = c000 * (1 - xd) + c100 * xd
+    c01 = c001 * (1 - xd) + c101 * xd
+    c10 = c010 * (1 - xd) + c110 * xd
+    c11 = c011 * (1 - xd) + c111 * xd
+
+    c0 = c00 * (1 - yd) + c10 * yd
+    c1 = c01 * (1 - yd) + c11 * yd
+
+    return c0 * (1 - zd) + c1 * zd
 
 @jit(nopython=True)
 def searchsorted(arr, N, x):
