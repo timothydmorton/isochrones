@@ -29,7 +29,13 @@ def test_interp():
 
     # Check linear interpolation vis-a-vis scipy
     try:
-       assert np.isclose(df_interp(pars, 'val'), interp(pars)[0], rtol=1e-10, atol=1e-11)
+       assert np.isclose(df_interp(pars, 'val'), interp(pars)[0], atol=1e-11)
     except AssertionError:
         logging.debug('mine: {}, scipy: {}'.format(df_interp(pars, 'val'), interp(pars)[0]))
         raise
+
+    pts = np.random.random(size=(10,3)) * 9
+    pts[:, 1] *= 10
+    pts[:, 2] *= 100
+
+    assert np.allclose(df_interp([pts[:, 0], pts[:, 1], pts[:, 2]], 'val'), interp(pts), atol=1e-11)
