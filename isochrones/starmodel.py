@@ -552,6 +552,9 @@ class StarModel(object):
 
         return lnp
 
+    def set_prior(self, prop, prior):
+        self._priors[prop] = prior
+
     def prior(self, prop, val, **kwargs):
         return self._priors[prop](val, **kwargs)
 
