@@ -3,6 +3,8 @@ from .config import on_rtd
 import os, re, sys
 import warnings
 import logging
+import itertools
+import pickle
 
 if not on_rtd:
     import pandas as pd
@@ -608,6 +610,7 @@ class FastIsochrone(Isochrone):
         self.modelgrid_kwargs = kwargs
 
         self._interp = None
+        self._maxage_fn = None
 
     @property
     def interp(self):
@@ -732,6 +735,56 @@ class FastIsochrone(Isochrone):
 
     def initial_mass(self, eep, age, feh):
         return self.interp_value(eep, age, feh, self.initial_mass_col)
+
+    @property
+    def _maxage_pkl_filename(self):
+        filename = os.path.join(ISOCHRONES, self.name, 'maxage{}.pkl'.format(self.kwarg_tag))
+
+        return filename
+
+
+    def _get_maxage_fn(self, recalc=False):
+
+        try:
+            fn = pickle.load(open(self._maxage_pkl_filename, 'rb'))
+        except:
+            df = self.df
+
+            ages = df.index.levels[1]
+            fehs = df.index.levels[0]
+
+            n = len(ages) * len(fehs)
+
+            age_arr = np.empty(n)
+            feh_arr = np.empty(n)
+            mass_arr = np.empty(n)
+
+            for i, (a,f) in enumerate(itertools.product(ages, fehs)):
+                age_arr[i] = a
+                feh_arr[i] = f
+                mass_arr[i] = df.xs((f, a), level=(0, 1)).initial_mass.max()
+
+            from scipy.interpolate import LinearNDInterpolator
+
+            pts = np.array([mass_arr, feh_arr]).T
+            vals = np.array(age_arr)
+            fn = LinearNDInterpolator(pts, vals, fill_value=self.maxage)
+
+            pickle.dump(fn, open(self._maxage_pkl_filename, 'wb'))
+
+        return fn
+
+    @property
+    def maxage_fn(self):
+        if self._maxage_fn is None:
+            self._maxage_fn = self._get_maxage_fn()
+        return self._maxage_fn
+
+    def max_allowed_age(self, mass, feh):
+        """Returns the maximum age allowed by the grid for given mass and feh
+        """
+        return self.maxage_fn(mass, feh)
+
 
     @property
     def _npy_filename(self):
