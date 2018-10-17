@@ -8,7 +8,7 @@ from isochrones.priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior
 
 class StarClusterModel(object):
 
-    param_names = ['age', 'feh', 'AV', 'distance', 'gamma']
+    param_names = ['age', 'feh', 'distance', 'AV', 'gamma']
 
     def __init__(self, ic, stars,
                  halo_fraction=0.001, max_AV=1., max_distance=50000):
