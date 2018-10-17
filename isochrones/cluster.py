@@ -28,6 +28,8 @@ class StarClusterModel(object):
         lnp = 0
         for prop in ['age', 'feh', 'distance', 'AV', 'gamma']:
             val = np.log(self.priors[prop](eval(prop)))
+            if not np.isfinite(val):
+                print(prop, val)
             lnp += val
 
         if not np.isfinite(lnp):
@@ -67,7 +69,10 @@ class StarClusterModel(object):
             integrand = np.exp(lnlike_mass + lnlike_phot)
 
             like_tot = np.trapz(integrand, eeps)
-            lnlike_tot += np.log(like_tot)
+
+            if like_tot:
+                lnlike_tot += np.log(like_tot)
+
 
         return lnlike_tot
 
