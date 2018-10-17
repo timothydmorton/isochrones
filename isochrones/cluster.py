@@ -55,26 +55,22 @@ class StarClusterModel(object):
 
         lnlike_mass = np.log(mass_fn.pdf(model_masses))
 
-        for i in range(len(self.stars)):
-            # Compute log-likelihood of observed photometry
-            lnlike_phot = 0
-            for b in self.bands:
-                model_mags = self.ic.mag[b](eeps, age, feh, distance, AV)
+        # Compute log-likelihood of observed photometry
+        model_mags = {b : self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
 
-                # log-likelihood of observed magnitude, for all eeps
-                vals, uncs = self.stars.iloc[i][[b, b + '_unc']]
-                lnlike_phot += -0.5*(vals - model_mags)**2 / uncs**2
+        lnlike_phot = 0
+        for b in self.bands:
+            vals = self.stars[b].values
+            uncs = self.stars[b + '_unc'].values
 
-            # Marginalize over EEP (multiply & integrate)
-            integrand = np.exp(lnlike_mass + lnlike_phot)
+            lnlike_phot += -0.5 * (vals - model_mags[b][:, None])**2 / uncs**2
 
-            like_tot = np.trapz(integrand, eeps)
+        integrand = np.exp(lnlike_mass[:, None] + lnlike_phot)
 
-            if like_tot:
-                lnlike_tot += np.log(like_tot)
+        like_tot = np.trapz(integrand, axis=1)
 
-
-        return lnlike_tot
+        ok = (like_tot != 0)
+        return np.log(like_tot[ok]).sum()
 
     def lnpost(self, p):
         return self.lnprior(p) + self.lnlike(p)
