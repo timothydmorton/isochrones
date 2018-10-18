@@ -6,30 +6,43 @@ import pandas as pd
 from isochrones import StarModel
 from isochrones.priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior
 
-class StarClusterModel(object):
+class StarClusterModel(StarModel):
 
     param_names = ['age', 'feh', 'distance', 'AV', 'gamma']
 
     def __init__(self, ic, stars,
-                 halo_fraction=0.001, max_AV=1., max_distance=50000):
-        self.ic = ic
+                 halo_fraction=0.001, max_AV=1., max_distance=50000,
+                 use_emcee=True, basename='cluster'):
+        self._ic = ic
         self.stars = stars
         self.bands = [c for c in stars.columns if not re.search('unc', c)]
 
-        self.priors = {'age': FlatLogPrior((6, 10.15)),
+        self._priors = {'age': FlatLogPrior((6, 10.15)),
                        'feh': FehPrior(halo_fraction=halo_fraction),
                        'AV' : FlatPrior((0, max_AV)),
                        'distance' : PowerLawPrior(alpha=2., bounds=(0, max_distance)),
                        'gamma' : FlatPrior((-5, 0))}
+
+        self.use_emcee = use_emcee
+
+        self._mnest_basename = basename
+        self._samples = None
+
+    @property
+    def mnest_basename(self):
+        return self._mnest_basename
+
+
+    @property
+    def n_params(self):
+        return len(self.param_names)
 
     def lnprior(self, p):
         age, feh, distance, AV, gamma = p
 
         lnp = 0
         for prop in ['age', 'feh', 'distance', 'AV', 'gamma']:
-            val = np.log(self.priors[prop](eval(prop)))
-            if not np.isfinite(val):
-                print(prop, val)
+            val = np.log(self._priors[prop](eval(prop)))
             lnp += val
 
         if not np.isfinite(lnp):
@@ -74,3 +87,12 @@ class StarClusterModel(object):
 
     def lnpost(self, p):
         return self.lnprior(p) + self.lnlike(p)
+
+    def emcee_p0(self, n_walkers):
+        raise NotImplementedError('Must provide p0 to fit_mcmc for now.')
+
+    def mnest_prior(self, cube, ndim, nparams):
+
+        for j, par in enumerate(['age','feh','distance','AV']):
+            lo, hi = self.bounds(par)
+            cube[i+n+j] = (hi - lo)*cube[i+n+j] + lo
