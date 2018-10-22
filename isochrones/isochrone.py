@@ -162,7 +162,7 @@ class Isochrone(object):
 
         self._mag = {band:interpnd(self.tri,mags[band]) for band in self.bands}
 
-        self.mag = {b : self._mag_fn(b) for b in self.bands}
+        self.mag = self._make_mag_fns()
 
         self._eeps = None
 
@@ -173,7 +173,10 @@ class Isochrone(object):
 
     def __setstate__(self, odict):
         self.__dict__ = odict
-        self.__dict__['mag'] = {b : self._mag_fn(b) for b in self.bands}
+        self.__dict__['mag'] = self._make_mag_fns()
+
+    def _make_mag_fns(self):
+        return {b : self._mag_fn(b) for b in self.bands}
 
     def _prop(self, prop, *args):
         if prop not in self._props:
@@ -600,7 +603,7 @@ class FastIsochrone(Isochrone):
         self._mineep = None
         self._maxeep = None
 
-        self.mag = {b: MagFunction(self, b) for b in self.bands}
+        self.mag = self._make_mag_fns()
 
         #organized array
         self._grid = None
@@ -611,6 +614,9 @@ class FastIsochrone(Isochrone):
 
         self._interp = None
         self._maxage_fn = None
+
+    def _make_mag_fns(self):
+        return {b: MagFunction(self, b) for b in self.bands}
 
     @property
     def interp(self):
