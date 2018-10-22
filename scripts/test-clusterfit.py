@@ -8,6 +8,15 @@ from isochrones import get_ichrone
 from isochrones.priors import FehPrior
 
 
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+except ImportError:
+    rank = 0
+
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-N', type=int, default=40)
 parser.add_argument('--name', type=str, default='test-binary')
@@ -27,22 +36,26 @@ parser.add_argument('--nlive', type=int, default=1000)
 
 args = parser.parse_args()
 
-ic = get_ichrone(args.models)
 
-pars = [args.age, args.feh, args.distance,
-        args.AV, args.alpha, args.gamma, args.fB]
+if rank==0:
+    ic = get_ichrone(args.models)
 
-print(pars)
-cat = simulate_cluster(args.N, *pars)
+    pars = [args.age, args.feh, args.distance,
+            args.AV, args.alpha, args.gamma, args.fB]
+    print(pars)
+    cat = simulate_cluster(args.N, *pars)
+    print(cat.df.describe())
 
-print(cat.df.describe())
+    model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
+                             max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
+    model.set_prior('feh', FehPrior(halo_fraction=0.5))
 
-model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
-                         max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
-model.set_prior('feh', FehPrior(halo_fraction=0.5))
+    print('lnprior, lnlike, lnpost: {}'.format([model.lnprior(pars),
+                                                model.lnlike(pars),
+                                                model.lnpost(pars)]))
 
-print('lnprior, lnlike, lnpost: {}'.format([model.lnprior(pars),
-                                            model.lnlike(pars),
-                                            model.lnpost(pars)]))
+else:
+    model = None
 
+model = comm.bcast(model, root=0)
 model.fit(overwrite=args.overwrite)
