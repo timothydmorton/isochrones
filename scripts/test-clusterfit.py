@@ -58,4 +58,4 @@ else:
     model = None
 
 model = comm.bcast(model, root=0)
-model.fit(overwrite=args.overwrite)
+model.fit(overwrite=args.overwrite, n_live_points=args.nlive)
