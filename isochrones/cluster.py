@@ -209,7 +209,7 @@ class StarClusterModel(StarModel):
 
     def mnest_prior(self, cube, ndim, nparams):
 
-        for i, par in enumerate(['age','feh','distance','AV', 'gamma']):
+        for i, par in enumerate(['age','feh','distance','AV', 'alpha', 'gamma', 'fB']):
             lo, hi = self.bounds(par)
             cube[i] = (hi - lo)*cube[i] + lo
 
