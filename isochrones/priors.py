@@ -8,6 +8,8 @@ if not on_rtd:
     from scipy.stats import uniform
     from scipy.integrate import quad
     import matplotlib.pyplot as plt
+    from numba import jit
+    from math import log
 
 class Prior(object):
 
@@ -162,6 +164,21 @@ class FehPrior(Prior):
         m2 = u2 < self.halo_fraction
         x[m2] = xhalo[m2]
         return x
+
+
+# Utility numba PDFs for speed!
+@jit(nopython=True)
+def powerlaw_pdf(x, alpha, lo, hi):
+    alpha_plus_one = alpha + 1
+    C = alpha_plus_one/(hi**alpha_plus_one - lo**alpha_plus_one)
+    return C * x**alpha
+
+@jit(nopython=True)
+def powerlaw_lnpdf(x, alpha, lo, hi):
+    alpha_plus_one = alpha + 1
+    C = alpha_plus_one/(hi**alpha_plus_one - lo**alpha_plus_one)
+    return log(C) + alpha * log(x)
+
 
 
 #  Uniform true age prior; where 'age' is actually log10(age)

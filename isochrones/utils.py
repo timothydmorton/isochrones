@@ -6,6 +6,7 @@ import os
 import logging
 
 if not on_rtd:
+    from numba import jit
     import numpy as np
 
 def download_file(url, path=None, clobber=False):
@@ -23,7 +24,7 @@ def download_file(url, path=None, clobber=False):
     if os.path.exists(local_filename) and not clobber:
         logging.info('{} exists; not downloading.'.format(local_filename))
         return local_filename
-        
+
     # NOTE the stream=True parameter
     r = requests.get(url, stream=True)
     with open(local_filename, 'wb') as f:
@@ -74,3 +75,14 @@ def distance(pos0, pos1):
     dra = (ra1 - ra0)
     ddec = (dec1 - dec0)
     return np.sqrt(dra**2 + ddec**2)
+
+@jit(nopython=True)
+def trapz(y, x):
+    n = len(y)
+    tot = 0
+
+    for i in range(n-1):
+        i2 = i + 1
+        tot = tot + 0.5 * (y[i] + y[i2]) * (x[i2] - x[i])
+
+    return tot
