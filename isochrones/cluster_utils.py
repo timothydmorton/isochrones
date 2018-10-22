@@ -5,7 +5,7 @@ import numpy as np
 from .utils import trapz
 from .priors import powerlaw_lnpdf
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True, parallel=True, nogil=True)
 def calc_lnlike_grid(lnlike_prop,
                      model_mags, Nbands,
                      masses, eeps,
@@ -62,7 +62,7 @@ def calc_lnlike_grid(lnlike_prop,
     return lnlikes
 
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True, parallel=True, nogil=True)
 def integrate_over_eeps(lnlike_grid, eeps, Nstars):
 
     likes_marginalized  = np.zeros(Nstars)
