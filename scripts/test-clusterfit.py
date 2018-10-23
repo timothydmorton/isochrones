@@ -46,7 +46,7 @@ if rank==0:
     cat = simulate_cluster(args.N, *pars)
     print(cat.df.describe())
 
-    cat.df.to_hdf('{}_stars.h5'.format(args.name))
+    cat.df.to_hdf('{}_stars.h5'.format(args.name), 'df')
 
     model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
                              max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
