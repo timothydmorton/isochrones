@@ -232,7 +232,7 @@ class StarClusterModel(StarModel):
             chain = self.sampler.flatchain
             lnprob = self.sampler.lnprobability.ravel()
 
-        df = pd.DataFrame(chain, columns=['age', 'feh', 'distance', 'AV', 'gamma'])
+        df = pd.DataFrame(chain, columns=['age', 'feh', 'distance', 'AV', 'alpha', 'gamma', 'fB'])
         df['lnprob'] = lnprob
 
         self._samples = df
