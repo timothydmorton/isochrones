@@ -56,7 +56,7 @@ class StarClusterModel(StarModel):
                        'distance' : PowerLawPrior(alpha=2., bounds=(0, max_distance)),
                        'alpha' : FlatPrior(bounds=(-4, -1)),
                        'gamma' : GaussianPrior(0.3, 0.1),
-                       'fB' : FlatPrior(0., 0.6)}
+                       'fB' : FlatPrior(bounds=(0., 0.6))}
 
         self.use_emcee = use_emcee
 
