@@ -46,6 +46,8 @@ if rank==0:
     cat = simulate_cluster(args.N, *pars)
     print(cat.df.describe())
 
+    cat.df.to_hdf('{}_stars.h5'.format(args.name))
+
     model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
                              max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
     model.set_prior('feh', FehPrior(halo_fraction=0.5))
@@ -58,4 +60,4 @@ else:
     model = None
 
 model = comm.bcast(model, root=0)
-model.fit(overwrite=args.overwrite, n_live_points=args.nlive)
+model.fit(overwrite=args.overwrite, n_live_points=args.nlive, init_MPI=False)
