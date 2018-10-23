@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import argparse
 
-import pandas as pd
-
 from isochrones.cluster import StarClusterModel, simulate_cluster
 from isochrones import get_ichrone
-from isochrones.priors import FehPrior
+from isochrones.priors import FehPrior, FlatLogPrior
 
 
 try:
@@ -14,7 +12,6 @@ try:
     rank = comm.Get_rank()
 except ImportError:
     rank = 0
-
 
 
 parser = argparse.ArgumentParser()
@@ -37,7 +34,7 @@ parser.add_argument('--nlive', type=int, default=1000)
 args = parser.parse_args()
 
 
-if rank==0:
+if rank == 0:
     ic = get_ichrone(args.models)
 
     pars = [args.age, args.feh, args.distance,
@@ -51,6 +48,7 @@ if rank==0:
     model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
                              max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
     model.set_prior('feh', FehPrior(halo_fraction=0.5))
+    model.set_prior('age', FlatLogPrior((6, 9.5)))
 
     print('lnprior, lnlike, lnpost: {}'.format([model.lnprior(pars),
                                                 model.lnlike(pars),
