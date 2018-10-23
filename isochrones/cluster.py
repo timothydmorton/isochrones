@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from . import StarModel, get_ichrone
-from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior
+from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
 from .utils import addmags
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
 
@@ -50,13 +50,13 @@ class StarClusterModel(StarModel):
 
         self.stars = stars
 
-        self._priors = {'age': FlatLogPrior((6, 10.15)),
+        self._priors = {'age': FlatLogPrior(bounds=(6, 10.15)),
                        'feh': FehPrior(halo_fraction=halo_fraction),
-                       'AV' : FlatPrior((0, max_AV)),
+                       'AV' : FlatPrior(bounds=(0, max_AV)),
                        'distance' : PowerLawPrior(alpha=2., bounds=(0, max_distance)),
-                       'alpha' : FlatPrior((-4, -1)),
-                       'gamma' : FlatPrior((0, 1)),
-                       'fB' : FlatPrior((0, 1))}
+                       'alpha' : FlatPrior(bounds=(-4, -1)),
+                       'gamma' : GaussianPrior(0.3, 0.1),
+                       'fB' : GaussianPrior(0.4, 0.2)}
 
         self.use_emcee = use_emcee
 
@@ -101,6 +101,10 @@ class StarClusterModel(StarModel):
                 return (self.ic.minage, self.ic.maxage)
             elif prop=='feh':
                 return (self.ic.minfeh, self.ic.maxfeh)
+            elif prop=='gamma':
+                return (0, 1)
+            elif prop=='fB':
+                return (0, 1)
 
     @property
     def n_params(self):
@@ -117,8 +121,13 @@ class StarClusterModel(StarModel):
 
         lnp = 0
         for prop in ['age', 'feh', 'distance', 'AV', 'alpha', 'gamma', 'fB']:
-            val = np.log(self._priors[prop](eval(prop)))
-            lnp += val
+            prior = self._priors[prop]
+            if hasattr(prior, 'lnpdf'):
+                lnval += prior.lnpdf(eval(prop))
+            else:
+                lnval = np.log(prior(eval(prop)))
+
+            lnp += lnval
 
         if not np.isfinite(lnp):
             return -np.inf

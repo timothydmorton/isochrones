@@ -5,6 +5,7 @@ from .config import on_rtd
 
 if not on_rtd:
     import numpy as np
+    import scipy.stats
     from scipy.stats import uniform
     from scipy.integrate import quad
     import matplotlib.pyplot as plt
@@ -49,6 +50,18 @@ class Prior(object):
             plt.plot(c, pdf, 'x')
         else:
             assert max((resid / sigma)[hn > 50]) < 4
+
+class GaussianPrior(Prior):
+    def __init__(self, mean, sigma):
+        self.mean = mean
+        self.sigma = sigma
+        self.distribution = scipy.stats.norm(mean, sigma)
+
+    def pdf(self, x):
+        return self.distribution.pdf(x)
+
+    def lnpdf(self, x):
+        return self.distribution.logpdf(x)
 
 class BoundedPrior(Prior):
     def __init__(self, bounds=None):
@@ -100,6 +113,11 @@ class PowerLawPrior(BoundedPrior):
         C = (1 + self.alpha)/(hi**(1 + self.alpha) - lo**(1 + self.alpha))
         # C = 1/(1/(self.alpha+1)*(1 - lo**(self.alpha+1)))
         return C * x**self.alpha
+
+    def lnpdf(self, x):
+        lo, hi = self.bounds
+        C = (1 + self.alpha)/(hi**(1 + self.alpha) - lo**(1 + self.alpha))
+        return np.log(C) + self.alpha*np.log(x)
 
     def sample(self, n):
         """
