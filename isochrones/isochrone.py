@@ -385,9 +385,8 @@ class Isochrone(object):
                 df = pd.DataFrame(d, index=[0])
             return df
 
-
     def isochrone(self, age, feh=0.0, thin=5,
-                  return_df=True,distance=None,AV=0.0):
+                  return_df=True, distance=None, AV=0.0, eeps=None):
         """
         Returns stellar models at constant age and feh, for a range of masses
 
@@ -418,7 +417,8 @@ class Isochrone(object):
 
         """
 
-        eeps = self.eeps[::thin]
+        if eeps is None:
+            eeps = self.eeps[::thin]
 
         args = (eeps, age, feh)
         Ms = self.mass(*args)

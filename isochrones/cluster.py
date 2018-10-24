@@ -1,5 +1,3 @@
-import re
-
 import numpy as np
 import pandas as pd
 
@@ -8,9 +6,11 @@ from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPr
 from .utils import addmags
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
 
+
 class StarCatalog(object):
     """
     """
+
     def __init__(self, df, bands=None, props=None):
         self.df = df
 
@@ -18,7 +18,7 @@ class StarCatalog(object):
         self.props = tuple() if props is None else tuple(props)
 
         for c in self.bands + self.props:
-            if not c in self.df.columns:
+            if c not in self.df.columns:
                 raise ValueError('{} not in DataFrame!'.format(c))
             if not '{}_unc'.format(c) in self.df.columns:
                 raise ValueError('{0} uncertainty ({0}_unc) not in DataFrame!'.format(c))
@@ -51,12 +51,12 @@ class StarClusterModel(StarModel):
         self.stars = stars
 
         self._priors = {'age': FlatLogPrior(bounds=(6, 10.15)),
-                       'feh': FehPrior(halo_fraction=halo_fraction),
-                       'AV' : FlatPrior(bounds=(0, max_AV)),
-                       'distance' : PowerLawPrior(alpha=2., bounds=(0, max_distance)),
-                       'alpha' : FlatPrior(bounds=(-4, -1)),
-                       'gamma' : GaussianPrior(0.3, 0.1),
-                       'fB' : FlatPrior(bounds=(0., 0.6))}
+                        'feh': FehPrior(halo_fraction=halo_fraction),
+                        'AV': FlatPrior(bounds=(0, max_AV)),
+                        'distance': PowerLawPrior(alpha=2., bounds=(0, max_distance)),
+                        'alpha': FlatPrior(bounds=(-4, -1)),
+                        'gamma': GaussianPrior(0.3, 0.1),
+                        'fB': FlatPrior(bounds=(0., 0.6))}
 
         self.use_emcee = use_emcee
 
@@ -77,7 +77,6 @@ class StarClusterModel(StarModel):
     def props(self):
         return self.stars.props
 
-
     @property
     def labelstring(self):
         s = 'cluster'
@@ -85,25 +84,24 @@ class StarClusterModel(StarModel):
             s += '_{}'.format(self.name)
         return s
 
-
     def bounds(self, prop):
-        if prop=='eep':
+        if prop == 'eep':
             return self._eep_bounds if self._eep_bounds is not None else (self.ic.mineep,
                                                                           self.ic.maxeep)
-        elif prop=='mass':
+        elif prop == 'mass':
             return self._mass_bounds if self._mass_bounds is not None else (self.ic.minmass,
                                                                             self.ic.maxmass)
 
         try:
             return self._priors[prop].bounds
         except AttributeError:
-            if prop=='age':
+            if prop == 'age':
                 return (self.ic.minage, self.ic.maxage)
-            elif prop=='feh':
+            elif prop == 'feh':
                 return (self.ic.minfeh, self.ic.maxfeh)
-            elif prop=='gamma':
+            elif prop == 'gamma':
                 return (0, 1)
-            elif prop=='fB':
+            elif prop == 'fB':
                 return (0, 1)
 
     @property
@@ -123,7 +121,7 @@ class StarClusterModel(StarModel):
         for prop in ['age', 'feh', 'distance', 'AV', 'alpha', 'gamma', 'fB']:
             prior = self._priors[prop]
             if hasattr(prior, 'lnpdf'):
-                lnval += prior.lnpdf(eval(prop))
+                lnval = prior.lnpdf(eval(prop))
             else:
                 lnval = np.log(prior(eval(prop)))
 
@@ -153,6 +151,8 @@ class StarClusterModel(StarModel):
 
         model_masses = model_masses[ok]
         eeps = eeps[ok]
+        dm_deeps = self.ic.interp_value(eeps, age, feh, 'dm_deep')
+        ln_dm_deeps = np.log(np.absolute(dm_deeps))
 
         # Compute model mags at each eep
         model_mags = {b : self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
@@ -198,7 +198,7 @@ class StarClusterModel(StarModel):
 
         args = (lnlike_prop,
                 model_mags_arr, Nbands,
-                model_masses, eeps,
+                model_masses, ln_dm_deeps, eeps,
                 vals_arr, uncs_arr,
                 alpha, gamma, fB,
                 mass_lo, mass_hi, self.qlo)
@@ -246,13 +246,16 @@ class StarClusterModel(StarModel):
 
         self._samples = df
 
+
 def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB, bands='JHK'):
     u = np.random.random(N)
     is_binary = u < fB
 
-    pri_masses = PowerLawPrior(-3, (0.5, 2)).sample(N)
+    tot_masses = PowerLawPrior(alpha, (0.8, 2)).sample(N)
     qs = PowerLawPrior(gamma, (0.1, 1)).sample(N)
+    pri_masses = tot_masses / (1 + qs)
     sec_masses = pri_masses * qs * is_binary
+    pri_masses[~is_binary] = tot_masses[~is_binary]
 
     mist = get_ichrone('mist')
 
@@ -269,10 +272,10 @@ def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB, bands='JHK'):
     stars = pd.DataFrame(mags)
     stars['is_binary'] = is_binary
 
-    unc = 0.02
+    unc = 0.01
     for b in bands:
-        stars[b] += np.random.randn(N)*0.01
-        stars[b + '_unc'] = 0.01
+        stars[b] += np.random.randn(N) * unc
+        stars[b + '_unc'] = unc
 
     # slightly different distance for each star
     distances = distance + np.random.randn(N) * 5

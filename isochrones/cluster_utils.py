@@ -1,14 +1,15 @@
-from math import log10, pow, log, exp
+from math import log10, log, exp
 from numba import jit, prange
 import numpy as np
 
 from .utils import trapz
 from .priors import powerlaw_lnpdf
 
+
 @jit(nopython=True, parallel=True, nogil=True, fastmath=True)
 def calc_lnlike_grid(lnlike_prop,
                      model_mags, Nbands,
-                     masses, eeps,
+                     masses, ln_dm_deeps, eeps,
                      mag_values, mag_uncs,
                      alpha, gamma, fB,
                      mass_lo, mass_hi, q_lo):
@@ -20,6 +21,7 @@ def calc_lnlike_grid(lnlike_prop,
     model_mags: (Neep, Nbands)
     Nbands: int
     masses: Neep
+    dm_deeps: Neep
     eeps: Neep
     mag_values: (Nstars, Nbands)
     mag_uncs: (Nstars, Nbands)
@@ -53,6 +55,7 @@ def calc_lnlike_grid(lnlike_prop,
 
                 # ln(likelihood) for total mass
                 lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
+                lnlike_mass += ln_dm_deeps[j]
 
                 # ln(likelihood) for mass ratio
                 lnlike_mass_ratio = powerlaw_lnpdf(masses[k] / masses[j], gamma, q_lo, 1.)
@@ -65,7 +68,7 @@ def calc_lnlike_grid(lnlike_prop,
 @jit(nopython=True, parallel=True, nogil=True, fastmath=True)
 def integrate_over_eeps(lnlike_grid, eeps, Nstars):
 
-    likes_marginalized  = np.zeros(Nstars)
+    likes_marginalized = np.zeros(Nstars)
     n = len(eeps)
     for i in prange(Nstars):
         row = np.zeros(n)
@@ -76,7 +79,7 @@ def integrate_over_eeps(lnlike_grid, eeps, Nstars):
                 k2 = k + 1
                 tot += 0.5 * (exp(lnlike_grid[i, j, k]) + exp(lnlike_grid[i, j, k2])) * (eeps[k2] - eeps[k])
 
-            row[j] = tot #* n / (m - 1) # rescale for equal weights per column.  Is this right?
+            row[j] = tot  # * n / (m - 1) # should I rescale for equal weights per column?
             # if tot > 0:
             #     print(i, eeps[j], tot)
 
