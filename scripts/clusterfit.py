@@ -28,6 +28,7 @@ parser.add_argument('--maxeep', type=int, default=800)
 parser.add_argument('--maxAV', type=float, default=0.1)
 parser.add_argument('--overwrite', '-o', action='store_true')
 parser.add_argument('--nlive', type=int, default=1000)
+parser.add_argument('--name', type=str, default='')
 
 args = parser.parse_args()
 
