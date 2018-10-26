@@ -39,7 +39,7 @@ if rank==0:
     else:
         stars = pd.read_csv(args.starfile)
 
-    cat = StarCatalog(stars)
+    cat = StarCatalog(stars, props=args.props)
 
     model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
                              max_distance=args.max_distance, max_AV=args.maxAV, name=args.name)
