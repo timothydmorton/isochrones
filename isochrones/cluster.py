@@ -1,9 +1,13 @@
+import re
+import logging
+
 import numpy as np
 import pandas as pd
+import holoviews as hv
 
 from . import StarModel, get_ichrone
 from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
-from .utils import addmags
+from .utils import addmags, band_pairs
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
 
 
@@ -12,27 +16,194 @@ class StarCatalog(object):
     """
 
     def __init__(self, df, bands=None, props=None):
-        self.df = df
+        self._df = df
 
-        self.bands = tuple() if bands is None else tuple(bands)
+        if bands is None:
+            bands = []
+            for c in df.columns:
+                m = re.search('(.+)_mag$', c)
+                if m:
+                    bands.append(m.group(1))
+        self.bands = tuple(bands)
+        self.band_cols = tuple('{}_mag'.format(b) for b in self.bands)
+
         self.props = tuple() if props is None else tuple(props)
 
-        for c in self.bands + self.props:
+        for c in self.band_cols + self.props:
             if c not in self.df.columns:
                 raise ValueError('{} not in DataFrame!'.format(c))
             if not '{}_unc'.format(c) in self.df.columns:
                 raise ValueError('{0} uncertainty ({0}_unc) not in DataFrame!'.format(c))
 
+        self._ds = None
+        self._hr = None
+
+    def __setstate__(self, odict):
+        self.__dict__ = odict
+        self._hr = None
+
+    @property
+    def df(self):
+        return self._df
+
+    @df.setter
+    def df(self, newdf):
+        self._df = newdf
+        self._ds = None
+        self._hr = None
+
     def get_measurement(self, prop, values=False):
         return self.df[prop].values, self.df[prop + '_unc'].values
 
     def iter_bands(self, **kwargs):
-        for b in self.bands:
+        for b in self.band_cols:
             yield b, self.get_measurement(b, **kwargs)
 
     def iter_props(self, **kwargs):
         for p in self.props:
             yield p, self.get_measurement(p, **kwargs)
+
+    @property
+    def ds(self):
+        if self._ds is None:
+            df = self.df.copy()
+            for b1, b2 in band_pairs(self.bands):
+                mag1 = self.df['{}_mag'.format(b1)]
+                mag2 = self.df['{}_mag'.format(b2)]
+
+                df[b2] = mag2
+                df['{0}-{1}'.format(b1, b2)] = mag1 - mag2
+
+            self._ds = hv.Dataset(df)
+
+        return self._ds
+
+    @property
+    def hr(self):
+        if self._hr is None:
+            layout = []
+            opts = dict(invert_yaxis=True, tools=['hover'])
+            for b1, b2 in band_pairs(self.bands):
+                kdims = ['{}-{}'.format(b1, b2), '{}_mag'.format(b2)]
+                layout.append(hv.Points(self.ds, kdims=kdims, vdims=self.ds.kdims).options(**opts))
+            self._hr = hv.Layout(layout)
+        return self._hr
+
+
+class SimulatedCluster(StarCatalog):
+    def __init__(self, N, age, feh, distance, AV, alpha, gamma, fB,
+                 bands='JHK', mass_range=(0.3, 2.5), distance_scatter=5,
+                 models='mist', phot_unc=0.01):
+
+        self.N = N
+
+        self.age = age
+        self.feh = feh
+        self.distance = distance
+        self.AV = AV
+        self.alpha = alpha
+        self.gamma = gamma
+        self.fB = fB
+        self.pars = [age, feh, distance, AV, alpha, gamma, fB]
+
+        self.bands = bands
+        self.mass_range = mass_range
+        self.distance_scatter = distance_scatter
+        self.phot_unc = phot_unc
+
+        self.ic = get_ichrone(models)
+
+        df = self._generate()
+
+        super().__init__(df, bands=bands)
+
+    def evolve(self, age):
+        _, feh, distance, AV, alpha, gamma, fB = self.pars
+
+        df = self._simulate_stars(age, self.df.is_binary,
+                                  self.df.mass_pri, self.df.mass_sec,
+                                  self.df.distance,
+                                  self.df.eep_pri, self.df.eep_sec)
+
+        return StarCatalog(df, bands=self.bands)
+
+    def _generate(self):
+        N = self.N
+        age, feh, distance, AV, alpha, gamma, fB = self.pars
+
+        u = np.random.random(N)
+        is_binary = u < fB
+
+        # This is if we want the IMF to describe the primary mass only
+        pri_masses = PowerLawPrior(alpha, self.mass_range).sample(N)
+        qs = PowerLawPrior(gamma, (0.2, 1)).sample(N)
+        sec_masses = pri_masses * qs * is_binary
+        sec_masses[(sec_masses < 0.1) & (sec_masses > 0)] = 0.1
+
+        # # This is if we want the IMF to describe the sum of masses
+        # tot_masses = PowerLawPrior(alpha, self.mass_range).sample(N)
+        # qs = PowerLawPrior(gamma, (0.2, 1)).sample(N)
+        # pri_masses = tot_masses / (1 + qs)
+        # sec_masses = pri_masses * qs * is_binary
+        # sec_masses[(sec_masses < 0.1) & (sec_masses > 0)] = 0.1
+
+        # slightly different distance for each star
+        distances = distance + np.random.randn(N) * self.distance_scatter
+
+        return self._simulate_stars(age, is_binary, pri_masses, sec_masses, distances)
+
+    def _simulate_stars(self, age, is_binary, pri_masses, sec_masses, distances,
+                        pri_eep0s=None, sec_eep0s=None):
+        N = self.N
+        _, feh, distance, AV, alpha, gamma, fB = self.pars
+
+        if pri_eep0s is None:
+            pri_eep0s = np.ones(N) * 0.2 * (self.ic.maxeep - self.ic.mineep)
+        if sec_eep0s is None:
+            sec_eep0s = np.ones(N) * 0.2 * (self.ic.maxeep - self.ic.mineep)
+
+        pri_eeps = np.array([self.ic.eep_from_mass(m, age, feh, e0)
+                             for m, e0 in zip(pri_masses, pri_eep0s)])
+        sec_eeps = np.array([self.ic.eep_from_mass(m, age, feh, e0) if m else 0
+                             for m, e0 in zip(sec_masses, sec_eep0s)])
+
+        # sec_eeps = np.zeros(N)
+        # for i, (m, e0) in enumerate(zip(sec_masses, sec_eep0s)):
+        #     if not m:
+        #         continue
+        #     try:
+        #         sec_eeps[i] = self.ic.eep_from_mass(m, age, feh, e0)
+        #     except ValueError:
+        #         sec_eeps[i] = self.ic.eep_from_mass(m, age, feh)
+
+        mags = {}
+        for b in self.bands:
+            pri = np.array([self.ic.mag[b](e, age, feh, d, AV)
+                            for e, d in zip(pri_eeps, distances)])
+            sec = np.array([self.ic.mag[b](e, age, feh, d, AV) if e else np.inf
+                            for e, d in zip(sec_eeps, distances)])
+            mags['{}_mag'.format(b)] = addmags(pri, sec)
+
+        stars = pd.DataFrame(mags)
+
+        # Record simulation data
+        stars['is_binary'] = is_binary
+        stars['distance'] = distances
+
+        stars['mass_pri'] = pri_masses
+        stars['mass_sec'] = sec_masses
+        stars['eep_pri'] = pri_eeps
+        stars['eep_sec'] = sec_eeps
+
+        unc = self.phot_unc
+        for b in self.bands:
+            stars['{}_mag'.format(b)] += np.random.randn(N) * unc
+            stars['{}_mag_unc'.format(b)] = unc
+
+        stars['parallax'] = 1000./distances
+        stars['parallax_unc'] = 0.2
+
+        return stars
 
 
 class StarClusterModel(StarModel):
@@ -218,7 +389,7 @@ class StarClusterModel(StarModel):
 
     def mnest_prior(self, cube, ndim, nparams):
 
-        for i, par in enumerate(['age','feh','distance','AV', 'alpha', 'gamma', 'fB']):
+        for i, par in enumerate(['age', 'feh', 'distance', 'AV', 'alpha', 'gamma', 'fB']):
             lo, hi = self.bounds(par)
             cube[i] = (hi - lo)*cube[i] + lo
 
@@ -229,8 +400,8 @@ class StarClusterModel(StarModel):
             try:
                 chain = np.loadtxt(filename)
                 try:
-                    lnprob = chain[:,-1]
-                    chain = chain[:,:-1]
+                    lnprob = chain[:, -1]
+                    chain = chain[:, :-1]
                 except IndexError:
                     lnprob = np.array([chain[-1]])
                     chain = np.array([chain[:-1]])
@@ -247,15 +418,14 @@ class StarClusterModel(StarModel):
         self._samples = df
 
 
-def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB, bands='JHK'):
+def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB,
+                     bands='JHK', mass_range=(0.8, 2.5), distance_scatter=5):
     u = np.random.random(N)
     is_binary = u < fB
 
-    tot_masses = PowerLawPrior(alpha, (0.8, 2)).sample(N)
+    pri_masses = PowerLawPrior(alpha, mass_range).sample(N)
     qs = PowerLawPrior(gamma, (0.1, 1)).sample(N)
-    pri_masses = tot_masses / (1 + qs)
     sec_masses = pri_masses * qs * is_binary
-    pri_masses[~is_binary] = tot_masses[~is_binary]
 
     mist = get_ichrone('mist')
 
@@ -263,22 +433,34 @@ def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB, bands='JHK'):
     sec_eeps = np.array([mist.eep_from_mass(m, age, feh) for m in sec_masses])
 
     mags = {}
+    # slightly different distance for each star
+    distances = distance + np.random.randn(N) * distance_scatter
     for b in bands:
-        pri = np.array([mist.mag[b](e, age, feh, distance, AV) for e in pri_eeps])
-        sec = np.array([mist.mag[b](e, age, feh, distance, AV) for e in sec_eeps])
+        pri = np.array([mist.mag[b](e, age, feh, d, AV) for e, d in zip(pri_eeps, distances)])
+        sec = np.array([mist.mag[b](e, age, feh, d, AV) for e, d in zip(sec_eeps, distances)])
         sec[~is_binary] = np.inf
-        mags[b] = addmags(pri, sec)
+        mags['{}_mag'.format(b)] = addmags(pri, sec)
 
     stars = pd.DataFrame(mags)
+
+    # Record simulation data
     stars['is_binary'] = is_binary
+    stars['age'] = age
+    stars['feh'] = feh
+    stars['distance'] = distances
+    stars['AV'] = AV
+
+    stars['mass_pri'] = pri_masses
+    stars['mass_sec'] = sec_masses
+    stars['eep_pri'] = pri_eeps
+    stars['eep_sec'] = sec_eeps
 
     unc = 0.01
     for b in bands:
-        stars[b] += np.random.randn(N) * unc
-        stars[b + '_unc'] = unc
+        stars['{}_mag'.format(b)] += np.random.randn(N) * unc
+        stars['{}_mag_unc'.format(b)] = unc
 
-    # slightly different distance for each star
-    distances = distance + np.random.randn(N) * 5
+    stars['distance'] = distances
     stars['parallax'] = 1000./distances
     stars['parallax_unc'] = 0.2
 

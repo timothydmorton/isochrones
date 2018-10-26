@@ -53,8 +53,9 @@ def calc_lnlike_grid(lnlike_prop,
                     like_phot = fB * exp(lnlike_phot_binary) + (1 - fB) * exp(lnlike_phot_single)
                     lnlike_phot += log(like_phot)
 
-                # ln(likelihood) for total mass
-                lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
+                # ln(likelihood) for mass
+                # lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
+                lnlike_mass = powerlaw_lnpdf(masses[j], alpha, mass_lo, mass_hi)
                 lnlike_mass += ln_dm_deeps[j]
 
                 # ln(likelihood) for mass ratio

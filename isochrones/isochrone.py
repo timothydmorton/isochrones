@@ -10,6 +10,7 @@ if not on_rtd:
     import pandas as pd
     import numpy as np
     from scipy.interpolate import LinearNDInterpolator as interpnd
+    from scipy.optimize import newton, minimize
     import numpy.random as rand
     import matplotlib.pyplot as plt
 
@@ -176,7 +177,7 @@ class Isochrone(object):
         self.__dict__['mag'] = self._make_mag_fns()
 
     def _make_mag_fns(self):
-        return {b : self._mag_fn(b) for b in self.bands}
+        return {b: self._mag_fn(b) for b in self.bands}
 
     def _prop(self, prop, *args):
         if prop not in self._props:
@@ -193,8 +194,13 @@ class Isochrone(object):
             self._eeps = np.sort(np.unique(self._data['eep']))
         return self._eeps
 
-    def eep_from_mass(self, mass, age, feh):
-        return self.eeps[np.nanargmin((self.initial_mass(self.eeps, age, feh) - mass)**2)]
+    def eep_from_mass(self, mass, age, feh,
+                      eep0=None, eep_bounds=None,
+                      **kwargs):
+        if eep0 is None:
+            eep0 = 0.25 * (self.maxeep - self.mineep)
+
+        return self.find_closest_eep(mass, age, feh, eep0)
 
     def mass(self, *args):
         return self._prop('mass', *args)
@@ -614,6 +620,8 @@ class FastIsochrone(Isochrone):
 
         self._interp = None
         self._maxage_fn = None
+        self._minmass_fn = None
+        self._mineep_fn = None
 
     def _make_mag_fns(self):
         return {b: MagFunction(self, b) for b in self.bands}
@@ -742,6 +750,110 @@ class FastIsochrone(Isochrone):
     def initial_mass(self, eep, age, feh):
         return self.interp_value(eep, age, feh, self.initial_mass_col)
 
+    def min_allowed_mass(self, age, feh):
+        """Returns the maximum age allowed by the grid for given mass and feh
+        """
+        return self.minmass_fn(age, feh)
+
+    @property
+    def _minmass_pkl_filename(self):
+        filename = os.path.join(ISOCHRONES, self.name, 'minmass{}.pkl'.format(self.kwarg_tag))
+
+        return filename
+
+    def _get_minmass_fn(self, recalc=False):
+
+        try:
+            fn = pickle.load(open(self._minmass_pkl_filename, 'rb'))
+        except:
+            df = self.df
+
+            ages = df.index.levels[1]
+            fehs = df.index.levels[0]
+
+            n = len(ages) * len(fehs)
+
+            age_arr = np.empty(n)
+            feh_arr = np.empty(n)
+            mass_arr = np.empty(n)
+
+            for i, (a, f) in enumerate(itertools.product(ages, fehs)):
+                age_arr[i] = a
+                feh_arr[i] = f
+                mass_arr[i] = df.xs((f, a), level=(0, 1)).initial_mass.min()
+
+            from scipy.interpolate import LinearNDInterpolator
+
+            pts = np.array([age_arr, feh_arr]).T
+            vals = np.array(mass_arr)
+            fn = LinearNDInterpolator(pts, vals, fill_value=self.minmass)
+
+            pickle.dump(fn, open(self._minmass_pkl_filename, 'wb'))
+
+        return fn
+
+    @property
+    def minmass_fn(self):
+        if self._minmass_fn is None:
+            self._minmass_fn = self._get_minmass_fn()
+        return self._minmass_fn
+
+    def min_allowed_eep(self, age, feh):
+        """Returns the maximum age allowed by the grid for given mass and feh
+        """
+        return self.mineep_fn(age, feh)
+
+    @property
+    def _mineep_pkl_filename(self):
+        filename = os.path.join(ISOCHRONES, self.name, 'mineep{}.pkl'.format(self.kwarg_tag))
+
+        return filename
+
+    def _get_mineep_fn(self, recalc=False):
+
+        try:
+            if recalc:
+                raise Exception
+            fn = pickle.load(open(self._mineep_pkl_filename, 'rb'))
+        except:
+            df = self.df
+
+            ages = df.index.levels[1]
+            fehs = df.index.levels[0]
+
+            n = len(ages) * len(fehs)
+
+            age_arr = np.empty(n)
+            feh_arr = np.empty(n)
+            eep_arr = np.empty(n)
+
+            for i, (a, f) in enumerate(itertools.product(ages, fehs)):
+                age_arr[i] = a
+                feh_arr[i] = f
+                eep_arr[i] = df.xs((f, a), level=(0, 1)).EEP.min()
+
+            from scipy.interpolate import LinearNDInterpolator
+
+            pts = np.array([age_arr, feh_arr]).T
+            vals = np.array(eep_arr)
+            fn = LinearNDInterpolator(pts, vals, fill_value=self.mineep)
+
+            pickle.dump(fn, open(self._mineep_pkl_filename, 'wb'))
+
+        return fn
+
+    @property
+    def mineep_fn(self):
+        if self._mineep_fn is None:
+            self._mineep_fn = self._get_mineep_fn()
+        return self._mineep_fn
+
+    def max_allowed_age(self, mass, feh):
+        """Returns the maximum age allowed by the grid for given mass and feh
+        """
+        return self.maxage_fn(mass, feh)
+
+
     @property
     def _maxage_pkl_filename(self):
         filename = os.path.join(ISOCHRONES, self.name, 'maxage{}.pkl'.format(self.kwarg_tag))
@@ -791,7 +903,6 @@ class FastIsochrone(Isochrone):
         """
         return self.maxage_fn(mass, feh)
 
-
     @property
     def _npy_filename(self):
         filename = os.path.join(ISOCHRONES, self.name, '{}'.format('-'.join(self.bands)))
@@ -799,25 +910,47 @@ class FastIsochrone(Isochrone):
 
         return filename
 
-    def interp_value(self, eep, age, feh, prop): # 4 is log_g
+    def find_closest_eep(self, val, age, feh, eep0, prop='initial_mass',
+                         maxiter=100, xtol=0.01, debug=False):
+        x0 = eep0
+        y0 = self.interp_value(x0, age, feh, prop) - val
+        if np.isnan(y0):
+            x0 = self.min_allowed_eep(age, feh) + 10
+            y0 = self.interp_value(x0, age, feh, prop) - val
+        dx = 10
+        x1 = x0 + dx
+        y1 = self.interp_value(x1, age, feh, prop) - val
+        while np.isnan(y1):
+            dx /= dx
+            # dx /= 2
+            x1 = x0 + dx
+            y1 = self.interp_value(x1, age, feh, prop) - val
+
+        if debug:
+            print('{}'.format((x0, y0, x1, y1)))
+
+        tol = 10000
+        i = 0
+        while tol > xtol and i < maxiter:
+            newx = (x0 * y1 - x1 * y0) / (y1 - y0)
+            x0 = x1
+            y0 = y1
+            x1 = newx
+            y1 = self.interp_value(x1, age, feh, prop) - val
+            while np.isnan(y1):
+                dx = x1 - x0
+                dx /= 2
+                x1 = x0 + dx
+                y1 = self.interp_value(x1, age, feh, prop) - val
+
+            if debug:
+                print('{}'.format((x0, y0, x1, y1)))
+
+            tol = abs(x1 - x0)
+            i += 1
+
+        return x1
+
+    def interp_value(self, eep, age, feh, prop):  # 4 is log_g
         return self.interp([feh, age, eep], prop)
 
-        if self._ages is None:
-            self._initialize()
-
-        try:
-            return interp_value(float(eep), float(age), float(feh), icol,
-                                self.grid, self.eep_col,
-                                self.ages, self.fehs, self.grid_Ns, self.debug)
-
-        except:
-            # First, broadcast to common shape.
-            b = np.broadcast(eep, age, feh)
-            eep = np.resize(eep, b.shape).astype(float)
-            age = np.resize(age, b.shape).astype(float)
-            feh = np.resize(feh, b.shape).astype(float)
-
-            # Then pass to helper function
-            return interp_values(eep, age, feh, icol,
-                                self.grid, self.eep_col,
-                                self.ages, self.fehs, self.grid_Ns)

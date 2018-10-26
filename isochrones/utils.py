@@ -9,6 +9,9 @@ if not on_rtd:
     from numba import jit
     import numpy as np
 
+def band_pairs(bands):
+    return [(bands[i], bands[-1]) for i in range(len(bands)-1)]
+
 def download_file(url, path=None, clobber=False):
     """
     thanks to: https://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py
