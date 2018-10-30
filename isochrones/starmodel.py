@@ -665,6 +665,15 @@ class StarModel(object):
 
         """
 
+        try:
+            from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+        except ImportError:
+            comm = None
+            rank = 0
+
+
         if basename is not None: #Should this even be allowed?
             self.mnest_basename = basename
 
@@ -672,41 +681,14 @@ class StarModel(object):
         if verbose:
             logging.info('MultiNest basename: {}'.format(basename))
 
-        folder = os.path.abspath(os.path.dirname(basename))
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        if rank==0:
+            folder = os.path.abspath(os.path.dirname(basename))
+            if not os.path.exists(folder):
+                os.makedirs(folder)
 
-
-        #If previous fit exists, see if it's using the same
-        # observed properties
-        prop_nomatch = False
-        propfile = '{}properties.json'.format(basename)
-
-        """
-        if os.path.exists(propfile):
-            with open(propfile) as f:
-                props = json.load(f)
-            if set(props.keys()) != set(self.properties.keys()):
-                prop_nomatch = True
-            else:
-                for k,v in props.items():
-                    if np.size(v)==2:
-                        if not self.properties[k][0] == v[0] and \
-                                self.properties[k][1] == v[1]:
-                            props_nomatch = True
-                    else:
-                        if not self.properties[k] == v:
-                            props_nomatch = True
-
-        if prop_nomatch and not overwrite:
-            raise ValueError('Properties not same as saved chains ' +
-                            '(basename {}*). '.format(basename) +
-                            'Use overwrite=True to fit.')
-        """
-
-        if refit or overwrite:
-            files = glob.glob('{}*'.format(basename))
-            [os.remove(f) for f in files]
+            if refit or overwrite:
+                files = glob.glob('{}*'.format(basename))
+                [os.remove(f) for f in files]
 
         short_basename = self._mnest_basename
 
