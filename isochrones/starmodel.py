@@ -681,8 +681,8 @@ class StarModel(object):
         if verbose:
             logging.info('MultiNest basename: {}'.format(basename))
 
+        folder = os.path.abspath(os.path.dirname(basename))
         if rank==0:
-            folder = os.path.abspath(os.path.dirname(basename))
             if not os.path.exists(folder):
                 os.makedirs(folder)
 
