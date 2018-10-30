@@ -1,53 +1,63 @@
 #!/usr/bin/env python
 import argparse
-import re
 
 import pandas as pd
 
 from isochrones.cluster import StarClusterModel, StarCatalog
 from isochrones import get_ichrone
-from isochrones.priors import FehPrior
 
 
-try:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-except ImportError:
-    rank = 0
+def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
+               mineep=200, maxeep=800, maxAV=0.1, overwrite=False, nlive=1000,
+               name='', halo_fraction=0.5, comm=None, rank=0, max_iter=None):
 
+    if rank == 0:
+        ic = get_ichrone(models)
+        stars = pd.read_hdf(starfile)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('starfile', type=str, help='File with star cluster data.')
-parser.add_argument('--bands', nargs='*', help='bands to use (vals, uncs must be in table)')
-parser.add_argument('--props', nargs='*', help='properties to use (valus, uncs must be in table)')
-parser.add_argument('--models', type=str, default='mist')
-parser.add_argument('--max_distance', type=float, default=1000)
-parser.add_argument('--mineep', type=int, default=202)
-parser.add_argument('--maxeep', type=int, default=800)
-parser.add_argument('--maxAV', type=float, default=0.1)
-parser.add_argument('--overwrite', '-o', action='store_true')
-parser.add_argument('--nlive', type=int, default=1000)
-parser.add_argument('--name', type=str, default='')
+        cat = StarCatalog(stars, bands=bands, props=props)
 
-args = parser.parse_args()
+        model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
+                                 max_distance=max_distance,
+                                 halo_fraction=halo_fraction,
+                                 max_AV=maxAV, name=name)
 
-if rank==0:
-    ic = get_ichrone(args.models)
-
-    if re.search('.h5', args.starfile) or re.search('.hdf', args.starfile):
-        stars = pd.read_hdf(args.starfile)
     else:
-        stars = pd.read_csv(args.starfile)
+        model = None
 
-    cat = StarCatalog(stars, props=args.props)
+    if comm:
+        model = comm.bcast(model, root=0)
 
-    model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
-                             max_distance=args.max_distance, max_AV=args.maxAV, name=args.name)
-    model.set_prior('feh', FehPrior(halo_fraction=0.5))
+    model.fit(overwrite=overwrite, n_live_points=nlive, max_iter=max_iter)
 
-else:
-    model = None
 
-model = comm.bcast(model, root=0)
-model.fit(overwrite=args.overwrite, n_live_points=args.nlive, init_MPI=False)
+def __main__():
+    try:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+    except ImportError:
+        comm = None
+        rank = 0
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('starfile', type=str, help='File with star cluster data.')
+    parser.add_argument('--bands', nargs='*', help='bands to use (vals, uncs must be in table)')
+    parser.add_argument('--props', nargs='*', help='properties to use (valus, uncs must be in table)')
+    parser.add_argument('--models', type=str, default='mist')
+    parser.add_argument('--max_distance', type=float, default=1000)
+    parser.add_argument('--mineep', type=int, default=202)
+    parser.add_argument('--maxeep', type=int, default=800)
+    parser.add_argument('--maxAV', type=float, default=0.1)
+    parser.add_argument('--overwrite', '-o', action='store_true')
+    parser.add_argument('--nlive', type=int, default=1000)
+    parser.add_argument('--name', type=str, default='')
+    parser.add_argument('--halo_fraction', type=float, default=0.5)
+
+    args = parser.parse_args()
+
+    clusterfit(args.starfile, bands=args.bands, props=args.props, models=args.models,
+               max_distance=args.max_distance, mineep=args.mineep, maxeep=args.maxeep,
+               maxAV=args.maxAV, overwrite=args.overwrite, nlive=args.nlive,
+               name=args.main, halo_fraction=args.halo_fraction,
+               comm=comm, rank=rank)

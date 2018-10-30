@@ -79,6 +79,7 @@ def distance(pos0, pos1):
     ddec = (dec1 - dec0)
     return np.sqrt(dra**2 + ddec**2)
 
+
 @jit(nopython=True)
 def trapz(y, x):
     n = len(y)
@@ -89,3 +90,12 @@ def trapz(y, x):
         tot = tot + 0.5 * (y[i] + y[i2]) * (x[i2] - x[i])
 
     return tot
+
+
+@jit(nopython=True)
+def polyval(p, x):
+    N = len(p)
+    result = 0
+    for i in range(N):
+        result += p[i] * x**(N - 1 - i)
+    return result

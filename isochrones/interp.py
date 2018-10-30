@@ -2,7 +2,7 @@ import os
 import itertools
 import logging
 
-from numba import jit, float64, TypingError
+from numba import jit, float64, TypingError, typeof
 from math import sqrt
 import numpy as np
 import pandas as pd
@@ -65,6 +65,24 @@ def interp_box(x, y, z, box, values):
     c110 = values[6]
     c111 = values[7]
 
+    # Replace nans with zeros, so they disappear in calculations
+    if c000 != c000:
+        c000 = 0.
+    if c001 != c001:
+        c001 = 0.
+    if c010 != c010:
+        c010 = 0.
+    if c011 != c011:
+        c011 = 0.
+    if c100 != c100:
+        c100 = 0.
+    if c101 != c101:
+        c101 = 0.
+    if c110 != c110:
+        c110 = 0.
+    if c111 != c111:
+        c111 = 0.
+
     c00 = c000 * (1 - xd) + c100 * xd
     c01 = c001 * (1 - xd) + c101 * xd
     c10 = c010 * (1 - xd) + c110 * xd
@@ -73,7 +91,12 @@ def interp_box(x, y, z, box, values):
     c0 = c00 * (1 - yd) + c10 * yd
     c1 = c01 * (1 - yd) + c11 * yd
 
-    return c0 * (1 - zd) + c1 * zd
+    c = c0 * (1 - zd) + c1 * zd
+
+    if c == 0.:
+        return np.nan
+    else:
+        return c
 
 @jit(nopython=True)
 def searchsorted(arr, N, x):
@@ -146,7 +169,9 @@ def interp_value(x1, x2, x3,
     """x1, x2, x3 are *single values* at which values in val_col are desired
 
     """
-    if np.isnan(x1) or np.isnan(x2) or np.isnan(x3):
+    if ((not x1 < 0 and not x1 >= 0) or
+        (not x2 < 0 and not x2 >= 0) or
+        (not x3 < 0 and not x3 >= 0)):
         return np.nan
 
     n1 = len(ii1)
@@ -286,6 +311,101 @@ def interp_value(x1, x2, x3,
 #     return result
     return interp_box(x1, x2, x3, pts, vals)
 
+@jit(nopython=True)
+def sign(x):
+    if x < 0:
+        return -1
+    else:
+        return 1
+
+# @jit(nopython=True, fastmath=True)
+def find_closest3(val, a, b,
+                  v1, v2,
+                  grid, icol,
+                  ii1, ii2, ii3,
+                  bisect_tol=0.5, newton_tol=0.01,
+                  max_iter=100, debug=False):
+    """Find value of 3rd index array where interp_value is closest to val
+
+    val : value to match
+    a, b: min and max x-value to serch
+=   x1, x2 : first and second values to pass to inter_values
+    grid : 4d grid
+    icol : index of value dimension of grid
+    ii1, ii2, ii3 : grid dimension arrays
+    """
+
+    # First, do a bisect search to get it close
+    done = False
+    ya = interp_value(v1, v2, a, grid, icol, ii1, ii2, ii3) - val
+    yb = interp_value(v1, v2, b, grid, icol, ii1, ii2, ii3) - val
+    if debug:
+        print('Initial values: {}: {}'.format((a, b), (ya, yb)))
+
+    if yb != yb or ya != ya:
+        # bounds are nan, return nan.
+        return np.nan
+    elif abs(ya) < newton_tol:
+        return float(a)
+    elif abs(yb) < newton_tol:
+        return float(b)
+    elif ya > 0 and yb > 0:
+        return np.nan
+    elif yb < 0 and yb < 0:
+        return np.nan
+
+    else:
+        if debug:
+            print('doing bisect search...')
+
+        while not done:
+            c = (a + b) / 2
+            yc = interp_value(v1, v2, c, grid, icol, ii1, ii2, ii3) - val
+            if yc == 0 or (b - a) / 2 < bisect_tol:
+                done = True
+            if sign(yc) == sign(ya): # (yc >= 0 and ya >= 0) or (yc < 0 and ya < 0):
+                a = c
+                ya = yc
+            else:
+                b = c
+                yb = yc
+            if debug:
+                print('{0} {1}'.format((a,b,c), (ya,yb,yc)))
+
+    # Now, use the value at index c to seed Newton-secant algorithm
+    tol = 1000.
+    i = 0
+    x0 = c
+    y0 = yc
+    x1 = x0 + 0.1
+    y1 = interp_value(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
+
+    if debug:
+        print('Newton-secant method...')
+    while tol > newton_tol and i < max_iter:
+        newx = (x0 * y1 - x1 * y0) / (y1 - y0)
+        x0 = x1
+        y0 = y1
+        x1 = newx
+        y1 = interp_value(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
+
+        # Boo!
+        while not y1 == y1:
+            if debug:
+                print('{0} {1}'.format(x1, y1))
+            raise RuntimeError('ran into nan.' +
+                               'run {} with debug=True to see why.'.format((val, v2, v1)))
+
+        if y1 >= 0:
+            tol = y1
+        else:
+            tol = -y1
+        i += 1
+        if debug:
+            print('{0} {1}'.format(x1, y1))
+
+    return x1
+
 
 class DFInterpolator(object):
     """Interpolate column values of DataFrame with full-grid hierarchical index
@@ -316,6 +436,14 @@ class DFInterpolator(object):
                 np.save(self.filename, grid)
 
         return grid
+
+    def find_closest(self, val, lo, hi, v1, v2,
+                     col='initial_mass', debug=False):
+        icol = self.columns.index(col)
+
+        return find_closest3(val, lo, hi, v1, v2,
+                             self.grid, icol,
+                             *self.index_columns, debug=debug)
 
     def __call__(self, p, col):
         icol = self.columns.index(col)

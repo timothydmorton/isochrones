@@ -13,6 +13,7 @@ if not on_rtd:
     from scipy.optimize import newton, minimize
     import numpy.random as rand
     import matplotlib.pyplot as plt
+    from numba import jit
 
     from astropy import constants as const
 
@@ -22,7 +23,8 @@ if not on_rtd:
     RSUN = const.R_sun.cgs.value
 
     from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
-    from .interp import interp_value, interp_values, DFInterpolator
+    from .interp import DFInterpolator, searchsorted, find_closest3
+    from .utils import polyval
 
 else:
     G = 6.67e-11
@@ -193,14 +195,6 @@ class Isochrone(object):
         if self._eeps is None:
             self._eeps = np.sort(np.unique(self._data['eep']))
         return self._eeps
-
-    def eep_from_mass(self, mass, age, feh,
-                      eep0=None, eep_bounds=None,
-                      **kwargs):
-        if eep0 is None:
-            eep0 = 0.25 * (self.maxeep - self.mineep)
-
-        return self.find_closest_eep(mass, age, feh, eep0)
 
     def mass(self, *args):
         return self._prop('mass', *args)
@@ -622,6 +616,8 @@ class FastIsochrone(Isochrone):
         self._maxage_fn = None
         self._minmass_fn = None
         self._mineep_fn = None
+        self._approx_mineep_poly = None
+        self._eep_limits = None
 
     def _make_mag_fns(self):
         return {b: MagFunction(self, b) for b in self.bands}
@@ -756,6 +752,32 @@ class FastIsochrone(Isochrone):
         return self.minmass_fn(age, feh)
 
     @property
+    def _eep_limits_filename(self):
+        filename = os.path.join(ISOCHRONES, self.name, 'eep_limits{}.h5'.format(self.kwarg_tag))
+
+        return filename
+
+    def _get_eep_limits(self):
+        try:
+            eep_limits = pd.read_hdf(self._eep_limits_filename, 'df')
+            return {k: (df[k][0], df[k][1]) for k in df.columns}
+        except:
+            eep_limits = {}
+            for f, a in itertools.product(self.fehs, self.ages):
+                subdf = self.df.xs((f,a), level=(0,1))
+                eep_limits[(f, a)] = (subdf.EEP.min(), subdf.EEP.max())            
+            df = pd.DataFrame(eep_limits)
+            df.to_hdf(self._eep_limits_filename, 'df')
+
+        return eep_limits
+
+    @property
+    def eep_limits(self):
+        if self._eep_limits is None:
+            self._eep_limits = self._get_eep_limits()
+        return self._eep_limits
+
+    @property
     def _minmass_pkl_filename(self):
         filename = os.path.join(ISOCHRONES, self.name, 'minmass{}.pkl'.format(self.kwarg_tag))
 
@@ -780,7 +802,8 @@ class FastIsochrone(Isochrone):
             for i, (a, f) in enumerate(itertools.product(ages, fehs)):
                 age_arr[i] = a
                 feh_arr[i] = f
-                mass_arr[i] = df.xs((f, a), level=(0, 1)).initial_mass.min()
+                subdf = df.xs((f, a), level=(0, 1))
+                mass_arr[i] = subdf[self.initial_mass_col].min()
 
             from scipy.interpolate import LinearNDInterpolator
 
@@ -797,6 +820,18 @@ class FastIsochrone(Isochrone):
         if self._minmass_fn is None:
             self._minmass_fn = self._get_minmass_fn()
         return self._minmass_fn
+
+    def approx_min_allowed_eep(self, age):
+        """Guaranteed to be non-nan value near the lower boundary of eep for given age
+        """
+        return polyval(self.approx_mineep_poly, age) + 1
+
+    @property
+    def approx_mineep_poly(self):
+        if self._approx_mineep_poly is None:
+            mineeps = [self.min_allowed_eep(a, self.fehs[0]) for a in self.ages]
+            self._approx_mineep_poly = np.polyfit(self.ages, mineeps, 7)
+        return self._approx_mineep_poly
 
     def min_allowed_eep(self, age, feh):
         """Returns the maximum age allowed by the grid for given mass and feh
@@ -848,18 +883,11 @@ class FastIsochrone(Isochrone):
             self._mineep_fn = self._get_mineep_fn()
         return self._mineep_fn
 
-    def max_allowed_age(self, mass, feh):
-        """Returns the maximum age allowed by the grid for given mass and feh
-        """
-        return self.maxage_fn(mass, feh)
-
-
     @property
     def _maxage_pkl_filename(self):
         filename = os.path.join(ISOCHRONES, self.name, 'maxage{}.pkl'.format(self.kwarg_tag))
 
         return filename
-
 
     def _get_maxage_fn(self, recalc=False):
 
@@ -880,7 +908,8 @@ class FastIsochrone(Isochrone):
             for i, (a,f) in enumerate(itertools.product(ages, fehs)):
                 age_arr[i] = a
                 feh_arr[i] = f
-                mass_arr[i] = df.xs((f, a), level=(0, 1)).initial_mass.max()
+                subdf = df.xs((f, a), level=(0, 1))
+                mass_arr[i] = subdf[self.initial_mass_col].max()
 
             from scipy.interpolate import LinearNDInterpolator
 
@@ -910,46 +939,40 @@ class FastIsochrone(Isochrone):
 
         return filename
 
-    def find_closest_eep(self, val, age, feh, eep0, prop='initial_mass',
-                         maxiter=100, xtol=0.01, debug=False):
-        x0 = eep0
-        y0 = self.interp_value(x0, age, feh, prop) - val
-        if np.isnan(y0):
-            x0 = self.min_allowed_eep(age, feh) + 10
-            y0 = self.interp_value(x0, age, feh, prop) - val
-        dx = 10
-        x1 = x0 + dx
-        y1 = self.interp_value(x1, age, feh, prop) - val
-        while np.isnan(y1):
-            dx /= dx
-            # dx /= 2
-            x1 = x0 + dx
-            y1 = self.interp_value(x1, age, feh, prop) - val
+    def find_closest_eep(self, val, age, feh, prop=None, debug=False,
+                         eep_bounds=None, eep0=None,
+                         bisect_kwargs=None, **kwargs):
+        if prop is None:
+            prop = self.initial_mass_col
 
-        if debug:
-            print('{}'.format((x0, y0, x1, y1)))
+        if eep_bounds is not None:
+            lo, hi = eep_bounds
+        else:
+            i_age, _ = searchsorted(self.ages, len(self.ages), age)
+            i_feh, _ = searchsorted(self.fehs, len(self.fehs), feh)
 
-        tol = 10000
-        i = 0
-        while tol > xtol and i < maxiter:
-            newx = (x0 * y1 - x1 * y0) / (y1 - y0)
-            x0 = x1
-            y0 = y1
-            x1 = newx
-            y1 = self.interp_value(x1, age, feh, prop) - val
-            while np.isnan(y1):
-                dx = x1 - x0
-                dx /= 2
-                x1 = x0 + dx
-                y1 = self.interp_value(x1, age, feh, prop) - val
+            grid_feh0, grid_age0 = self.fehs[i_feh - 1], self.ages[i_age]
+            grid_feh1, grid_age0 = self.fehs[i_feh], self.ages[i_age]
+            grid_feh0, grid_age1 = self.fehs[i_feh - 1], self.ages[i_age]
+            grid_feh1, grid_age1 = self.fehs[i_feh], self.ages[i_age]
 
-            if debug:
-                print('{}'.format((x0, y0, x1, y1)))
+            lo0, hi0 = self.eep_limits[(grid_feh0, grid_age0)]
+            lo1, hi0 = self.eep_limits[(grid_feh1, grid_age0)]
+            lo0, hi1 = self.eep_limits[(grid_feh0, grid_age1)]
+            lo1, hi1 = self.eep_limits[(grid_feh1, grid_age1)]
 
-            tol = abs(x1 - x0)
-            i += 1
+            lo = max(lo0, lo1)
+            hi = min(hi0, hi1)
+            # icol = self.interp.columns.index(prop)
+            # eep = find_closest3(val, lo, hi, feh, age, self.interp.grid,
+            #                     icol, *self.interp.index_columns)
 
-        return x1
+        eep = self.interp.find_closest(val, lo, hi, feh, age,
+                                       col=prop, debug=debug)
+
+        return eep
+
+    eep_from_mass = find_closest_eep
 
     def interp_value(self, eep, age, feh, prop):  # 4 is log_g
         return self.interp([feh, age, eep], prop)

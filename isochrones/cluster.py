@@ -56,8 +56,8 @@ class StarCatalog(object):
         return self.df[prop].values, self.df[prop + '_unc'].values
 
     def iter_bands(self, **kwargs):
-        for b in self.band_cols:
-            yield b, self.get_measurement(b, **kwargs)
+        for b, col in zip(self.bands, self.band_cols):
+            yield b, self.get_measurement(col, **kwargs)
 
     def iter_props(self, **kwargs):
         for p in self.props:
@@ -122,8 +122,7 @@ class SimulatedCluster(StarCatalog):
 
         df = self._simulate_stars(age, self.df.is_binary,
                                   self.df.mass_pri, self.df.mass_sec,
-                                  self.df.distance,
-                                  self.df.eep_pri, self.df.eep_sec)
+                                  self.df.distance)
 
         return StarCatalog(df, bands=self.bands)
 
@@ -152,29 +151,14 @@ class SimulatedCluster(StarCatalog):
 
         return self._simulate_stars(age, is_binary, pri_masses, sec_masses, distances)
 
-    def _simulate_stars(self, age, is_binary, pri_masses, sec_masses, distances,
-                        pri_eep0s=None, sec_eep0s=None):
+    def _simulate_stars(self, age, is_binary, pri_masses, sec_masses, distances):
         N = self.N
         _, feh, distance, AV, alpha, gamma, fB = self.pars
 
-        if pri_eep0s is None:
-            pri_eep0s = np.ones(N) * 0.2 * (self.ic.maxeep - self.ic.mineep)
-        if sec_eep0s is None:
-            sec_eep0s = np.ones(N) * 0.2 * (self.ic.maxeep - self.ic.mineep)
-
-        pri_eeps = np.array([self.ic.eep_from_mass(m, age, feh, e0)
-                             for m, e0 in zip(pri_masses, pri_eep0s)])
-        sec_eeps = np.array([self.ic.eep_from_mass(m, age, feh, e0) if m else 0
-                             for m, e0 in zip(sec_masses, sec_eep0s)])
-
-        # sec_eeps = np.zeros(N)
-        # for i, (m, e0) in enumerate(zip(sec_masses, sec_eep0s)):
-        #     if not m:
-        #         continue
-        #     try:
-        #         sec_eeps[i] = self.ic.eep_from_mass(m, age, feh, e0)
-        #     except ValueError:
-        #         sec_eeps[i] = self.ic.eep_from_mass(m, age, feh)
+        pri_eeps = np.array([self.ic.eep_from_mass(m, age, feh)
+                             for m in pri_masses])
+        sec_eeps = np.array([self.ic.eep_from_mass(m, age, feh) if m else 0
+                             for m in sec_masses])
 
         mags = {}
         for b in self.bands:
@@ -211,7 +195,7 @@ class StarClusterModel(StarModel):
     param_names = ['age', 'feh', 'distance', 'AV', 'alpha', 'gamma', 'fB']
 
     def __init__(self, ic, stars, name='',
-                 halo_fraction=0.001, max_AV=1., max_distance=50000,
+                 halo_fraction=0.5, max_AV=1., max_distance=50000,
                  use_emcee=False, eep_bounds=None,
                  mass_bounds=None, qlo=0.1, **kwargs):
         self._ic = ic
@@ -326,7 +310,7 @@ class StarClusterModel(StarModel):
         ln_dm_deeps = np.log(np.absolute(dm_deeps))
 
         # Compute model mags at each eep
-        model_mags = {b : self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
+        model_mags = {b: self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
 
         # Compute the log-likelihood of the (non-mag) props
         #  This needs to be added (appropriately) to lnlike_photmass
