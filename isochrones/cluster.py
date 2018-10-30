@@ -3,7 +3,10 @@ import logging
 
 import numpy as np
 import pandas as pd
-import holoviews as hv
+try:
+    import holoviews as hv
+except ImportError:
+    hv = None
 
 from . import StarModel, get_ichrone
 from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior

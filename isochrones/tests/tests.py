@@ -61,7 +61,7 @@ def _check_closest_eep(ic, n=10000, newton_tol=0.01):
     masses = np.random.random(n) * 2.5 + 0.1
     fehs = np.random.random(n) * (ic.maxfeh - ic.minfeh) + ic.minfeh
     ages = np.random.random(n) * (10.0 - ic.minage) + ic.minage
-    eeps = [ic.find_closest_eep(m, a, f) for m, a, f in zip(masses, ages, fehs)]    
+    eeps = [ic.find_closest_eep(m, a, f) for m, a, f in zip(masses, ages, fehs)]
     for e, a, f, m in zip(eeps, ages, fehs, masses):
         if not np.isnan(e):
             try:
@@ -69,7 +69,7 @@ def _check_closest_eep(ic, n=10000, newton_tol=0.01):
             except AssertionError:
                 print((e, a, f))
                 raise
-            # print (('{:.4f} ' * 5).format(e, a, f, m, mist.initial_mass(e, a, f)))    
+            # print (('{:.4f} ' * 5).format(e, a, f, m, mist.initial_mass(e, a, f)))
 
     # make sure the minmass edge case works.
     for feh in ic.fehs[1:-1]: # first and last feh of mist doesn't work.
