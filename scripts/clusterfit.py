@@ -9,7 +9,7 @@ from isochrones import get_ichrone
 
 def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
                mineep=200, maxeep=800, maxAV=0.1, overwrite=False, nlive=1000,
-               name='', halo_fraction=0.5, comm=None, rank=0, max_iter=None):
+               name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
 
     if rank == 0:
         ic = get_ichrone(models)
