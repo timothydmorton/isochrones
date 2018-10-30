@@ -42,8 +42,8 @@ def __main__():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('starfile', type=str, help='File with star cluster data.')
-    parser.add_argument('--bands', nargs='*', help='bands to use (vals, uncs must be in table)')
-    parser.add_argument('--props', nargs='*', help='properties to use (valus, uncs must be in table)')
+    parser.add_argument('--bands', default=None, nargs='*', help='bands to use (vals, uncs must be in table)')
+    parser.add_argument('--props', default=None, nargs='*', help='properties to use (valus, uncs must be in table)')
     parser.add_argument('--models', type=str, default='mist')
     parser.add_argument('--max_distance', type=float, default=1000)
     parser.add_argument('--mineep', type=int, default=202)
