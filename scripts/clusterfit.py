@@ -12,13 +12,13 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
                name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
 
     if rank == 0:
-        ic = get_ichrone(models)
         stars = pd.read_hdf(starfile)
 
         cat = StarCatalog(stars, bands=bands, props=props)
         print('bands = {}'.format(cat.bands))
         print(cat.df.head())
 
+        ic = get_ichrone(models, bands=cat.bands)
 
         model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
                                  max_distance=max_distance,
