@@ -16,6 +16,9 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
         stars = pd.read_hdf(starfile)
 
         cat = StarCatalog(stars, bands=bands, props=props)
+        print('bands = {}'.format(cat.bands))
+        print(cat.df.head())
+
 
         model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
                                  max_distance=max_distance,
