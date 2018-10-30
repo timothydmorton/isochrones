@@ -33,7 +33,7 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
 
     model.fit(overwrite=overwrite, n_live_points=nlive, max_iter=max_iter)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     try:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
@@ -61,5 +61,5 @@ if __name__=='__main__':
     clusterfit(args.starfile, bands=args.bands, props=args.props, models=args.models,
                max_distance=args.max_distance, mineep=args.mineep, maxeep=args.maxeep,
                maxAV=args.maxAV, overwrite=args.overwrite, nlive=args.nlive,
-               name=args.main, halo_fraction=args.halo_fraction,
+               name=args.name, halo_fraction=args.halo_fraction,
                comm=comm, rank=rank)
