@@ -200,7 +200,7 @@ class StarClusterModel(StarModel):
     def __init__(self, ic, stars, name='',
                  halo_fraction=0.5, max_AV=1., max_distance=50000,
                  use_emcee=False, eep_bounds=None,
-                 mass_bounds=None, qlo=0.1, **kwargs):
+                 mass_bounds=None, minq=0.1, **kwargs):
         self._ic = ic
 
         if not isinstance(stars, StarCatalog):
@@ -220,7 +220,7 @@ class StarClusterModel(StarModel):
 
         self._eep_bounds = eep_bounds
         self._mass_bounds = mass_bounds
-        self.qlo = qlo
+        self.minq = minq
 
         self.name = name
 
@@ -359,7 +359,7 @@ class StarClusterModel(StarModel):
                 model_masses, ln_dm_deeps, eeps,
                 vals_arr, uncs_arr,
                 alpha, gamma, fB,
-                mass_lo, mass_hi, self.qlo)
+                mass_lo, mass_hi, self.minq)
         lnlike_grid = calc_lnlike_grid(*args)
 
 

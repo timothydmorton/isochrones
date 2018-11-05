@@ -8,7 +8,8 @@ from isochrones import get_ichrone
 
 
 def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
-               mineep=200, maxeep=800, maxAV=0.1, overwrite=False, nlive=1000,
+               mineep=200, maxeep=800, maxAV=0.1, minq=0.2,
+               overwrite=False, nlive=1000,
                name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
 
     if rank == 0:
@@ -21,7 +22,7 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
         ic = get_ichrone(models, bands=cat.bands)
 
         model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
-                                 max_distance=max_distance,
+                                 max_distance=max_distance, minq=minq,
                                  halo_fraction=halo_fraction,
                                  max_AV=maxAV, name=name)
 
@@ -32,6 +33,7 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
         model = comm.bcast(model, root=0)
 
     model.fit(overwrite=overwrite, n_live_points=nlive, max_iter=max_iter)
+
 
 if __name__ == '__main__':
     try:
@@ -44,8 +46,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('starfile', type=str, help='File with star cluster data.')
-    parser.add_argument('--bands', default=None, nargs='*', help='bands to use (vals, uncs must be in table)')
-    parser.add_argument('--props', default=None, nargs='*', help='properties to use (valus, uncs must be in table)')
+    parser.add_argument('--bands', default=None, nargs='*',
+                        help='bands to use (vals, uncs must be in table)')
+    parser.add_argument('--props', default=None, nargs='*',
+                        help='properties to use (valus, uncs must be in table)')
     parser.add_argument('--models', type=str, default='mist')
     parser.add_argument('--max_distance', type=float, default=1000)
     parser.add_argument('--mineep', type=int, default=202)
@@ -55,11 +59,12 @@ if __name__ == '__main__':
     parser.add_argument('--nlive', type=int, default=1000)
     parser.add_argument('--name', type=str, default='')
     parser.add_argument('--halo_fraction', type=float, default=0.5)
+    parser.add_argument('--minq', type=float, default=0.2)
 
     args = parser.parse_args()
 
     clusterfit(args.starfile, bands=args.bands, props=args.props, models=args.models,
                max_distance=args.max_distance, mineep=args.mineep, maxeep=args.maxeep,
                maxAV=args.maxAV, overwrite=args.overwrite, nlive=args.nlive,
-               name=args.name, halo_fraction=args.halo_fraction,
+               name=args.name, halo_fraction=args.halo_fraction, minq=args.minq,
                comm=comm, rank=rank)

@@ -6,6 +6,27 @@ from .utils import trapz
 from .priors import powerlaw_lnpdf
 
 
+@jit(nopython=True)
+def logaddexp(x1, x2):
+    xmax = max(x1, x2)
+    return xmax + log(exp(x1 - xmax) + exp(x2 - xmax))
+
+
+@jit(nopython=True)
+def logsumexp(xx):
+    xmax = xx[0]
+    n = len(xx)
+    for i in range(n):
+        if xx[i] > xmax:
+            xmax = xx[i]
+
+    expsum = 0
+    for i in range(n):
+        expsum += exp(xx[i] - xmax)
+
+    return xmax + log(expsum)
+
+
 @jit(nopython=True, parallel=True, nogil=True, fastmath=True)
 def calc_lnlike_grid(lnlike_prop,
                      model_mags, Nbands,
@@ -36,32 +57,39 @@ def calc_lnlike_grid(lnlike_prop,
     for i in prange(n_stars):
         for j in range(n):
             for k in range(j+1):
-                lnlike_phot = 0
-                for b in range(Nbands):
-                    # ln(likelihood) for photometry for binary model
-                    f1 = 10**(-0.4 * model_mags[j, b])
-                    f2 = 10**(-0.4 * model_mags[k, b])
-                    mag_value = mag_values[i, b]
-                    mag_unc = mag_uncs[i, b]
-                    tot_mag_binary = -2.5 * log10(f1 + f2)
-                    resid_binary = tot_mag_binary - mag_value
-                    lnlike_phot_binary = -0.5 * resid_binary * resid_binary / (mag_unc * mag_unc)
+                if masses[k] / masses[j] < q_lo:
+                    lnlikes[i, j, k] = -np.inf
+                else:
+                    lnlike_phot = 0
 
-                    resid_single = model_mags[j, b] - mag_value
-                    lnlike_phot_single = -0.5 * resid_single * resid_single / (mag_unc * mag_unc)
+                    for b in range(Nbands):
+                        # ln(likelihood) for photometry for binary model
+                        f1 = 10**(-0.4 * model_mags[j, b])
+                        f2 = 10**(-0.4 * model_mags[k, b])
+                        mag_value = mag_values[i, b]
+                        mag_unc = mag_uncs[i, b]
+                        tot_mag_binary = -2.5 * log10(f1 + f2)
+                        resid_binary = tot_mag_binary - mag_value
+                        lnlike_phot_binary = -0.5 * resid_binary * resid_binary / (mag_unc * mag_unc)
 
-                    like_phot = fB * exp(lnlike_phot_binary) + (1 - fB) * exp(lnlike_phot_single)
-                    lnlike_phot += log(like_phot)
+                        resid_single = model_mags[j, b] - mag_value
+                        lnlike_phot_single = -0.5 * resid_single * resid_single / (mag_unc * mag_unc)
 
-                # ln(likelihood) for mass
-                # lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
-                lnlike_mass = powerlaw_lnpdf(masses[j], alpha, mass_lo, mass_hi)
-                lnlike_mass += ln_dm_deeps[j]
+                        # like_phot = fB * exp(lnlike_phot_binary) + (1 - fB) * exp(lnlike_phot_single)
+                        # lnlike_phot += log(like_phot)
 
-                # ln(likelihood) for mass ratio
-                lnlike_mass_ratio = powerlaw_lnpdf(masses[k] / masses[j], gamma, q_lo, 1.)
+                        lnlike_phot += logaddexp(log(fB) + lnlike_phot_binary,
+                                                 log(1 - fB) + lnlike_phot_single)
 
-                lnlikes[i, j, k] = lnlike_phot + lnlike_mass + lnlike_mass_ratio + lnlike_prop[i, j]
+                    # ln(likelihood) for mass
+                    # lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
+                    lnlike_mass = powerlaw_lnpdf(masses[j], alpha, mass_lo, mass_hi)
+                    lnlike_mass += ln_dm_deeps[j]
+
+                    # ln(likelihood) for mass ratio
+                    lnlike_mass_ratio = powerlaw_lnpdf(masses[k] / masses[j], gamma, q_lo, 1.)
+
+                    lnlikes[i, j, k] = lnlike_phot + lnlike_mass + lnlike_mass_ratio + lnlike_prop[i, j]
 
     return lnlikes
 

@@ -318,7 +318,7 @@ def sign(x):
     else:
         return 1
 
-# @jit(nopython=True, fastmath=True)
+# @jit(nopython=True)
 def find_closest3(val, a, b,
                   v1, v2,
                   grid, icol,

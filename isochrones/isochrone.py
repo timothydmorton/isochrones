@@ -282,7 +282,7 @@ class Isochrone(object):
             model values evaluated at input points.
         """
         # Broadcast inputs to the same shape
-        eep, age, feh = [np.array(a) for a in np.broadcast_arrays(eep, age, feh)]
+        eep, age, feh = [np.atleast_1d(a) for a in np.broadcast_arrays(eep, age, feh)]
         args = (eep, age, feh)
         Ms = self.mass(*args)*1
         Rs = self.radius(*args)*1
@@ -762,6 +762,7 @@ class FastIsochrone(Isochrone):
             eep_limits = pd.read_hdf(self._eep_limits_filename, 'df')
             return {k: (df[k][0], df[k][1]) for k in df.columns}
         except:
+            # TODO: add max mass (and eep value thereof) to each dict entry 
             eep_limits = {}
             for f, a in itertools.product(self.fehs, self.ages):
                 subdf = self.df.xs((f,a), level=(0,1))
@@ -973,6 +974,7 @@ class FastIsochrone(Isochrone):
         return eep
 
     eep_from_mass = find_closest_eep
+
 
     def interp_value(self, eep, age, feh, prop):  # 4 is log_g
         return self.interp([feh, age, eep], prop)

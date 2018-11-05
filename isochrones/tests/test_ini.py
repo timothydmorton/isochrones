@@ -46,6 +46,7 @@ class IniCheck(object):
 
     def check_asserts(self, mod):
         eep_pars = mod.convert_pars_to_eep(self.pars)
+        print((self.pars, eep_pars))
         assert self.n_params == len(eep_pars)
         assert mod.n_params == self.n_params
         assert mod.obs.systems == self.systems
