@@ -6,9 +6,16 @@ import logging
 import itertools
 import pickle
 
+try:
+    import holoviews as hv
+except ImportError:
+    logging.warning('Holoviews not imported. Some visualizations will not be available.')
+    pass
+
 if not on_rtd:
     import pandas as pd
     import numpy as np
+
     from scipy.interpolate import LinearNDInterpolator as interpnd
     from scipy.optimize import newton, minimize
     import numpy.random as rand
@@ -17,7 +24,7 @@ if not on_rtd:
 
     from astropy import constants as const
 
-    #Define useful constants
+    # Define useful constants
     G = const.G.cgs.value
     MSUN = const.M_sun.cgs.value
     RSUN = const.R_sun.cgs.value
@@ -979,3 +986,19 @@ class FastIsochrone(Isochrone):
     def interp_value(self, eep, age, feh, prop):  # 4 is log_g
         return self.interp([feh, age, eep], prop)
 
+    def hr_isochrone(self, b1, b2, age, feh, distance, AV, thin=5, 
+                     mineep=None, maxeep=None, label=None, **kwargs):
+        if mineep is None:
+            mineep = self.mineep
+        if maxeep is None:
+            maxeep = self.maxeep
+
+        eeps = np.arange(mineep, maxeep, thin).astype(float)
+        df = self.isochrone(age, feh=feh, distance=distance, AV=AV, eeps=eeps)
+        color = '{}-{}'.format(b1, b2)
+        df[color] = df['{}_mag'.format(b1)] - df['{}_mag'.format(b2)]
+        ds = hv.Dataset(df)
+
+        vdims = [c for c in df.columns if not re.search('_mag', c)]
+        opts = dict(invert_yaxis=True, tools=['hover'])
+        return hv.Points(ds, kdims=[color, b1 + '_mag'], vdims=vdims, label=label).options(**opts)

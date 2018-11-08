@@ -168,6 +168,9 @@ def interp_value(x1, x2, x3,
                  ii1, ii2, ii3):
     """x1, x2, x3 are *single values* at which values in val_col are desired
 
+
+    TODO: should this also take (and thus return) 'pts', for purposes
+    of not having to do the same interpolation lookup for multiple quantities?
     """
     if ((not x1 < 0 and not x1 >= 0) or
         (not x2 < 0 and not x2 >= 0) or

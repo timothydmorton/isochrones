@@ -87,7 +87,7 @@ class StarCatalog(object):
             layout = []
             opts = dict(invert_yaxis=True, tools=['hover'])
             for b1, b2 in band_pairs(self.bands):
-                kdims = ['{}-{}'.format(b1, b2), '{}_mag'.format(b2)]
+                kdims = ['{}-{}'.format(b1, b2), '{}_mag'.format(b1)]
                 layout.append(hv.Points(self.ds, kdims=kdims, vdims=self.ds.kdims).options(**opts))
             self._hr = hv.Layout(layout)
         return self._hr
