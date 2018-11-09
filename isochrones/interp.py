@@ -2,15 +2,80 @@ import os
 import itertools
 import logging
 
-from numba import jit, float64, TypingError, typeof
+from numba import jit, float64, uint32, TypingError, typeof
 from math import sqrt
 import numpy as np
 import pandas as pd
 
+
+@jit(nopython=True)
+def find_indices(point, iis):
+    ndim = len(point)
+
+    indices = np.zeros(ndim, dtype=uint32)
+    norm_distances = np.zeros(ndim, dtype=float64)
+    out_of_bounds = False
+    for i in range(ndim):
+        ii = iis[i]
+        n = len(ii)
+        x = point[i]
+        ix, eq = searchsorted(ii, n, x)
+        if eq:
+            indices[i] = ix
+            norm_distances[i] = 0
+        else:
+            ix = ix - 1
+            indices[i] = ix
+            dx = (ii[ix + 1] - ii[ix])
+            norm_distances[i] = (x - ii[ix]) / dx
+        out_of_bounds &= x < ii[0] or x > ii[n-1]
+
+    return indices, norm_distances, out_of_bounds
+
+
+@jit(nopython=True)
+def interp_value_4d(x1, x2, x3, x4,
+                    grid, icol,
+                    ii1, ii2, ii3, ii4):
+
+    indices, norm_distances, out_of_bounds = find_indices((x1, x2, x3, x4),
+                                                          (ii1, ii2, ii3, ii4))
+
+    # The following should be equivalent to
+    #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
+
+    ndim = 4
+    nvals = 2**ndim
+    edges = np.zeros((nvals, ndim))
+    for i in range(nvals):
+        for j in range(ndim):
+            edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
+
+    value = 0
+    for j in range(nvals):
+        edge_indices = np.zeros(ndim, dtype=uint32)
+        for k in range(ndim):
+            edge_indices[k] = edges[j, k]
+
+        weight = 1.
+        for ei, i, yi in zip(edge_indices, indices, norm_distances):
+            if ei == i:
+                weight *= 1 - yi
+            else:
+                weight *= yi
+
+            # Now, get the value; this is why general ND doesn't work
+            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2],
+                            edge_indices[3], icol)
+        value += grid[grid_indices] * weight
+
+    return value
+
+
 @jit(nopython=True)
 def interp_box(x, y, z, box, values):
     """
-    box is 8x3 array, though not really a box
+    box is 8x3 array
 
     Implementing trilinear interpolation according to
 
@@ -29,7 +94,6 @@ def interp_box(x, y, z, box, values):
 
     values is length-8 array, corresponding to values at the "box" coords
 
-    TODO: should make power `p` an argument
     """
 
     # Calculate the distance to each vertex
@@ -138,15 +202,16 @@ def searchsorted_many(arr, values):
             elif arr[m] > x:
                 R = m - 1
             m = (L+R)//2
-            if L>R:
+            if L > R:
                 done = True
         inds[i] = L
     return inds
 
+
 @jit(nopython=True)
-def interp_values(xx1, xx2, xx3,
-                 grid, icol,
-                 ii1, ii2, ii3):
+def interp_values_4d(xx1, xx2, xx3, xx4,
+                     grid, icol,
+                     ii1, ii2, ii3, ii4):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
@@ -156,16 +221,36 @@ def interp_values(xx1, xx2, xx3,
     results = np.zeros(N)
 
     for i in range(N):
-        results[i] = interp_value(xx1[i], xx2[i], xx3[i],
-                                  grid, icol,
-                                  ii1, ii2, ii3)
+        results[i] = interp_value_3d(xx1[i], xx2[i], xx3[i], xx4[i],
+                                     grid, icol,
+                                     ii1, ii2, ii3, ii4)
+
+    return results
+
+
+@jit(nopython=True)
+def interp_values_3d(xx1, xx2, xx3,
+                     grid, icol,
+                     ii1, ii2, ii3):
+    """xx1, xx2, xx3 are all arrays at which values are desired
+
+
+    """
+
+    N = len(xx1)
+    results = np.zeros(N)
+
+    for i in range(N):
+        results[i] = interp_value_3d(xx1[i], xx2[i], xx3[i],
+                                     grid, icol,
+                                     ii1, ii2, ii3)
 
     return results
 
 @jit(nopython=True)
-def interp_value(x1, x2, x3,
-                 grid, icol,
-                 ii1, ii2, ii3):
+def interp_value_3d(x1, x2, x3,
+                    grid, icol,
+                    ii1, ii2, ii3):
     """x1, x2, x3 are *single values* at which values in val_col are desired
 
 
@@ -340,8 +425,8 @@ def find_closest3(val, a, b,
 
     # First, do a bisect search to get it close
     done = False
-    ya = interp_value(v1, v2, a, grid, icol, ii1, ii2, ii3) - val
-    yb = interp_value(v1, v2, b, grid, icol, ii1, ii2, ii3) - val
+    ya = interp_value_3d(v1, v2, a, grid, icol, ii1, ii2, ii3) - val
+    yb = interp_value_3d(v1, v2, b, grid, icol, ii1, ii2, ii3) - val
     if debug:
         print('Initial values: {}: {}'.format((a, b), (ya, yb)))
 
@@ -363,7 +448,7 @@ def find_closest3(val, a, b,
 
         while not done:
             c = (a + b) / 2
-            yc = interp_value(v1, v2, c, grid, icol, ii1, ii2, ii3) - val
+            yc = interp_value_3d(v1, v2, c, grid, icol, ii1, ii2, ii3) - val
             if yc == 0 or (b - a) / 2 < bisect_tol:
                 done = True
             if sign(yc) == sign(ya): # (yc >= 0 and ya >= 0) or (yc < 0 and ya < 0):
@@ -381,7 +466,7 @@ def find_closest3(val, a, b,
     x0 = c
     y0 = yc
     x1 = x0 + 0.1
-    y1 = interp_value(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
+    y1 = interp_value_3d(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
 
     if debug:
         print('Newton-secant method...')
@@ -390,7 +475,7 @@ def find_closest3(val, a, b,
         x0 = x1
         y0 = y1
         x1 = newx
-        y1 = interp_value(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
+        y1 = interp_value_3d(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
 
         # Boo!
         while not y1 == y1:
@@ -414,23 +499,30 @@ class DFInterpolator(object):
     """Interpolate column values of DataFrame with full-grid hierarchical index
 
     """
-    def __init__(self, df, filename=None, recalc=False):
+    def __init__(self, df, filename=None, recalc=False, is_full=False):
 
         self.filename = filename
+        self.is_full = is_full
         self.grid = self._make_grid(df, recalc=recalc)
         self.columns = list(df.columns)
         self.index_columns = tuple(np.array(l, dtype=float) for l in df.index.levels)
         self.index_names = df.index.names
 
+        self.ndim = len(self.index_columns)
+
     def _make_grid(self, df, recalc=False):
         if self.filename is not None and os.path.exists(self.filename) and not recalc:
             grid = np.load(self.filename)
         else:
-            idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
+            if not self.is_full: # Need to pad with nans
+                idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
 
-            # Make an empty dataframe with the completely gridded index, and fill
-            grid_df = pd.DataFrame(index=idx, columns=df.columns)
-            grid_df.loc[df.index] = df
+                # Make an empty dataframe with the completely gridded index, and fill
+                grid_df = pd.DataFrame(index=idx, columns=df.columns)
+                grid_df.loc[df.index] = df
+            else:
+                grid_df = df
+
             shape = [len(l) for l in df.index.levels] + [len(df.columns)]
 
             grid = np.array(grid_df.values, dtype=float).reshape(shape)
@@ -444,21 +536,34 @@ class DFInterpolator(object):
                      col='initial_mass', debug=False):
         icol = self.columns.index(col)
 
-        return find_closest3(val, lo, hi, v1, v2,
-                             self.grid, icol,
-                             *self.index_columns, debug=debug)
+        if ndim == 3:
+            return find_closest3(val, lo, hi, v1, v2,
+                                 self.grid, icol,
+                                 *self.index_columns, debug=debug)
 
     def __call__(self, p, col):
         icol = self.columns.index(col)
         args = (*p, self.grid, icol, *self.index_columns)
 
-        if ((isinstance(p[0], float) or isinstance(p[0], int)) and
-            (isinstance(p[1], float) or isinstance(p[1], int)) and
-            (isinstance(p[2], float) or isinstance(p[2], int))):
-            return interp_value(*args)
+        if self.ndim == 3:
+            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
+                    (isinstance(p[1], float) or isinstance(p[1], int)) and
+                    (isinstance(p[2], float) or isinstance(p[2], int))):
+                return interp_value_3d(*args)
 
-        else:
-            b = np.broadcast(*p)
-            pp = [np.resize(x, b.shape).astype(float) for x in p]
+            else:
+                b = np.broadcast(*p)
+                pp = [np.resize(x, b.shape).astype(float) for x in p]
 
-            return interp_values(*pp, self.grid, icol, *self.index_columns)
+                return interp_values_3d(*pp, self.grid, icol, *self.index_columns)
+        elif self.ndim == 4:
+            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
+                    (isinstance(p[1], float) or isinstance(p[1], int)) and
+                    (isinstance(p[2], float) or isinstance(p[2], int)) and
+                    (isinstance(p[3], float) or isinstance(p[3], int))):
+                return interp_value_4d(*args)
+            else:
+                b = np.broadcast(*p)
+                pp = [np.resize(x, b.shape).astype(float) for x in p]
+
+                return interp_values_4d(*pp, self.grid, icol, *self.index_columns)
