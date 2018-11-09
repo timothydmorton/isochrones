@@ -33,26 +33,64 @@ def find_indices(point, iis):
     return indices, norm_distances, out_of_bounds
 
 
-@jit(nopython=True)
-def interp_value_4d(x1, x2, x3, x4,
-                    grid, icol,
-                    ii1, ii2, ii3, ii4):
+# @jit(nopython=True)
+def interp_value_3d(point, grid, icols, iis):
 
-    indices, norm_distances, out_of_bounds = find_indices((x1, x2, x3, x4),
-                                                          (ii1, ii2, ii3, ii4))
-
-    # The following should be equivalent to
+    indices, norm_distances, out_of_bounds = find_indices(point, iis)
+    
+    # The following should be equivalent to 
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
-
-    ndim = 4
-    nvals = 2**ndim
-    edges = np.zeros((nvals, ndim))
-    for i in range(nvals):
+    
+    ndim = 3
+    n_edges = 2**ndim
+    edges = np.zeros((n_edges, ndim))
+    for i in range(n_edges):
         for j in range(ndim):
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
-    value = 0
-    for j in range(nvals):
+    n_values = len(icols)
+    values = np.zeros(n_values, dtype=float)
+
+    for j in range(n_edges):
+        edge_indices = np.zeros(ndim, dtype=int)
+        for k in range(ndim):
+            edge_indices[k] = edges[j, k]
+
+        weight = 1.
+        for ei, i, yi in zip(edge_indices, indices, norm_distances):
+            if ei == i:
+                weight *= 1 - yi
+            else:
+                weight *= yi
+                
+        for i_icol in range(n_values):
+            icol = icols[i_icol]
+
+            # Now, get the value; this is why general ND doesn't work
+            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2], icol)
+            values[i_icol] += grid[grid_indices] * weight
+            
+    return values
+
+@jit(nopython=True)
+def interp_value_4d(point, grid, icols, iis):
+
+    indices, norm_distances, out_of_bounds = find_indices(point, iis)
+    
+    # The following should be equivalent to 
+    #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
+    
+    ndim = 4
+    n_edges = 2**ndim
+    edges = np.zeros((n_edges, ndim))
+    for i in range(n_edges):
+        for j in range(ndim):
+            edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
+
+    n_values = len(icols)
+    values = np.zeros(n_values, dtype=float64)
+
+    for j in range(n_edges):
         edge_indices = np.zeros(ndim, dtype=uint32)
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
@@ -63,13 +101,17 @@ def interp_value_4d(x1, x2, x3, x4,
                 weight *= 1 - yi
             else:
                 weight *= yi
+                
+        for i_icol in range(n_values):
+            icol = icols[i_icol]
 
             # Now, get the value; this is why general ND doesn't work
-            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2],
+            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2], 
                             edge_indices[3], icol)
-        value += grid[grid_indices] * weight
+            values[i_icol] += grid[grid_indices] * weight
+            
+    return values
 
-    return value
 
 
 @jit(nopython=True)
@@ -247,157 +289,157 @@ def interp_values_3d(xx1, xx2, xx3,
 
     return results
 
-@jit(nopython=True)
-def interp_value_3d(x1, x2, x3,
-                    grid, icol,
-                    ii1, ii2, ii3):
-    """x1, x2, x3 are *single values* at which values in val_col are desired
+# @jit(nopython=True)
+# def interp_value_3d(x1, x2, x3,
+#                     grid, icol,
+#                     ii1, ii2, ii3):
+#     """x1, x2, x3 are *single values* at which values in val_col are desired
 
 
-    TODO: should this also take (and thus return) 'pts', for purposes
-    of not having to do the same interpolation lookup for multiple quantities?
-    """
-    if ((not x1 < 0 and not x1 >= 0) or
-        (not x2 < 0 and not x2 >= 0) or
-        (not x3 < 0 and not x3 >= 0)):
-        return np.nan
+#     TODO: should this also take (and thus return) 'pts', for purposes
+#     of not having to do the same interpolation lookup for multiple quantities?
+#     """
+#     if ((not x1 < 0 and not x1 >= 0) or
+#         (not x2 < 0 and not x2 >= 0) or
+#         (not x3 < 0 and not x3 >= 0)):
+#         return np.nan
 
-    n1 = len(ii1)
-    n2 = len(ii2)
-    n3 = len(ii3)
+#     n1 = len(ii1)
+#     n2 = len(ii2)
+#     n3 = len(ii3)
 
-    i1, eq1 = searchsorted(ii1, n1, x1)
-    i2, eq2 = searchsorted(ii2, n2, x2)
-    i3, eq3 = searchsorted(ii3, n3, x3)
+#     i1, eq1 = searchsorted(ii1, n1, x1)
+#     i2, eq2 = searchsorted(ii2, n2, x2)
+#     i3, eq3 = searchsorted(ii3, n3, x3)
 
-    if (i1==0 or i2==0 or i3==0 or
-        i1==n1 or i2==n2 or i3==n3):
-        return np.nan
+#     if (i1==0 or i2==0 or i3==0 or
+#         i1==n1 or i2==n2 or i3==n3):
+#         return np.nan
 
-    pts = np.zeros((8,3))
-    vals = np.zeros(8)
+#     pts = np.zeros((8,3))
+#     vals = np.zeros(8)
 
-    i_1 = i1 - 1
-    i_2 = i2 - 1
-    i_3 = i3 - 1
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[0, 0] = ii1[i_1]
-    pts[0, 1] = ii2[i_2]
-    pts[0, 2] = ii3[i_3]
-    vals[0] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1 - 1
+#     i_2 = i2 - 1
+#     i_3 = i3 - 1
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[0, 0] = ii1[i_1]
+#     pts[0, 1] = ii2[i_2]
+#     pts[0, 2] = ii3[i_3]
+#     vals[0] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1 - 1
-    i_2 = i2 - 1
-    i_3 = i3
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[1, 0] = ii1[i_1]
-    pts[1, 1] = ii2[i_2]
-    pts[1, 2] = ii3[i_3]
-    vals[1] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1 - 1
+#     i_2 = i2 - 1
+#     i_3 = i3
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[1, 0] = ii1[i_1]
+#     pts[1, 1] = ii2[i_2]
+#     pts[1, 2] = ii3[i_3]
+#     vals[1] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1 - 1
-    i_2 = i2
-    i_3 = i3 - 1
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[2, 0] = ii1[i_1]
-    pts[2, 1] = ii2[i_2]
-    pts[2, 2] = ii3[i_3]
-    vals[2] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1 - 1
+#     i_2 = i2
+#     i_3 = i3 - 1
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[2, 0] = ii1[i_1]
+#     pts[2, 1] = ii2[i_2]
+#     pts[2, 2] = ii3[i_3]
+#     vals[2] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1 - 1
-    i_2 = i2
-    i_3 = i3
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[3, 0] = ii1[i_1]
-    pts[3, 1] = ii2[i_2]
-    pts[3, 2] = ii3[i_3]
-    vals[3] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1 - 1
+#     i_2 = i2
+#     i_3 = i3
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[3, 0] = ii1[i_1]
+#     pts[3, 1] = ii2[i_2]
+#     pts[3, 2] = ii3[i_3]
+#     vals[3] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1
-    i_2 = i2 - 1
-    i_3 = i3 - 1
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[4, 0] = ii1[i_1]
-    pts[4, 1] = ii2[i_2]
-    pts[4, 2] = ii3[i_3]
-    vals[4] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1
+#     i_2 = i2 - 1
+#     i_3 = i3 - 1
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[4, 0] = ii1[i_1]
+#     pts[4, 1] = ii2[i_2]
+#     pts[4, 2] = ii3[i_3]
+#     vals[4] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1
-    i_2 = i2 - 1
-    i_3 = i3
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[5, 0] = ii1[i_1]
-    pts[5, 1] = ii2[i_2]
-    pts[5, 2] = ii3[i_3]
-    vals[5] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1
+#     i_2 = i2 - 1
+#     i_3 = i3
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[5, 0] = ii1[i_1]
+#     pts[5, 1] = ii2[i_2]
+#     pts[5, 2] = ii3[i_3]
+#     vals[5] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1
-    i_2 = i2
-    i_3 = i3 - 1
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[6, 0] = ii1[i_1]
-    pts[6, 1] = ii2[i_2]
-    pts[6, 2] = ii3[i_3]
-    vals[6] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1
+#     i_2 = i2
+#     i_3 = i3 - 1
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[6, 0] = ii1[i_1]
+#     pts[6, 1] = ii2[i_2]
+#     pts[6, 2] = ii3[i_3]
+#     vals[6] = grid[i_1, i_2, i_3, icol]
 
-    i_1 = i1
-    i_2 = i2
-    i_3 = i3
-    if eq1:
-        i_1 = i1
-    if eq2:
-        i_2 = i2
-    if eq3:
-        i_3 = i3
-    pts[7, 0] = ii1[i_1]
-    pts[7, 1] = ii2[i_2]
-    pts[7, 2] = ii3[i_3]
-    vals[7] = grid[i_1, i_2, i_3, icol]
+#     i_1 = i1
+#     i_2 = i2
+#     i_3 = i3
+#     if eq1:
+#         i_1 = i1
+#     if eq2:
+#         i_2 = i2
+#     if eq3:
+#         i_3 = i3
+#     pts[7, 0] = ii1[i_1]
+#     pts[7, 1] = ii2[i_2]
+#     pts[7, 2] = ii3[i_3]
+#     vals[7] = grid[i_1, i_2, i_3, icol]
 
 
-#     result = np.zeros((8,4))
-#     for i in range(8):
-#         result[i, 0] = pts[i, 0]
-#         result[i, 1] = pts[i, 1]
-#         result[i, 2] = pts[i, 2]
-#         result[i, 3] = vals[i]
-#     return result
-    return interp_box(x1, x2, x3, pts, vals)
+# #     result = np.zeros((8,4))
+# #     for i in range(8):
+# #         result[i, 0] = pts[i, 0]
+# #         result[i, 1] = pts[i, 1]
+# #         result[i, 2] = pts[i, 2]
+# #         result[i, 3] = vals[i]
+# #     return result
+#     return interp_box(x1, x2, x3, pts, vals)
 
 @jit(nopython=True)
 def sign(x):
@@ -541,29 +583,31 @@ class DFInterpolator(object):
                                  self.grid, icol,
                                  *self.index_columns, debug=debug)
 
-    def __call__(self, p, col):
-        icol = self.columns.index(col)
-        args = (*p, self.grid, icol, *self.index_columns)
+    def __call__(self, p, cols):
+        icols = np.array([self.columns.index(col) for col in cols])
+        args = (p, self.grid, icols, self.index_columns)
 
         if self.ndim == 3:
             if ((isinstance(p[0], float) or isinstance(p[0], int)) and
                     (isinstance(p[1], float) or isinstance(p[1], int)) and
                     (isinstance(p[2], float) or isinstance(p[2], int))):
-                return interp_value_3d(*args)
+                values = interp_value_3d(*args)
 
             else:
                 b = np.broadcast(*p)
                 pp = [np.resize(x, b.shape).astype(float) for x in p]
 
-                return interp_values_3d(*pp, self.grid, icol, *self.index_columns)
+                values = interp_values_3d(*pp, self.grid, icols, *self.index_columns)
         elif self.ndim == 4:
             if ((isinstance(p[0], float) or isinstance(p[0], int)) and
                     (isinstance(p[1], float) or isinstance(p[1], int)) and
                     (isinstance(p[2], float) or isinstance(p[2], int)) and
                     (isinstance(p[3], float) or isinstance(p[3], int))):
-                return interp_value_4d(*args)
+                values = interp_value_4d(*args)
             else:
                 b = np.broadcast(*p)
                 pp = [np.resize(x, b.shape).astype(float) for x in p]
 
-                return interp_values_4d(*pp, self.grid, icol, *self.index_columns)
+                values = interp_values_4d(*pp, self.grid, icols, *self.index_columns)
+
+        return values
