@@ -2,10 +2,36 @@ import os
 import itertools
 import logging
 
-from numba import jit, float64, uint32, TypingError, typeof
+from numba import jit, float64, uint32, TypingError, typeof, prange
 from math import sqrt
 import numpy as np
 import pandas as pd
+
+
+@jit(nopython=True)
+def searchsorted(arr, x):
+    """N is length of arr
+    """
+    N = len(arr)
+    L = 0
+    R = N-1
+    done = False
+    eq = False
+    m = (L+R)//2
+    while not done:
+        xm = arr[m]
+        if xm < x:
+            L = m + 1
+        elif xm > x:
+            R = m - 1
+        elif xm == x:
+            L = m
+            eq = True
+            done = True
+        m = (L + R)//2
+        if L > R:
+            done = True
+    return L, eq
 
 
 @jit(nopython=True)
@@ -19,7 +45,7 @@ def find_indices(point, iis):
         ii = iis[i]
         n = len(ii)
         x = point[i]
-        ix, eq = searchsorted(ii, n, x)
+        ix, eq = searchsorted(ii, x)
         if eq:
             indices[i] = ix
             norm_distances[i] = 0
@@ -28,19 +54,126 @@ def find_indices(point, iis):
             indices[i] = ix
             dx = (ii[ix + 1] - ii[ix])
             norm_distances[i] = (x - ii[ix]) / dx
-        out_of_bounds &= x < ii[0] or x > ii[n-1]
+        out_of_bounds &= x < ii[0] or x > ii[n - 1]
 
     return indices, norm_distances, out_of_bounds
 
 
-# @jit(nopython=True)
-def interp_value_3d(point, grid, icols, iis):
+@jit(nopython=True)
+def find_indices_3d(x0, x1, x2,
+                    ii0, ii1, ii2):
 
-    indices, norm_distances, out_of_bounds = find_indices(point, iis)
-    
-    # The following should be equivalent to 
+    n0 = len(ii0)
+    n1 = len(ii1)
+    n2 = len(ii2)
+
+    indices = np.empty(3, dtype=uint32)
+    norm_distances = np.empty(3, dtype=float64)
+
+    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
+            (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
+            (x2 < ii2[0]) or (x2 > ii2[n2 - 1])):
+        return indices, norm_distances, True  # Out of bounds
+
+    ix, eq = searchsorted(ii0, x0)
+    if eq:
+        indices[0] = ix
+        norm_distances[0] = 0
+    else:
+        indices[0] = ix - 1
+        c0 = ii0[ix - 1]
+        norm_distances[0] = (x0 - c0) / (ii0[ix] - c0)
+
+    ix, eq = searchsorted(ii1, x1)
+    if eq:
+        indices[1] = ix
+        norm_distances[1] = 0
+    else:
+        indices[1] = ix - 1
+        c0 = ii1[ix - 1]
+        norm_distances[1] = (x1 - c0) / (ii1[ix] - c0)
+
+    ix, eq = searchsorted(ii2, x2)
+    if eq:
+        indices[2] = ix
+        norm_distances[2] = 0
+    else:
+        indices[2] = ix - 1
+        c0 = ii2[ix - 1]
+        norm_distances[2] = (x2 - c0) / (ii2[ix] - c0)
+
+    return indices, norm_distances, False
+
+
+@jit(nopython=True)
+def find_indices_4d(x0, x1, x2, x3,
+                    ii0, ii1, ii2, ii3):
+
+    n0 = len(ii0)
+    n1 = len(ii1)
+    n2 = len(ii2)
+    n3 = len(ii3)
+
+    indices = np.empty(4, dtype=uint32)
+    norm_distances = np.empty(4, dtype=float64)
+
+    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
+            (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
+            (x2 < ii2[0]) or (x2 > ii2[n2 - 1]) or 
+            (x3 < ii3[0]) or (x3 > ii3[n3 - 1])):
+        return indices, norm_distances, True  # Out of bounds
+
+    ix, eq = searchsorted(ii0, x0)
+    if eq:
+        indices[0] = ix
+        norm_distances[0] = 0
+    else:
+        indices[0] = ix - 1
+        c0 = ii0[ix - 1]
+        norm_distances[0] = (x0 - c0) / (ii0[ix] - c0)
+
+    ix, eq = searchsorted(ii1, x1)
+    if eq:
+        indices[1] = ix
+        norm_distances[1] = 0
+    else:
+        indices[1] = ix - 1
+        c0 = ii1[ix - 1]
+        norm_distances[1] = (x1 - c0) / (ii1[ix] - c0)
+
+    ix, eq = searchsorted(ii2, x2)
+    if eq:
+        indices[2] = ix
+        norm_distances[2] = 0
+    else:
+        indices[2] = ix - 1
+        c0 = ii2[ix - 1]
+        norm_distances[2] = (x2 - c0) / (ii2[ix] - c0)
+
+    ix, eq = searchsorted(ii3, x3)
+    if eq:
+        indices[3] = ix
+        norm_distances[3] = 0
+    else:
+        indices[3] = ix - 1
+        c0 = ii3[ix - 1]
+        norm_distances[3] = (x3 - c0) / (ii3[ix] - c0)
+
+    return indices, norm_distances, False
+
+
+@jit(nopython=True)
+def interp_value_3d(x0, x1, x2,
+                    grid, icols,
+                    ii0, ii1, ii2):
+
+    indices, norm_distances, out_of_bounds = find_indices_3d(x0, x1, x2, ii0, ii1, ii2)
+
+    if out_of_bounds:
+        return np.array([np.nan for i in icols])
+    # The following should be equivalent to
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
-    
+
     ndim = 3
     n_edges = 2**ndim
     edges = np.zeros((n_edges, ndim))
@@ -49,10 +182,10 @@ def interp_value_3d(point, grid, icols, iis):
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
     n_values = len(icols)
-    values = np.zeros(n_values, dtype=float)
+    values = np.zeros(n_values, dtype=float64)
 
     for j in range(n_edges):
-        edge_indices = np.zeros(ndim, dtype=int)
+        edge_indices = np.zeros(ndim, dtype=uint32)
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
@@ -62,24 +195,31 @@ def interp_value_3d(point, grid, icols, iis):
                 weight *= 1 - yi
             else:
                 weight *= yi
-                
+
         for i_icol in range(n_values):
             icol = icols[i_icol]
 
             # Now, get the value; this is why general ND doesn't work
             grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2], icol)
             values[i_icol] += grid[grid_indices] * weight
-            
+
     return values
 
-@jit(nopython=True)
-def interp_value_4d(point, grid, icols, iis):
 
-    indices, norm_distances, out_of_bounds = find_indices(point, iis)
-    
-    # The following should be equivalent to 
+@jit(nopython=True)
+def interp_value_4d(x0, x1, x2, x3,
+                    grid, icols,
+                    ii0, ii1, ii2, ii3):
+
+    indices, norm_distances, out_of_bounds = find_indices_4d(x0, x1, x2, x3,
+                                                             ii0, ii1, ii2, ii3)
+
+    if out_of_bounds:
+        return np.array([np.nan for i in icols])
+
+    # The following should be equivalent to
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
-    
+
     ndim = 4
     n_edges = 2**ndim
     edges = np.zeros((n_edges, ndim))
@@ -101,345 +241,53 @@ def interp_value_4d(point, grid, icols, iis):
                 weight *= 1 - yi
             else:
                 weight *= yi
-                
+
         for i_icol in range(n_values):
             icol = icols[i_icol]
 
             # Now, get the value; this is why general ND doesn't work
-            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2], 
+            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2],
                             edge_indices[3], icol)
             values[i_icol] += grid[grid_indices] * weight
-            
+
     return values
 
 
-
 @jit(nopython=True)
-def interp_box(x, y, z, box, values):
-    """
-    box is 8x3 array
-
-    Implementing trilinear interpolation according to
-
-    https://en.wikipedia.org/wiki/Trilinear_interpolation
-
-    Corners are organized as follows in following order in 'box' and 'values'
-
-    000
-    001
-    010
-    011
-    100
-    101
-    110
-    111
-
-    values is length-8 array, corresponding to values at the "box" coords
-
-    """
-
-    # Calculate the distance to each vertex
-
-    x0 = box[0, 0]
-    x1 = box[4, 0]
-    y0 = box[0, 1]
-    y1 = box[2, 1]
-    z0 = box[0, 2]
-    z1 = box[1, 2]
-
-    if x1 == x0:
-        xd = 0
-    else:
-        xd = (x - x0) / (x1 - x0)
-
-    if y1 == y0:
-        yd = 0
-    else:
-        yd = (y - y0) / (y1 - y0)
-
-    if z1 == z0:
-        zd = 0
-    else:
-        zd = (z - z0) / (z1 - z0)
-
-    c000 = values[0]
-    c001 = values[1]
-    c010 = values[2]
-    c011 = values[3]
-    c100 = values[4]
-    c101 = values[5]
-    c110 = values[6]
-    c111 = values[7]
-
-    # Replace nans with zeros, so they disappear in calculations
-    if c000 != c000:
-        c000 = 0.
-    if c001 != c001:
-        c001 = 0.
-    if c010 != c010:
-        c010 = 0.
-    if c011 != c011:
-        c011 = 0.
-    if c100 != c100:
-        c100 = 0.
-    if c101 != c101:
-        c101 = 0.
-    if c110 != c110:
-        c110 = 0.
-    if c111 != c111:
-        c111 = 0.
-
-    c00 = c000 * (1 - xd) + c100 * xd
-    c01 = c001 * (1 - xd) + c101 * xd
-    c10 = c010 * (1 - xd) + c110 * xd
-    c11 = c011 * (1 - xd) + c111 * xd
-
-    c0 = c00 * (1 - yd) + c10 * yd
-    c1 = c01 * (1 - yd) + c11 * yd
-
-    c = c0 * (1 - zd) + c1 * zd
-
-    if c == 0.:
-        return np.nan
-    else:
-        return c
-
-@jit(nopython=True)
-def searchsorted(arr, N, x):
-    """N is length of arr
-    """
-    L = 0
-    R = N-1
-    done = False
-    eq = False
-    m = (L+R)//2
-    while not done:
-        if arr[m] < x:
-            L = m + 1
-        elif arr[m] > x:
-            R = m - 1
-        elif arr[m] == x:
-            L = m
-            eq = True
-            done = True
-        m = (L+R)//2
-        if L>R:
-            done = True
-    return L, eq
-
-@jit(nopython=True)
-def searchsorted_many(arr, values):
-    N = len(arr)
-    Nval = len(values)
-    inds = np.zeros(Nval)
-    for i in range(Nval):
-        x = values[i]
-        L = 0
-        R = N-1
-        done = False
-        m = (L+R)//2
-        while not done:
-            if arr[m] < x:
-                L = m + 1
-            elif arr[m] > x:
-                R = m - 1
-            m = (L+R)//2
-            if L > R:
-                done = True
-        inds[i] = L
-    return inds
-
-
-@jit(nopython=True)
-def interp_values_4d(xx1, xx2, xx3, xx4,
-                     grid, icol,
-                     ii1, ii2, ii3, ii4):
+def interp_values_3d(xx0, xx1, xx2,
+                     grid, icols,
+                     ii0, ii1, ii2):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
     """
 
-    N = len(xx1)
-    results = np.zeros(N)
-
+    N = len(xx0)
+    results = np.empty(N)
     for i in range(N):
-        results[i] = interp_value_3d(xx1[i], xx2[i], xx3[i], xx4[i],
-                                     grid, icol,
-                                     ii1, ii2, ii3, ii4)
-
+        results[i] = interp_value_3d(xx0[i], xx1[i], xx2[i],
+                                     grid, icols,
+                                     ii0, ii1, ii2)
     return results
 
 
 @jit(nopython=True)
-def interp_values_3d(xx1, xx2, xx3,
-                     grid, icol,
-                     ii1, ii2, ii3):
+def interp_values_4d(xx0, xx1, xx2, xx3,
+                     grid, icols,
+                     ii0, ii1, ii2, ii3):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
     """
 
-    N = len(xx1)
-    results = np.zeros(N)
-
+    N = len(xx0)
+    results = np.empty(N)
     for i in range(N):
-        results[i] = interp_value_3d(xx1[i], xx2[i], xx3[i],
-                                     grid, icol,
-                                     ii1, ii2, ii3)
-
+        results[i] = interp_value_3d(xx0[i], xx1[i], xx2[i], xx3[i],
+                                     grid, icols,
+                                     ii0, ii1, ii2, ii3)
     return results
 
-# @jit(nopython=True)
-# def interp_value_3d(x1, x2, x3,
-#                     grid, icol,
-#                     ii1, ii2, ii3):
-#     """x1, x2, x3 are *single values* at which values in val_col are desired
-
-
-#     TODO: should this also take (and thus return) 'pts', for purposes
-#     of not having to do the same interpolation lookup for multiple quantities?
-#     """
-#     if ((not x1 < 0 and not x1 >= 0) or
-#         (not x2 < 0 and not x2 >= 0) or
-#         (not x3 < 0 and not x3 >= 0)):
-#         return np.nan
-
-#     n1 = len(ii1)
-#     n2 = len(ii2)
-#     n3 = len(ii3)
-
-#     i1, eq1 = searchsorted(ii1, n1, x1)
-#     i2, eq2 = searchsorted(ii2, n2, x2)
-#     i3, eq3 = searchsorted(ii3, n3, x3)
-
-#     if (i1==0 or i2==0 or i3==0 or
-#         i1==n1 or i2==n2 or i3==n3):
-#         return np.nan
-
-#     pts = np.zeros((8,3))
-#     vals = np.zeros(8)
-
-#     i_1 = i1 - 1
-#     i_2 = i2 - 1
-#     i_3 = i3 - 1
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[0, 0] = ii1[i_1]
-#     pts[0, 1] = ii2[i_2]
-#     pts[0, 2] = ii3[i_3]
-#     vals[0] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1 - 1
-#     i_2 = i2 - 1
-#     i_3 = i3
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[1, 0] = ii1[i_1]
-#     pts[1, 1] = ii2[i_2]
-#     pts[1, 2] = ii3[i_3]
-#     vals[1] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1 - 1
-#     i_2 = i2
-#     i_3 = i3 - 1
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[2, 0] = ii1[i_1]
-#     pts[2, 1] = ii2[i_2]
-#     pts[2, 2] = ii3[i_3]
-#     vals[2] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1 - 1
-#     i_2 = i2
-#     i_3 = i3
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[3, 0] = ii1[i_1]
-#     pts[3, 1] = ii2[i_2]
-#     pts[3, 2] = ii3[i_3]
-#     vals[3] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1
-#     i_2 = i2 - 1
-#     i_3 = i3 - 1
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[4, 0] = ii1[i_1]
-#     pts[4, 1] = ii2[i_2]
-#     pts[4, 2] = ii3[i_3]
-#     vals[4] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1
-#     i_2 = i2 - 1
-#     i_3 = i3
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[5, 0] = ii1[i_1]
-#     pts[5, 1] = ii2[i_2]
-#     pts[5, 2] = ii3[i_3]
-#     vals[5] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1
-#     i_2 = i2
-#     i_3 = i3 - 1
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[6, 0] = ii1[i_1]
-#     pts[6, 1] = ii2[i_2]
-#     pts[6, 2] = ii3[i_3]
-#     vals[6] = grid[i_1, i_2, i_3, icol]
-
-#     i_1 = i1
-#     i_2 = i2
-#     i_3 = i3
-#     if eq1:
-#         i_1 = i1
-#     if eq2:
-#         i_2 = i2
-#     if eq3:
-#         i_3 = i3
-#     pts[7, 0] = ii1[i_1]
-#     pts[7, 1] = ii2[i_2]
-#     pts[7, 2] = ii3[i_3]
-#     vals[7] = grid[i_1, i_2, i_3, icol]
-
-
-# #     result = np.zeros((8,4))
-# #     for i in range(8):
-# #         result[i, 0] = pts[i, 0]
-# #         result[i, 1] = pts[i, 1]
-# #         result[i, 2] = pts[i, 2]
-# #         result[i, 3] = vals[i]
-# #     return result
-#     return interp_box(x1, x2, x3, pts, vals)
 
 @jit(nopython=True)
 def sign(x):
@@ -541,8 +389,10 @@ class DFInterpolator(object):
     """Interpolate column values of DataFrame with full-grid hierarchical index
 
     """
-    def __init__(self, df, filename=None, recalc=False, is_full=False):
 
+    def __init__(self, df, columns=None, filename=None, recalc=False, is_full=False):
+
+        self.columns = columns
         self.filename = filename
         self.is_full = is_full
         self.grid = self._make_grid(df, recalc=recalc)
@@ -552,11 +402,16 @@ class DFInterpolator(object):
 
         self.ndim = len(self.index_columns)
 
+        self.column_index = {c: self.columns.index(c) for c in self.columns}
+
     def _make_grid(self, df, recalc=False):
         if self.filename is not None and os.path.exists(self.filename) and not recalc:
             grid = np.load(self.filename)
+            if self.columns is not None:
+                col_indices = [i for i, c in enumerate(self.columns) if c in self.columns]
+                grid = grid[..., col_indices]
         else:
-            if not self.is_full: # Need to pad with nans
+            if not self.is_full:  # Need to pad with nans
                 idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
 
                 # Make an empty dataframe with the completely gridded index, and fill
@@ -576,29 +431,34 @@ class DFInterpolator(object):
 
     def find_closest(self, val, lo, hi, v1, v2,
                      col='initial_mass', debug=False):
-        icol = self.columns.index(col)
+        icol = self.column_index[col]
 
-        if ndim == 3:
+        if self.ndim == 3:
             return find_closest3(val, lo, hi, v1, v2,
                                  self.grid, icol,
                                  *self.index_columns, debug=debug)
 
     def __call__(self, p, cols):
-        icols = np.array([self.columns.index(col) for col in cols])
+        icols = np.array([self.column_index[col] for col in cols])
         args = (p, self.grid, icols, self.index_columns)
 
         if self.ndim == 3:
+            args = (p[0], p[1], p[2], self.grid, icols,
+                    self.index_columns[0], self.index_columns[1],
+                    self.index_columns[2])
             if ((isinstance(p[0], float) or isinstance(p[0], int)) and
                     (isinstance(p[1], float) or isinstance(p[1], int)) and
                     (isinstance(p[2], float) or isinstance(p[2], int))):
                 values = interp_value_3d(*args)
-
             else:
                 b = np.broadcast(*p)
                 pp = [np.resize(x, b.shape).astype(float) for x in p]
 
                 values = interp_values_3d(*pp, self.grid, icols, *self.index_columns)
         elif self.ndim == 4:
+            args = (p[0], p[1], p[2], p[3], self.grid, icols,
+                    self.index_columns[0], self.index_columns[1],
+                    self.index_columns[2], self.index_columns[3])
             if ((isinstance(p[0], float) or isinstance(p[0], int)) and
                     (isinstance(p[1], float) or isinstance(p[1], int)) and
                     (isinstance(p[2], float) or isinstance(p[2], int)) and
