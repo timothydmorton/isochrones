@@ -390,13 +390,12 @@ class DFInterpolator(object):
 
     """
 
-    def __init__(self, df, columns=None, filename=None, recalc=False, is_full=False):
+    def __init__(self, df, filename=None, recalc=False, is_full=False):
 
-        self.columns = columns
         self.filename = filename
         self.is_full = is_full
-        self.grid = self._make_grid(df, recalc=recalc)
         self.columns = list(df.columns)
+        self.grid = self._make_grid(df, recalc=recalc)
         self.index_columns = tuple(np.array(l, dtype=float) for l in df.index.levels)
         self.index_names = df.index.names
 
@@ -406,12 +405,13 @@ class DFInterpolator(object):
 
     def _make_grid(self, df, recalc=False):
         if self.filename is not None and os.path.exists(self.filename) and not recalc:
-            grid = np.load(self.filename)
-            if self.columns is not None:
-                col_indices = [i for i, c in enumerate(self.columns) if c in self.columns]
-                grid = grid[..., col_indices]
+            d = np.load(self.filename)
+            grid = d['grid']
+            columns = d['columns']
+            if not all(columns == self.columns):
+                raise ValueError('DataFrame columns do not match columns loaded from full grid!')
         else:
-            if not self.is_full:  # Need to pad with nans
+            if not self.is_full:  # Need to make a full grid and pad with nans
                 idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
 
                 # Make an empty dataframe with the completely gridded index, and fill
@@ -425,7 +425,7 @@ class DFInterpolator(object):
             grid = np.array(grid_df.values, dtype=float).reshape(shape)
 
             if self.filename is not None:
-                np.save(self.filename, grid)
+                np.savez(self.filename, grid=grid, columns=self.columns)
 
         return grid
 
