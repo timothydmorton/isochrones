@@ -1,5 +1,2 @@
-from .grid import MISTModelGrid
-from .isochrone import MIST_Isochrone
+from .isochrone import MISTIsochrone, MISTEvolutionTrack
 
-def download_grids():
-    return MISTModelGrid.download_grids()
