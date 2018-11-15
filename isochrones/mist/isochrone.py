@@ -1,46 +1,17 @@
+from ..models import ModelGridInterpolator
+from .models import MISTIsochroneGrid, MISTEvolutionTrackGrid
+from .bc import MISTBolometricCorrectionGrid
 
-from ..isochrone import FastIsochrone
-from .grid import MISTModelGrid
 
-class MIST_Isochrone(FastIsochrone):
-    """MESA Isochrones and Stellar Tracks
+class MISTIsochrone(ModelGridInterpolator):
 
-    :param bands: (optional)
-        List of desired photometric bands.  Default list of bands is
-        ``['G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler']``.
-        Here ``B`` and ``V`` are Tycho-2 mags, `griz` are SDSS, and ``G`` is
-        Gaia G-band.
+    grid_type = MISTIsochroneGrid
+    bc_type = MISTBolometricCorrectionGrid
+    _param_index_order = (1, 2, 0, 3, 4)
 
-    Details of models are `here <http://waps.cfa.harvard.edu/MIST/>`_.
 
-    """
-    name = 'mist'
-    eep_col = 'EEP'
-    age_col = 'log10_isochrone_age_yr'
-    feh_col = '[Fe/H]'
-    mass_col = 'star_mass'
-    initial_mass_col = 'initial_mass'
-    logTeff_col = 'log_Teff'
-    logg_col = 'log_g'
-    logL_col = 'log_L'
-    modelgrid = MISTModelGrid
-    default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler')
+class MISTEvolutionTrack(ModelGridInterpolator):
 
-    mineep = 0
-    maxeep = 1710
-
-    def __init__(self, *args, **kwargs):
-        self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
-        if self.version in ('1.1', '1.2'):
-            self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
-
-        super().__init__(*args, **kwargs)
-
-    @property
-    def fehs(self):
-        if self._fehs is None:
-            self._fehs = self.df.loc[:, '[Fe/H]_init'].unique().astype(float)
-        return self._fehs
-
-    def Z_surf(self, mass, age, feh):
-        return self.interp_value(mass, age, feh, '[Fe/H]')
+    grid_type = MISTEvolutionTrackGrid
+    bc_type = MISTBolometricCorrectionGrid
+    _param_index_order = (2, 0, 1, 3, 4)

@@ -1,274 +1,84 @@
-import os,re, glob
-import tarfile
+import pandas as pd
+import os
 import logging
-import itertools
+import tarfile
 
-from .config import ISOCHRONES, on_rtd
 from .utils import download_file
-
-if not on_rtd:
-    import numpy as np
-    import pandas as pd
+from .interp import DFInterpolator
 
 
-class ModelGrid(object):
-    """Base class for Model Grids.
+class Grid(object):
+    is_full = False
 
-    Subclasses must implement the following (shown below is the Dartmouth example)::
+    def __init__(self, **kwargs):
 
-        name = 'dartmouth'
-        common_columns = ('EEP', 'MMo', 'LogTeff', 'LogG', 'LogLLo', 'age', 'feh')
-        phot_systems = ('SDSSugriz','UBVRIJHKsKp','WISE','LSST','UKIDSS')
-        phot_bands = dict(SDSSugriz=['sdss_z', 'sdss_i', 'sdss_r', 'sdss_u', 'sdss_g'],
-                      UBVRIJHKsKp=['B', 'I', 'H', 'J', 'Ks', 'R', 'U', 'V', 'D51', 'Kp'],
-                      WISE=['W4', 'W3', 'W2', 'W1'],
-                      LSST=['LSST_r', 'LSST_u', 'LSST_y', 'LSST_z', 'LSST_g', 'LSST_i'],
-                      UKIDSS=['Y', 'H', 'K', 'J', 'Z'])
-
-        default_kwargs = {'afe':'afep0', 'y':''}
-        datadir = os.path.join(ISOCHRONES, 'dartmouth')
-        zenodo_record = 159426  # if you want to store data here
-        zenodo_files = ('dartmouth.tgz', 'dartmouth.tri') # again, if desired
-        master_tarball_file = 'dartmouth.tgz'
-
-    Subclasses also must implement the following methods:
-
-    `get_band`, `phot_tarball_file`, `get_filenames`, `get_feh`,
-    `to_df`, `hdf_filename`.  See :class:`DartmouthModelGrid`
-    and :class:`MISTModelGrid` for details.
-    """
-
-    mass_column = 'initial_mass'
-    eep_column = None
-
-    def __init__(self, bands=None, **kwargs):
-        if bands is None:
-            bands = self.default_bands
-
-        self.bands = sorted(bands)
-        self.kwargs = self.default_kwargs.copy()
+        if hasattr(self, 'default_kwargs'):
+            self.kwargs = self.default_kwargs.copy()
+        else:
+            self.kwargs = {}
         self.kwargs.update(kwargs)
 
         self._df = None
+        self._interp = None
 
-    @classmethod
-    def get_common_columns(self, **kwargs):
-        return self.common_columns
-
-    @classmethod
-    def get_band(cls, b):
-        """Must defines what a "shortcut" band name refers to.
-
-        :param: b (string)
-            Band name.
-
-        :return: phot_system, band
-            ``b`` maps to the band defined by ``phot_system`` as ``band``.
-        """
-
+    @property
+    def datadir(self):
         raise NotImplementedError
 
-    def phot_tarball_file(self, phot, **kwargs):
-        """Returns name of tarball file for given phot system and kwargs
-        """
-        raise NotImplementedError
-
-    def _get_existing_filenames(self, phot, **kwargs):
-        raise NotImplementedError
-
-    def get_filenames(self, phot, **kwargs):
-        """ Returns list of all filenames corresponding to phot system and kwargs.
-        """
-        self._ensure_phot_extraction(phot, **kwargs)
-        return self._get_existing_filenames(phot, **kwargs)
-
-    @classmethod
-    def get_feh(cls, filename):
-        """Parse [Fe/H] from filename (returns float)
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def to_df(cls, filename):
-        """Parses specific file to a pandas DataFrame
-        """
-        raise NotImplementedError
-
-    def hdf_filename(cls, phot):
-        """Returns HDF filename of parsed/stored phot system
-        """
+    def get_hdf_filename(self, **kwargs):
         raise NotImplementedError
 
     @property
-    def df(self):
-        if self._df is None:
-            self._df = self._get_df()
+    def hdf_filename(self):
+        return self.get_hdf_filename()
 
-        return self._df
-
-    def _get_df(self, dm_deep=True):
-        """Returns stellar model grid with desired bandpasses and with standard column names
-
-        bands must be iterable, and are parsed according to :func:``get_band``
-        """
-        grids = {}
-        df = pd.DataFrame()
-        for bnd in self.bands:
-            s,b = self.get_band(bnd, **self.kwargs)
-            logging.debug('loading {} band from {}'.format(b,s))
-            if s not in grids:
-                grids[s] = self.get_hdf(s)
-            if self.common_columns[0] not in df:
-                df[list(self.common_columns)] = grids[s][list(self.common_columns)]
-            col = grids[s][b]
-            n_nan = np.isnan(col).sum()
-            if n_nan > 0:
-                logging.debug('{} NANs in {} column'.format(n_nan, b))
-            df[bnd] = col
-
-        if dm_deep:
-            df['dm_deep'] = self.get_dm_deep()
-        return df
-
-    @classmethod
-    def download_grids(cls, overwrite=False):
-        record = cls.zenodo_record
-        paths = []
-        urls = []
-        for f in cls.zenodo_files:
-            paths.append(os.path.join(ISOCHRONES, f))
-            urls.append('https://zenodo.org/record/{}/files/{}'.format(record, f))
-
-        logging.info('Downloading files for {} model grid: {}...'.format(cls.name, cls.zenodo_files))
-        for path, url in zip(paths, urls):
-            if os.path.exists(path):
-                if overwrite:
-                    os.remove(path)
-                else:
-                    logging.info('{} exists; not downloading.'.format(path))
-                    continue
-            download_file(url, path)
-        cls.verify_grids()
-
-    @classmethod
-    def verify_grids(cls):
-        import hashlib
-        files = [os.path.join(ISOCHRONES, f) for f in cls.zenodo_files]
-        good = True
-        for f, md5 in zip(files, cls.zenodo_md5):
-            if not os.path.exists(f):
-                cls.download_grids()
-                # raise RuntimeError('{0} does not exist.  Run "import isochrones.{1}; isochrones.{1}.download_grids()" to download.'.format(f, cls.name))
-            if hashlib.md5(open(f,'rb').read()).hexdigest() != md5:
-                raise RuntimeError('{0} is wrong/corrupted.  Delete {0} and try again.'.format(f))
-                good = False
-            else:
-                logging.debug('{} verified.'.format(f))
-        return good
-
-
-    @classmethod
-    def extract_master_tarball(cls):
-        """Unpack tarball of tarballs
-        """
-        if not os.path.exists(cls.master_tarball_file):
-            cls.download_grids()
-
-        with tarfile.open(os.path.join(ISOCHRONES, cls.master_tarball_file)) as tar:
-            logging.info('Extracting {}...'.format(cls.master_tarball_file))
-            tar.extractall(ISOCHRONES)
-
-    def phot_tarball_url(self, phot):
-        url = '{}/{}.tgz'.format(self.extra_url_base, phot)
-        return url
-
-    def get_directory_path(self, phot, **kwargs):
+    def get_tarball_url(self, **kwargs):
         raise NotImplementedError
 
-    def _ensure_phot_extraction(self, phot, **kwargs):
-        d = self.get_directory_path(phot, **kwargs)
-        if not os.path.exists(d):
-            if not os.path.exists(self.phot_tarball_file(phot, **kwargs)):
-                self.download_phot_tarball(phot)
-            try:
-                self.extract_phot_tarball(phot)
-            except EOFError:
-                self.download_phot_tarball(phot)
-                self.extract_phot_tarball(phot)
+    def get_tarball_file(self, **kwargs):
+        raise NotImplementedError
 
-
-    def download_phot_tarball(self, phot, **kwargs):
+    def download_tarball(self, **kwargs):
         if not os.path.exists(self.datadir):
             os.makedirs(self.datadir)
-        phot_tarball = self.phot_tarball_file(phot)
-        if not os.path.exists(phot_tarball):
-            url = self.phot_tarball_url(phot)
+        tarball = self.get_tarball_file(**kwargs)
+        if not os.path.exists(tarball):
+            url = self.get_tarball_url(**kwargs)
             logging.info('Downloading {}...'.format(url))
-            download_file(url, phot_tarball)
+            download_file(url, tarball)
 
+    def extract_tarball(self, **kwargs):
+        tarball = self.get_tarball_file(**kwargs)
+        if not os.path.exists(tarball):
+            self.download_tarball(**kwargs)
 
-    def extract_phot_tarball(self, phot, **kwargs):
-        phot_tarball = self.phot_tarball_file(phot)
-        if not os.path.exists(phot_tarball):
-            self.download_phot_tarball(phot, **kwargs)
-
-        with tarfile.open(phot_tarball) as tar:
-            logging.info('Extracting {}.tgz...'.format(phot))
+        with tarfile.open(tarball) as tar:
+            logging.info('Extracting {}...'.format(tarball))
             tar.extractall(self.datadir)
 
-
-    def df_all(self, phot):
-        """Subclasses may want to sort this
-        """
-        df = pd.concat([self.to_df(f) for f in self.get_filenames(phot)])
-        return df
-
-    def get_hdf(self, phot):
-        h5file = self.hdf_filename(phot)
+    def read_hdf(self):
+        h5file = self.hdf_filename
         try:
             df = pd.read_hdf(h5file, 'df')
-        except:
-            df = self.write_hdf(phot)
+        except FileNotFoundError:
+            df = self.write_hdf()
         return df
 
-    def write_hdf(self, phot):
-        df = self.df_all(phot)
-        h5file = self.hdf_filename(phot)
-        df.to_hdf(h5file,'df')
+    def write_hdf(self):
+        df = self.get_df()
+        h5file = self.hdf_filename
+        df.to_hdf(h5file, 'df')
         logging.info('{} written.'.format(h5file))
         return df
 
     @property
-    def kwarg_tag(self):
-        return ''
+    def df(self):
+        if self._df is None:
+            self._df = self.get_df()
+        return self._df
 
-    def get_dm_deep(self):
-        filename = os.path.join(self.datadir, 'dm_deep{}.h5'.format(self.kwarg_tag))
-
-        compute = not os.path.exists(filename)
-
-        if not compute:
-            try:
-                dm_deep = pd.read_hdf(filename, 'dm_deep')
-            except:
-                compute = True
-
-        if compute:
-            # need minimal grid to work with
-            cls = type(self)
-            grid = cls(bands=[cls.default_bands[0]])
-            df = grid._get_df(dm_deep=False)
-
-            # Make bucket for derivative to go in
-            df['dm_deep'] = np.nan
-
-            # Compute derivative for each (feh, age) isochrone, and fill in
-            for f,a in itertools.product(*df.index.levels[:2]):
-                subdf = df.loc[f,a]
-                deriv = np.gradient(np.gradient(subdf[cls.mass_column], subdf['EEP']))
-                subdf.loc[:, 'dm_deep'] = deriv
-
-            df.dm_deep.to_hdf(filename, 'dm_deep')
-            dm_deep = pd.read_hdf(filename, 'dm_deep')
-
-        return dm_deep
+    @property
+    def interp(self):
+        if self._interp is None:
+            self._interp = DFInterpolator(self.df, is_full=self.is_full)
+        return self._interp
