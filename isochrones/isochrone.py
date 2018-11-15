@@ -32,6 +32,7 @@ if not on_rtd:
     # from .extinction import EXTINCTION, LAMBDA_EFF, extcurve, extcurve_0
     # from .interp import DFInterpolator, searchsorted, find_closest3
     # from .utils import polyval
+    from .models import ModelGridInterpolator
 
 else:
     G = 6.67e-11
@@ -41,7 +42,7 @@ else:
 from .config import ISOCHRONES
 # from .grid import ModelGrid
 
-def get_ichrone(models, bands=None, default=False, **kwargs):
+def get_ichrone(models, bands=None, default=False, tracks=False, **kwargs):
     """Gets Isochrone Object by name, or type, with the right bands
 
     If `default` is `True`, then will set bands
@@ -50,26 +51,18 @@ def get_ichrone(models, bands=None, default=False, **kwargs):
     if not bands:
         bands = None
 
-    if isinstance(models, Isochrone):
+    if isinstance(models, ModelGridInterpolator):
         return models
 
     if type(models) is type(type):
         ichrone = models(bands)
-    elif models=='dartmouth':
-        from isochrones.dartmouth import Dartmouth_Isochrone
-        ichrone = Dartmouth_Isochrone(bands=bands, **kwargs)
-    elif models=='dartmouthfast':
-        from isochrones.dartmouth import Dartmouth_FastIsochrone
-        ichrone = Dartmouth_FastIsochrone(bands=bands, **kwargs)
     elif models=='mist':
-        from isochrones.mist import MIST_Isochrone
-        ichrone = MIST_Isochrone(bands=bands, **kwargs)
-    elif models=='padova':
-        from isochrones.padova import Padova_Isochrone
-        ichrone = Padova_Isochrone(bands=bands, **kwargs)
-    elif models=='basti':
-        from isochrones.basti import Basti_Isochrone
-        ichrone = Basti_Isochrone(bands=bands, **kwargs)
+        if tracks:
+            from isochrones.mist import MIST_EvolutionTrack
+            ichrone = MIST_EvolutionTrack(bands=bands, **kwargs)
+        else:
+            from isochrones.mist import MIST_Isochrone
+            ichrone = MIST_Isochrone(bands=bands, **kwargs)
     else:
         raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone

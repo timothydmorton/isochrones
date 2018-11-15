@@ -167,7 +167,7 @@ def interp_mag(pars, index_order, model_grid, i_Teff, i_logg, i_feh, i_Mbol,
     for i in range(len(bc)):
         mags[i] = mBol + dist_mod - bc[i]
 
-    return Teff, logg, mags
+    return Teff, logg, feh, mags
 
 
 class ModelGridInterpolator(object):

@@ -9,7 +9,7 @@ import pandas as pd
 
 from isochrones.config import ISOCHRONES
 
-from ..grid import ModelGrid
+from ..models import ModelGrid
 from .utils import max_eep
 
 

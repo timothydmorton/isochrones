@@ -1,2 +1,2 @@
-from .isochrone import MISTIsochrone, MISTEvolutionTrack
+from .isochrone import MIST_Isochrone, MIST_EvolutionTrack
 
