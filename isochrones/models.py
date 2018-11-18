@@ -1,14 +1,13 @@
 import os
 import re
 import itertools
-from math import log10
 
 import numpy as np
-from numba import jit
 import pandas as pd
 
 from .config import ISOCHRONES
-from .interp import DFInterpolator, interp_value_3d, interp_value_4d
+from .interp import DFInterpolator
+from .mags import interp_mag, interp_mags
 from .grid import Grid
 
 
@@ -139,37 +138,6 @@ class ModelGrid(Grid):
         return self._interp
 
 
-@jit(nopython=True)
-def interp_mag(pars, index_order, model_grid, i_Teff, i_logg, i_feh, i_Mbol,
-               model_ii0, model_ii1, model_ii2,
-               bc_grid, bc_cols,
-               bc_ii0, bc_ii1, bc_ii2, bc_ii3):
-
-    # logTeff, logg, logL returned.
-    ipar0 = index_order[0]
-    ipar1 = index_order[1]
-    ipar2 = index_order[2]
-    star_props = interp_value_3d(pars[ipar0], pars[ipar1], pars[ipar2],
-                                 model_grid, [i_Teff, i_logg, i_feh, i_Mbol],
-                                 model_ii0, model_ii1, model_ii2)
-    Teff = star_props[0]
-    logg = star_props[1]
-    feh = star_props[2]
-    AV = pars[4]
-    bc = interp_value_4d(Teff, logg, feh, AV,
-                         bc_grid, bc_cols,
-                         bc_ii0, bc_ii1, bc_ii2, bc_ii3)
-
-    mBol = star_props[2]
-    dist_mod = 5 * log10(pars[3]/10)
-
-    mags = np.empty(len(bc))
-    for i in range(len(bc)):
-        mags[i] = mBol + dist_mod - bc[i]
-
-    return Teff, logg, feh, mags
-
-
 class ModelGridInterpolator(object):
 
     grid_type = None
@@ -203,7 +171,11 @@ class ModelGridInterpolator(object):
 
         pars : age, feh, eep, [distance, AV]
         """
-        pars = np.atleast_1d(pars[self.param_index_order])
+        try:
+            pars = np.atleast_1d(pars[self.param_index_order])
+        except TypeError:
+            i0, i1, i2, i3, i4 = self.param_index_order
+            pars = [pars[i0], pars[i1], pars[i2]]
         return self.model_grid.interp(pars, props)
 
     def interp_mag(self, pars, bands):
@@ -213,12 +185,30 @@ class ModelGridInterpolator(object):
         """
         i_bands = [self.bc_grid.interp.columns.index(b) for b in bands]
 
-        return interp_mag(pars, self.param_index_order,
-                          self.model_grid.interp.grid,
-                          self.model_grid.interp.column_index['Teff'],
-                          self.model_grid.interp.column_index['logg'],
-                          self.model_grid.interp.column_index['feh'],
-                          self.model_grid.interp.column_index['Mbol'],
-                          *self.model_grid.interp.index_columns,
-                          self.bc_grid.interp.grid, i_bands,
-                          *self.bc_grid.interp.index_columns)
+        try:
+            pars = np.atleast_1d(pars).astype(float)
+
+            return interp_mag(pars, self.param_index_order,
+                              self.model_grid.interp.grid,
+                              self.model_grid.interp.column_index['Teff'],
+                              self.model_grid.interp.column_index['logg'],
+                              self.model_grid.interp.column_index['feh'],
+                              self.model_grid.interp.column_index['Mbol'],
+                              *self.model_grid.interp.index_columns,
+                              self.bc_grid.interp.grid, i_bands,
+                              *self.bc_grid.interp.index_columns)
+        except (TypeError, ValueError):
+            # Broadcast appropriately.
+            b = np.broadcast(*pars)
+            pars = np.array([np.resize(x, b.shape).astype(float) for x in pars])
+            return interp_mags(pars, self.param_index_order,
+                               self.model_grid.interp.grid,
+                               self.model_grid.interp.column_index['Teff'],
+                               self.model_grid.interp.column_index['logg'],
+                               self.model_grid.interp.column_index['feh'],
+                               self.model_grid.interp.column_index['Mbol'],
+                               *self.model_grid.interp.index_columns,
+                               self.bc_grid.interp.grid, i_bands,
+                               *self.bc_grid.interp.index_columns)
+
+

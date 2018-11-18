@@ -263,15 +263,19 @@ def interp_values_3d(xx0, xx1, xx2,
     """
 
     N = len(xx0)
-    results = np.empty(N)
+    ncols = len(icols)
+    results = np.empty((N, ncols), dtype=float64)
     for i in range(N):
-        results[i] = interp_value_3d(xx0[i], xx1[i], xx2[i],
-                                     grid, icols,
-                                     ii0, ii1, ii2)
+        res = interp_value_3d(xx0[i], xx1[i], xx2[i],
+                              grid, icols,
+                              ii0, ii1, ii2)
+        for j in range(ncols):
+            results[i, j] = res[j]
+
     return results
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def interp_values_4d(xx0, xx1, xx2, xx3,
                      grid, icols,
                      ii0, ii1, ii2, ii3):
@@ -281,11 +285,15 @@ def interp_values_4d(xx0, xx1, xx2, xx3,
     """
 
     N = len(xx0)
-    results = np.empty(N)
+    ncols = len(icols)
+    results = np.empty((N, ncols), dtype=float)
     for i in range(N):
-        results[i] = interp_value_3d(xx0[i], xx1[i], xx2[i], xx3[i],
-                                     grid, icols,
-                                     ii0, ii1, ii2, ii3)
+        res = interp_value_4d(xx0[i], xx1[i], xx2[i], xx3[i],
+                              grid, icols,
+                              ii0, ii1, ii2, ii3)
+        for j in range(ncols):
+            results[i, j] = res[j]
+
     return results
 
 
@@ -453,8 +461,9 @@ class DFInterpolator(object):
             else:
                 b = np.broadcast(*p)
                 pp = [np.resize(x, b.shape).astype(float) for x in p]
-
-                values = interp_values_3d(*pp, self.grid, icols, *self.index_columns)
+                args = (*pp, self.grid, icols, *self.index_columns)
+                # print([(a, type(a)) for a in args])
+                values = interp_values_3d(*args)
         elif self.ndim == 4:
             args = (p[0], p[1], p[2], p[3], self.grid, icols,
                     self.index_columns[0], self.index_columns[1],
