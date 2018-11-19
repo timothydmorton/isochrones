@@ -16,6 +16,7 @@ class ModelGrid(Grid):
     default_columns = ('eep', 'age', 'feh', 'mass', 'initial_mass', 'radius',
                        'logTeff', 'Teff', 'logg', 'logL', 'Mbol')
 
+
     @property
     def prop_map(self):
         return dict(eep=self.eep_col, age=self.age_col, feh=self.feh_col,
@@ -111,7 +112,7 @@ class ModelGrid(Grid):
             # Compute derivative for each (feh, age) isochrone, and fill in
             for f, a in itertools.product(*df.index.levels[:2]):
                 subdf = df.loc[f, a]
-                deriv = np.gradient(np.gradient(subdf['initial_mass'], subdf['eep']))
+                deriv = np.gradient(subdf['initial_mass'], subdf['eep'])
                 subdf.loc[:, 'dm_deep'] = deriv
 
             df.dm_deep.to_hdf(filename, 'dm_deep')

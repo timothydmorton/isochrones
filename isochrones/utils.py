@@ -8,6 +8,7 @@ import logging
 if not on_rtd:
     from numba import jit
     import numpy as np
+    from math import log10
 
 def band_pairs(bands):
     return [(bands[i], bands[-1]) for i in range(len(bands)-1)]
@@ -60,6 +61,16 @@ def addmags(*mags):
         return totmag, -2.5*np.log10(1 - f_unc/tot)
     else:
         return totmag
+
+@jit(nopython=True)
+def fast_addmags(mags):
+    """
+    mags is list of magnitudes
+    """
+    tot = 0
+    for mag in mags:
+        tot += 10**(-0.4 * mag)
+    return -2.5*log10(tot)
 
 
 def distance(pos0, pos1):

@@ -20,6 +20,12 @@ class Grid(object):
 
         self._df = None
         self._interp = None
+        self._limits = {}
+
+    def get_limits(self, prop):
+        if prop not in self._limits:
+            self._limits[prop] = self.df[prop].min(), self.df[prop].max()
+        return self._limits[prop]
 
     @property
     def datadir(self):

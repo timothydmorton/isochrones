@@ -35,7 +35,8 @@ from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
 from .priors import salpeter_prior, feh_prior
-from .isochrone import get_ichrone, Isochrone
+from .isochrone import get_ichrone
+from .models import ModelGridInterpolator
 
 def _parse_config_value(v):
     try:
@@ -119,25 +120,25 @@ class StarModel(object):
             self._add_properties(**kwargs)
         else:
             self.obs = obs
-            if len(self.obs.get_model_nodes())==0:
+            if len(self.obs.get_model_nodes()) == 0:
                 self.obs.define_models(ic, N=N, index=index)
                 self._add_properties(**kwargs)
 
-        self._priors = {'mass':salpeter_prior,
-                        'feh':feh_prior,
-                        'q':q_prior,
-                        'age':age_prior,
-                        'distance':distance_prior,
-                        'AV':AV_prior,
-                        'eep':FlatPrior(bounds=(self.ic.mineep, self.ic.maxeep))}
+        self._priors = {'mass': salpeter_prior,
+                        'feh': feh_prior,
+                        'q': q_prior,
+                        'age': age_prior,
+                        'distance': distance_prior,
+                        'AV': AV_prior,
+                        'eep': FlatPrior(bounds=self.ic.model_grid.get_limits('eep'))}
 
-        self._bounds = {'mass':None,
-                        'feh':None,
-                        'age':None,
-                        'q':q_prior.bounds,
-                        'distance':distance_prior.bounds,
-                        'AV':AV_prior.bounds,
-                        'eep':(self.ic.mineep, self.ic.maxeep)}
+        self._bounds = {'mass': None,
+                        'feh': None,
+                        'age': None,
+                        'q': q_prior.bounds,
+                        'distance': distance_prior.bounds,
+                        'AV': AV_prior.bounds,
+                        'eep': self.ic.model_grid.get_limits('eep')}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -145,8 +146,24 @@ class StarModel(object):
         if 'max_distance' in kwargs:
             self.set_bounds(distance=(0, kwargs['max_distance']))
 
+        self._bands = None
+        self._props = None
+
         self._directory = '.'
         self._samples = None
+
+    @property
+    def bands(self):
+        if self._bands is None:
+            self._bands = list({n.band for n in self.obs.get_obs_nodes()})
+        return self._bands
+
+    @property
+    def props(self):
+        if self._props is None:
+            props = {k for v in self.obs.spectroscopy.values() for k in v.keys()}
+            self._props = list(props - {'Teff', 'logg', 'feh'})
+        return self._props
 
     @property
     def directory(self):
@@ -260,7 +277,7 @@ class StarModel(object):
 
         bands = cls.get_bands(ini_file)
 
-        if not isinstance(ic, Isochrone):
+        if not isinstance(ic, ModelGridInterpolator):
             ic = get_ichrone(ic, bands)
 
         logging.debug('Initializing StarModel from {}'.format(ini_file))
@@ -387,7 +404,7 @@ class StarModel(object):
         """Replaces old parameter vectors containing mass with the closest EEP equivalent
         """
         pardict = self.obs.p2pardict(pars)
-        eeps = {s : self.ic.eep_from_mass(*p[0:3]) for s,p in pardict.items()}
+        eeps = {s: self.ic.eep_from_mass(*p[0:3]) for s, p in pardict.items()}
 
         new_pardict = pardict.copy()
         for s in pardict:
@@ -398,26 +415,24 @@ class StarModel(object):
     def bounds(self, prop):
         if self._bounds[prop] is not None:
             return self._bounds[prop]
-        elif prop=='mass':
-            lo, hi = (self.ic.minmass, self.ic.maxmass)
+        elif prop == 'mass':
+            lo, hi = self.ic.model_grid.get_limits('mass')
             self._bounds['mass'] = (lo, hi)
             self._priors['mass'].bounds = (lo, hi)
-        elif prop=='feh':
-            lo, hi = (self.ic.minfeh, self.ic.maxfeh)
+        elif prop == 'feh':
+            lo, hi = self.ic.model_grid.get_limits('feh')
             self._bounds['feh'] = (lo, hi)
             self._priors['feh'].bounds = (lo, hi)
-        elif prop=='age':
-            lo, hi = (self.ic.minage, self.ic.maxage)
+        elif prop == 'age':
+            lo, hi = self.ic.model_grid.get_limits('age')
             self._bounds['age'] = (lo, hi)
             self._priors['age'].bounds = (lo, hi)
-            self._bounds['age'] = (self.ic.minage,
-                                   self.ic.maxage)
         else:
             raise ValueError('Unknown property {}'.format(prop))
         return self._bounds[prop]
 
     def set_bounds(self, **kwargs):
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if len(v) != 2:
                 raise ValueError('Must provide (min, max)')
             self._bounds[k] = v
@@ -453,22 +468,21 @@ class StarModel(object):
         """
         Adds non-photometry properties to ObservationTree
         """
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if k in self.ic.bands:
                 continue
-            elif k=='parallax':
+            elif k == 'parallax':
                 self.obs.add_parallax(v)
-            elif k=='AV':
+            elif k == 'AV':
                 self.obs.add_AV(v)
-            elif k in ['Teff','logg','feh', 'density']:
-                par = {k:v}
+            elif k in ['Teff', 'logg', 'feh', 'density']:
+                par = {k: v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
                 m = re.search('^(\w+)_(\w+)$', k)
                 prop = m.group(1)
                 tag = m.group(2)
-                self.obs.add_spectroscopy(**{prop:v, 'label':'0_{}'.format(tag)})
-
+                self.obs.add_spectroscopy(**{prop: v, 'label': '0_{}'.format(tag)})
 
     @property
     def param_description(self):
@@ -480,7 +494,7 @@ class StarModel(object):
 
     @property
     def mags(self):
-        return {n.band : n.value[0] for n in self.obs.get_obs_nodes()}
+        return {n.band: n.value[0] for n in self.obs.get_obs_nodes()}
 
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
@@ -489,7 +503,18 @@ class StarModel(object):
         return lnpr + self.lnlike(p, **kwargs)
 
     def lnlike(self, p, **kwargs):
-        lnl = self.obs.lnlike(p, **kwargs)
+        pardict = self.obs.p2pardict(p)
+
+        model_values = {}
+        for star, pars in pardict.items():
+            Teff, logg, feh, mags = self.ic.interp_mag(pars, self.bands)
+            vals = {'Teff': Teff,
+                    'logg': logg,
+                    'feh': feh}
+            vals.update({b: m for b, m in zip(self.bands, mags)})
+            model_values[star] = vals
+
+        lnl = self.obs.lnlike(pardict, model_values, **kwargs)
         return lnl
 
     def lnprior(self, p):
@@ -515,9 +540,11 @@ class StarModel(object):
             # Need to compute EEP prior:
             #  p(eep) = p(mass) * d(mass)/d(eep)
 
-            # Compute masses from eeps
+            # Compute masses, d(m)/d(eep) from eeps
             eeps = [eep for eep in p[i:i+N[s]]]
-            masses = [self.ic.initial_mass(eep, age, feh) for eep in eeps]
+
+            masses, dm_deeps = zip(*[self.ic.interp_value([eep, age, feh], ['initial_mass', 'dm_deep'])
+                                     for eep in eeps])
             if any(np.isnan(masses)):
                 return -np.inf
 
@@ -526,11 +553,8 @@ class StarModel(object):
             if not np.isfinite(lnp):
                 logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
 
-            # Get d(m)/d(eep) at correct point
-            dm_deep = self.ic.interp_value(eeps[0], age, feh, 'dm_deep')
-
             # Change of variables
-            eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deep))
+            eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deeps[0]))
 
             lnp += eep_lnprior
 

@@ -332,7 +332,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             # Compute derivative for each (feh, age) isochrone, and fill in
             for f, m in itertools.product(*df.index.levels[:2]):
                 subdf = df.loc[f, m]
-                deriv = np.gradient(np.gradient(subdf['star_age'], subdf['eep']))
+                deriv = np.gradient(subdf['star_age'], subdf['eep'])
                 subdf.loc[:, 'dt_deep'] = deriv
 
             df.dt_deep.to_hdf(filename, 'dt_deep')

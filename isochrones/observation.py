@@ -30,7 +30,7 @@ else:
 
 
 from .isochrone import get_ichrone
-from .utils import addmags, distance
+from .utils import addmags, distance, fast_addmags
 
 class NodeTraversal(Traversal):
     """
@@ -446,38 +446,21 @@ class ObsNode(Node):
             tag = len(existing)
             self.add_child(ModelNode(ic, index=idx, tag=tag))
 
-    def model_mag(self, pardict, use_cache=True):
+    def model_mag(self, model_values, use_cache=True):
         """
         pardict is a dictionary of parameters for all leaves
         gets converted back to traditional parameter vector
         """
-        if pardict == self._cache_key and use_cache:
-            #print('{}: using cached'.format(self))
-            return self._cache_val
+        # if pardict == self._cache_key and use_cache:
+        #     #print('{}: using cached'.format(self))
+        #     return self._cache_val
 
-        #print('{}: calculating'.format(self))
-        self._cache_key = pardict
+        # #print('{}: calculating'.format(self))
+        # self._cache_key = pardict
 
+        return addmags(*[model_values[n.label][self.band] for n in self.leaves])
 
-        # Generate appropriate parameter vector from dictionary
-        p = []
-        for l in self.leaf_labels:
-            p.extend(pardict[l])
-
-        assert len(p) == self.n_params
-
-        tot = np.inf
-        #print('Building {} mag for {}:'.format(self.band, self))
-        for i,m in enumerate(self.leaves):
-            mag = m.evaluate(p[i*5:(i+1)*5], self.band)
-            # logging.debug('{}: mag={}'.format(self,mag))
-            #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
-            tot = addmags(tot, mag)
-
-        self._cache_val = tot
-        return tot
-
-    def lnlike(self, pardict, use_cache=True):
+    def lnlike(self, model_values, use_cache=True):
         """
         returns log-likelihood of this observation
 
@@ -492,11 +475,11 @@ class ObsNode(Node):
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = (self.model_mag(pardict, use_cache=use_cache) -
-                   self.reference.model_mag(pardict, use_cache=use_cache))
+            mod = (self.model_mag(model_values, use_cache=use_cache) -
+                   self.reference.model_mag(model_values, use_cache=use_cache))
             mag -= self.reference.value[0]
         else:
-            mod = self.model_mag(pardict, use_cache=use_cache)
+            mod = self.model_mag(model_values, use_cache=use_cache)
 
         lnl = -0.5*(mag - mod)**2 / dmag**2
 
@@ -1178,21 +1161,22 @@ class ObservationTree(Node):
             pardict = self.p2pardict(p)
         super(ObservationTree, self).print_ascii(fout, pardict)
 
-    def lnlike(self, p, use_cache=True):
+    def lnlike(self, p, model_values, use_cache=True):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
-        if use_cache and self._cache_key is not None and np.all(p==self._cache_key):
-            return self._cache_val
-        self._cache_key = p
+        pardict = self.p2pardict(p) if type(p) is not dict else p
 
-        pardict = self.p2pardict(p)
+        # TODO: do we still want caching?
+        # if use_cache and self._cache_key is not None and np.all(p==self._cache_key):
+        #     return self._cache_val
+        # self._cache_key = p
 
         # lnlike from photometry
         lnl = 0
         for n in self:
             if n is not self:
-                lnl += n.lnlike(pardict, use_cache=use_cache)
+                lnl += n.lnlike(model_values, use_cache=use_cache)
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
                 return -np.inf
@@ -1200,7 +1184,7 @@ class ObservationTree(Node):
         # lnlike from spectroscopy
         for l in self.spectroscopy:
             for prop,(val,err) in self.spectroscopy[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                mod = model_values[l][prop]
                 lnl += -0.5*(val - mod)**2/err**2
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
@@ -1209,7 +1193,7 @@ class ObservationTree(Node):
         # enforce limits
         for l in self.limits:
             for prop,(vmin,vmax) in self.limits[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                mod = model_values[l][prop]
                 if mod < vmin or mod > vmax or not np.isfinite(mod):
                     self._cache_val = -np.inf
                     return -np.inf
