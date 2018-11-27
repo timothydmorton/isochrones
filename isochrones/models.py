@@ -4,6 +4,11 @@ import itertools
 
 import numpy as np
 import pandas as pd
+from astropy import constants as const
+
+G = const.G.cgs.value
+MSUN = const.M_sun.cgs.value
+RSUN = const.R_sun.cgs.value
 
 from .config import ISOCHRONES
 from .interp import DFInterpolator
@@ -14,7 +19,7 @@ from .grid import Grid
 class ModelGrid(Grid):
 
     default_columns = ('eep', 'age', 'feh', 'mass', 'initial_mass', 'radius',
-                       'logTeff', 'Teff', 'logg', 'logL', 'Mbol')
+                       'density', 'logTeff', 'Teff', 'logg', 'logL', 'Mbol')
 
 
     @property
@@ -75,6 +80,7 @@ class ModelGrid(Grid):
         df['Teff'] = 10**df['logTeff']
         df['Mbol'] = 4.74 - 2.5 * df['logL']
         df['radius'] = 10**df['log_R']
+        df['density'] = df['mass'] * MSUN / (4./3 * np.pi * (df['radius'] * RSUN)**3)
         return df
 
     def get_df(self):
@@ -156,6 +162,10 @@ class ModelGridInterpolator(object):
         self.param_index_order = list(self._param_index_order)
 
     @property
+    def name(self):
+        return self.grid_type.name
+
+    @property
     def model_grid(self):
         if self._model_grid is None:
             self._model_grid = self.grid_type()
@@ -166,6 +176,30 @@ class ModelGridInterpolator(object):
         if self._bc_grid is None:
             self._bc_grid = self.bc_type(self.bands)
         return self._bc_grid
+
+    def _prop(self, prop, *pars):
+        return self.interp_value(pars, [prop]).squeeze()
+
+    def radius(self, *pars):
+        return self._prop('radius', *pars)
+
+    def Teff(self, *pars):
+        return self._prop('Teff', *pars)
+
+    def logg(self, *pars):
+        return self._prop('logg', *pars)
+
+    def feh(self, *pars):
+        return self._prop('feh', *pars)
+
+    def density(self, *pars):
+        return self._prop('density', *pars)
+
+    def nu_max(self, *pars):
+        return self._prop('nu_max', *pars)
+
+    def delta_nu(self, *pars):
+        return self._prop('delta_nu', *pars)
 
     def interp_value(self, pars, props):
         """
@@ -187,8 +221,9 @@ class ModelGridInterpolator(object):
         i_bands = [self.bc_grid.interp.columns.index(b) for b in bands]
 
         try:
-            pars = np.atleast_1d(pars).astype(float)
-
+            pars = np.atleast_1d(pars).astype(float).squeeze()
+            if pars.ndim > 1:
+                raise ValueError
             return interp_mag(pars, self.param_index_order,
                               self.model_grid.interp.grid,
                               self.model_grid.interp.column_index['Teff'],
@@ -212,4 +247,14 @@ class ModelGridInterpolator(object):
                                self.bc_grid.interp.grid, i_bands,
                                *self.bc_grid.interp.index_columns)
 
-
+    def __call__(self, p1, p2, p3, distance=10., AV=0.):
+        p1, p2, p3, dist, AV = [np.atleast_1d(a).astype(float).squeeze()
+                                for a in np.broadcast_arrays(p1, p2, p3, distance, AV)]
+        pars = [p1, p2, p3, dist, AV]
+        # print(pars)
+        prop_cols = self.model_grid.df.columns
+        props = self.interp_value(pars, prop_cols)
+        _, _, _, mags = self.interp_mag(pars, self.bands)
+        cols = list(prop_cols) + ['{}_mag'.format(b) for b in self.bands]
+        values = np.concatenate([np.atleast_2d(props), np.atleast_2d(mags)], axis=1)
+        return pd.DataFrame(values, columns=cols)

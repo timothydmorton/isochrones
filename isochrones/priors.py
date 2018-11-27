@@ -10,7 +10,8 @@ if not on_rtd:
     from scipy.integrate import quad
     import matplotlib.pyplot as plt
     from numba import jit
-    from math import log
+    from math import log, log10
+
 
 class Prior(object):
 
@@ -19,6 +20,9 @@ class Prior(object):
 
     def pdf(self, x):
         raise NotImplementedError
+
+    def lnpdf(self, x):
+        return np.log(self.pdf(x))
 
     def sample(self, n):
         raise NotImplementedError
@@ -36,7 +40,7 @@ class Prior(object):
         h, b = np.histogram(x, density=True, range=rng)
         logging.debug('bins: {}'.format(b))
         logging.debug('raw: {}'.format(hn))
-        pdf = np.array([quad(self.pdf,lo,hi)[0]/(hi-lo) for lo,hi in zip(b[:-1], b[1:])])
+        pdf = np.array([quad(self.pdf, lo, hi)[0]/(hi-lo) for lo, hi in zip(b[:-1], b[1:])])
         sigma = 1./np.sqrt(hn)
         resid = np.absolute(pdf - h) / pdf
         logging.debug('pdf: {}'.format(pdf))

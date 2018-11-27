@@ -15,7 +15,6 @@ from .utils import max_eep
 
 class MISTModelGrid(ModelGrid):
     name = 'mist'
-
     eep_col = 'EEP'
     age_col = 'log10_isochrone_age_yr'
     feh_col = '[Fe/H]'
@@ -26,8 +25,12 @@ class MISTModelGrid(ModelGrid):
     logL_col = 'log_L'
 
     default_kwargs = {'version': '1.2', 'vvcrit': 0.0, 'kind': 'full_isos'}
-    default_columns = ('eep', 'age', 'feh', 'mass', 'initial_mass', 'radius',
-                       'logTeff', 'Teff', 'logg', 'logL', 'Mbol', 'delta_nu', 'nu_max', 'phase')
+    default_columns = ModelGrid.default_columns + ('delta_nu', 'nu_max', 'phase')
+
+    bounds = (('age', (5, 10.13)),
+              ('feh', (-4, 0.5)),
+              ('eep', (0, 1710)),
+              ('mass', (0.1, 300)))
 
     @property
     def kwarg_tag(self):
@@ -36,17 +39,12 @@ class MISTModelGrid(ModelGrid):
     def compute_additional_columns(self, df):
         """
         """
-        df['Teff'] = 10**df['logTeff']
-        df['Mbol'] = 4.74 - 2.5 * df['logL']
-        df['radius'] = 10**df['log_R']
+        df = super().compute_additional_columns(df)
         df['feh'] = df['log_surf_z'] - np.log10(df['surface_h1']) - np.log10(0.0181)  # Aaron Dotter says
         return df
 
 
 class MISTIsochroneGrid(MISTModelGrid):
-
-    name = 'mist'
-
     eep_col = 'EEP'
     age_col = 'log10_isochrone_age_yr'
     feh_col = '[Fe/H]'
@@ -58,9 +56,6 @@ class MISTIsochroneGrid(MISTModelGrid):
 
     default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'kind': 'full_isos'}
     index_cols = ('log10_isochrone_age_yr', 'feh', 'EEP')
-
-    default_columns = ('eep', 'age', 'feh', 'mass', 'initial_mass', 'radius',
-                       'logTeff', 'Teff', 'logg', 'logL', 'Mbol', 'delta_nu', 'nu_max', 'phase')
 
     filename_pattern = '\.iso'
 
@@ -118,10 +113,8 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
 
     index_cols = ('initial_feh', 'initial_mass', 'EEP')
 
-    default_columns = ('eep', 'log_age', 'star_age', 'feh', 'initial_feh',
-                       'mass', 'initial_mass', 'radius',
-                       'logTeff', 'Teff', 'logg', 'logL', 'Mbol',
-                       'delta_nu', 'nu_max', 'phase', 'interpolated')
+    default_columns = (tuple(set(MISTModelGrid.default_columns) - {'age'}) +
+                            ('interpolated', 'star_age', 'age'))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -150,7 +143,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
         """
         """
         df = super().compute_additional_columns(df)
-        df['log_age'] = np.log10(df['star_age'])
+        df['age'] = np.log10(df['star_age'])
         return df
 
     def get_file_basename(self, feh):
@@ -332,7 +325,8 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             # Compute derivative for each (feh, age) isochrone, and fill in
             for f, m in itertools.product(*df.index.levels[:2]):
                 subdf = df.loc[f, m]
-                deriv = np.gradient(subdf['star_age'], subdf['eep'])
+                log_age = np.log10(subdf['star_age'])
+                deriv = np.gradient(log_age, subdf['eep'])
                 subdf.loc[:, 'dt_deep'] = deriv
 
             df.dt_deep.to_hdf(filename, 'dt_deep')

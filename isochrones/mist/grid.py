@@ -6,7 +6,7 @@ import tarfile
 from distutils.version import StrictVersion
 
 from ..config import ISOCHRONES
-from ..grid import ModelGrid
+from ..models import ModelGrid
 
 class MISTModelGrid(ModelGrid):
     name = 'mist'

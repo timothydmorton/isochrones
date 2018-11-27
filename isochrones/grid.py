@@ -9,6 +9,7 @@ from .interp import DFInterpolator
 
 class Grid(object):
     is_full = False
+    bounds = tuple()
 
     def __init__(self, **kwargs):
 
@@ -20,7 +21,7 @@ class Grid(object):
 
         self._df = None
         self._interp = None
-        self._limits = {}
+        self._limits = dict(self.bounds)
 
     def get_limits(self, prop):
         if prop not in self._limits:

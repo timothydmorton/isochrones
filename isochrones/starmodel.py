@@ -37,6 +37,7 @@ from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
+from .likelihood import star_lnlike, gauss_lnprob
 
 def _parse_config_value(v):
     try:
@@ -1277,6 +1278,215 @@ class StarModelGroup(object):
     def model_options(self):
         return [(N, index) for N in self.N_options for index in self.index_options]
 
+class BasicStarModel(StarModel):
+    """StarModel for just a single star
+
+    prototype for new object design.
+    """
+
+    use_emcee = False
+
+    def __init__(self, ic, eep_bounds=None, name='', **kwargs):
+        self._ic = ic
+
+        self.eep_bounds = eep_bounds if eep_bounds is not None else self.ic.eep_bounds
+        self.name = str(name)
+
+        self.kwargs = kwargs
+
+        self._bands = None
+        self._spec_props = None
+        self._props = None
+
+        self._param_names = None
+
+        self._priors = {'mass':salpeter_prior,
+                        'feh':feh_prior,
+                        'q':q_prior,
+                        'age':age_prior,
+                        'distance':distance_prior,
+                        'AV':AV_prior,
+                        'eep':FlatPrior(bounds=self.eep_bounds)}
+
+        self._bounds = {'mass':None,
+                        'feh':None,
+                        'age':None,
+                        'q':q_prior.bounds,
+                        'distance':distance_prior.bounds,
+                        'AV':AV_prior.bounds,
+                        'eep':self.eep_bounds}
+
+        if 'maxAV' in kwargs:
+            self.set_bounds(AV=(0, kwargs['maxAV']))
+
+        if 'max_distance' in kwargs:
+            self.set_bounds(distance=(0, kwargs['max_distance']))
+
+        self._directory = '.'
+        self._samples = None
+        self._derived_samples = None
+
+    @property
+    def labelstring(self):
+        return 'single'
+
+    @property
+    def param_names(self):
+        if self._param_names is None:
+            self._param_names = self.ic.param_names
+        return self._param_names
+
+    @property
+    def bands(self):
+        if self._bands is None:
+            self._bands = [k for k in self.kwargs if k in self.ic.bc_grid.bands]
+        return self._bands
+
+    @property
+    def props(self):
+        if self._props is None:
+            self._props = [k for k in self.kwargs if k in self._not_a_band]
+        return self._props
+
+    @property
+    def spec_props(self):
+        if self._spec_props is None:
+            self._spec_props = [self.kwargs.get(k, (np.nan, np.nan)) for k in ['Teff', 'logg', 'feh']]
+        return self._spec_props
+
+    def bounds(self, prop):
+        if self._bounds[prop] is not None:
+            return self._bounds[prop]
+        elif prop == 'mass':
+            lo, hi = self.ic.model_grid.get_limits('mass')
+            self._bounds['mass'] = (lo, hi)
+            self._priors['mass'].bounds = (lo, hi)
+        elif prop == 'feh':
+            lo, hi = self.ic.model_grid.get_limits('feh')
+            self._bounds['feh'] = (lo, hi)
+            self._priors['feh'].bounds = (lo, hi)
+        elif prop == 'age':
+            lo, hi = self.ic.model_grid.get_limits('age')
+            self._bounds['age'] = (lo, hi)
+            self._priors['age'].bounds = (lo, hi)
+        else:
+            raise ValueError('Unknown property {}'.format(prop))
+        return self._bounds[prop]
+
+    def set_bounds(self, **kwargs):
+        for k,v in kwargs.items():
+            if len(v) != 2:
+                raise ValueError('Must provide (min, max)')
+            self._bounds[k] = v
+            self._priors[k].bounds = v
+
+    @property
+    def n_params(self):
+        return 5
+
+    def lnlike(self, pars):
+        pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)
+        spec_vals, spec_uncs = zip(*[prop for prop in self.spec_props])
+        mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
+        i_mags = [self.ic.bc_grid.interp.column_index[b] for b in self.bands]
+        lnlike = star_lnlike(pars, self.ic.param_index_order,
+                             spec_vals, spec_uncs,
+                             mag_vals, mag_uncs, i_mags,
+                             self.ic.model_grid.interp.grid,
+                             self.ic.model_grid.interp.column_index['Teff'],
+                             self.ic.model_grid.interp.column_index['logg'],
+                             self.ic.model_grid.interp.column_index['feh'],
+                             self.ic.model_grid.interp.column_index['Mbol'],
+                             *self.ic.model_grid.interp.index_columns,
+                             self.ic.bc_grid.interp.grid,
+                             *self.ic.bc_grid.interp.index_columns)
+
+        if 'parallax' in self.kwargs:
+            lnlike += gauss_lnprob(*self.kwargs['parallax'], 1000./pars[3])
+
+        return lnlike
+
+    def lnprior(self, pars):
+        lnp = 0
+        for val, par in zip(pars, self.param_names):
+            if par == 'eep':
+                orig_par = self.ic.eep_replaces
+                if orig_par == 'age':
+                    deriv_prop = 'dt_deep'
+                elif orig_par == 'mass':
+                    deriv_prop = 'dm_deep'
+                orig_val, dx_deep = self.ic.interp_value(pars, [orig_par, deriv_prop])
+                lnp += self._priors[orig_par].lnpdf(orig_val)
+#                 print('{}: {}'.format(orig_par, lnp))
+
+                # Change of variables
+                lnp += np.log(np.abs(dx_deep))
+#                 print('change of vars: {}'.format(lnp))
+            else:
+                lnp += self._priors[par].lnpdf(val)
+#                 print('{}: {}'.format(par, lnp))
+
+        return lnp
+
+    def mnest_prior(self, cube, ndim, nparams):
+        for i, par in enumerate(self.param_names):
+            lo, hi = self.bounds(par)
+            cube[i] = (hi - lo)*cube[i] + lo
+
+    def mnest_loglike(self, cube, ndim, nparams):
+        """loglikelihood function for multinest
+        """
+        return self.lnpost(cube)
+
+    @property
+    def derived_samples(self):
+        if self._derived_samples is None:
+            self._make_samples()
+        return self._derived_samples
+
+    def _make_samples(self):
+        filename = '{}post_equal_weights.dat'.format(self.mnest_basename)
+        try:
+            df = pd.read_csv(filename, names=self.param_names + ('lnprob',), delim_whitespace=True)
+        except OSError:
+            logging.error('Error loading chains from {}'.format(filename))
+            raise
+
+        self._samples = df
+        self._derived_samples = self.ic(*[df[c].values for c in self.param_names])
+        self._derived_samples['parallax'] = 1000./df['distance']
+
+    def sample_from_prior(self, n):
+        pars = []
+        for p in self.param_names:
+            samples = self._priors[p].sample(n)
+            pars.append(samples)
+        df = pd.DataFrame(np.array(pars).T, columns=self.param_names)
+
+        # Resample EEPs with proper weights
+        if self.ic.eep_replaces == 'age':
+            values = self.ic.interp_value([df['mass'], df['eep'], df['feh']], ['dt_deep', 'age'])
+            dt_deep, age = [values[:, 0], values[:, 1]]
+            weights = np.log10(age)/np.log10(np.e) * dt_deep
+            df['eep'] = df['eep'].sample(n, weights=weights, replace=True).values
+
+        return df
+
+    def corner_params(self, **kwargs):
+        fig = corner.corner(self.samples, labels=self.samples.columns, **kwargs)
+        fig.suptitle(self.name, fontsize=22)
+        return fig
+
+    def corner_observed(self, **kwargs):
+        cols = ['{}_mag'.format(b) for b in self.bands] + self.props
+        truths = [self.kwargs[b][0] for b in self.bands] + [self.kwargs[p][0] for p in self.props]
+        ranges = [(min(truth-0.01, self.derived_samples[col].min()),
+                   max(truth+0.01, self.derived_samples[col].max()))
+                  for truth, col in zip(truths, cols)]
+
+        fig = corner.corner(self.derived_samples[cols], truths=truths, labels=cols, range=ranges, **kwargs)
+        fig.suptitle(self.name, fontsize=22)
+        return fig
 ########## Utility functions ###############
 
 def N_options(N_stars, max_multiples=1, max_stars=2):

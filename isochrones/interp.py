@@ -166,6 +166,8 @@ def find_indices_4d(x0, x1, x2, x3,
 def interp_value_3d(x0, x1, x2,
                     grid, icols,
                     ii0, ii1, ii2):
+    if x0 != x0 or x1 != x1 or x2 != x2:
+        return np.array([np.nan for i in icols])
 
     indices, norm_distances, out_of_bounds = find_indices_3d(x0, x1, x2, ii0, ii1, ii2)
 
@@ -210,6 +212,8 @@ def interp_value_3d(x0, x1, x2,
 def interp_value_4d(x0, x1, x2, x3,
                     grid, icols,
                     ii0, ii1, ii2, ii3):
+    if x0 != x0 or x1 != x1 or x2 != x2 or x3 != x3:
+        return np.array([np.nan for i in icols])
 
     indices, norm_distances, out_of_bounds = find_indices_4d(x0, x1, x2, x3,
                                                              ii0, ii1, ii2, ii3)
@@ -460,7 +464,7 @@ class DFInterpolator(object):
                 values = interp_value_3d(*args)
             else:
                 b = np.broadcast(*p)
-                pp = [np.resize(x, b.shape).astype(float) for x in p]
+                pp = [np.atleast_1d(np.resize(x, b.shape)).astype(float) for x in p]
                 args = (*pp, self.grid, icols, *self.index_columns)
                 # print([(a, type(a)) for a in args])
                 values = interp_values_3d(*args)
@@ -475,8 +479,7 @@ class DFInterpolator(object):
                 values = interp_value_4d(*args)
             else:
                 b = np.broadcast(*p)
-                pp = [np.resize(x, b.shape).astype(float) for x in p]
-
+                pp = [np.atleast_1d(np.resize(x, b.shape)).astype(float) for x in p]
                 values = interp_values_4d(*pp, self.grid, icols, *self.index_columns)
 
         return values
