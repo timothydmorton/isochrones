@@ -34,7 +34,7 @@ if not on_rtd:
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
-from .priors import salpeter_prior, feh_prior
+from .priors import salpeter_prior, feh_prior, FehPrior, EEP_prior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
@@ -150,7 +150,7 @@ class StarModel(object):
         self._bands = None
         self._props = None
 
-        self._directory = '.'
+        self._directory = None
         self._samples = None
 
     @property
@@ -168,7 +168,7 @@ class StarModel(object):
 
     @property
     def directory(self):
-        return self._directory
+        return self._directory if self._directory else '.'
 
     @property
     def ic(self):
@@ -1286,7 +1286,8 @@ class BasicStarModel(StarModel):
 
     use_emcee = False
 
-    def __init__(self, ic, eep_bounds=None, name='', **kwargs):
+    def __init__(self, ic, eep_bounds=None, name='', directory='.',
+                 maxAV=None, max_distance=None, halo_fraction=None, **kwargs):
         self._ic = ic
 
         self.eep_bounds = eep_bounds if eep_bounds is not None else self.ic.eep_bounds
@@ -1300,29 +1301,33 @@ class BasicStarModel(StarModel):
 
         self._param_names = None
 
-        self._priors = {'mass':salpeter_prior,
-                        'feh':feh_prior,
-                        'q':q_prior,
-                        'age':age_prior,
-                        'distance':distance_prior,
-                        'AV':AV_prior,
-                        'eep':FlatPrior(bounds=self.eep_bounds)}
+        self._priors = {'mass': salpeter_prior,
+                        'feh': feh_prior,
+                        'q': q_prior,
+                        'age': age_prior,
+                        'distance': distance_prior,
+                        'AV': AV_prior}
+        self._priors['eep'] = EEP_prior(self.ic, self._priors[self.ic.eep_replaces],
+                                        bounds=eep_bounds)
 
-        self._bounds = {'mass':None,
-                        'feh':None,
-                        'age':None,
-                        'q':q_prior.bounds,
-                        'distance':distance_prior.bounds,
-                        'AV':AV_prior.bounds,
-                        'eep':self.eep_bounds}
+        self._bounds = {'mass': None,
+                        'feh': None,
+                        'age': None,
+                        'q': q_prior.bounds,
+                        'distance': distance_prior.bounds,
+                        'AV': AV_prior.bounds,
+                        'eep': self._priors['eep'].bounds}
 
-        if 'maxAV' in kwargs:
-            self.set_bounds(AV=(0, kwargs['maxAV']))
+        if maxAV is not None:
+            self.set_bounds(AV=(0, maxAV))
 
-        if 'max_distance' in kwargs:
-            self.set_bounds(distance=(0, kwargs['max_distance']))
+        if max_distance is not None:
+            self.set_bounds(distance=(0, max_distance))
 
-        self._directory = '.'
+        if halo_fraction is not None:
+            self._priors['feh'] = FehPrior(halo_fraction=halo_fraction)
+
+        self._directory = str(directory)
         self._samples = None
         self._derived_samples = None
 
@@ -1380,6 +1385,11 @@ class BasicStarModel(StarModel):
             self._bounds[k] = v
             self._priors[k].bounds = v
 
+    def set_prior(self, prop, prior):
+        self._priors[prop] = prior
+        if getattr(prior, 'bounds', None) is not None:
+            self.set_bounds(**{prop: prior.bounds})
+
     @property
     def n_params(self):
         return 5
@@ -1387,8 +1397,12 @@ class BasicStarModel(StarModel):
     def lnlike(self, pars):
         pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)
         spec_vals, spec_uncs = zip(*[prop for prop in self.spec_props])
-        mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
-        i_mags = [self.ic.bc_grid.interp.column_index[b] for b in self.bands]
+        if self.bands:
+            mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
+            i_mags = [self.ic.bc_grid.interp.column_index[b] for b in self.bands]
+        else:
+            mag_vals, mag_uncs = np.array([], dtype=float), np.array([], dtype=float)
+            i_mags = np.array([], dtype=int)
         lnlike = star_lnlike(pars, self.ic.param_index_order,
                              spec_vals, spec_uncs,
                              mag_vals, mag_uncs, i_mags,
@@ -1410,21 +1424,12 @@ class BasicStarModel(StarModel):
         lnp = 0
         for val, par in zip(pars, self.param_names):
             if par == 'eep':
-                orig_par = self.ic.eep_replaces
-                if orig_par == 'age':
-                    deriv_prop = 'dt_deep'
-                elif orig_par == 'mass':
-                    deriv_prop = 'dm_deep'
-                orig_val, dx_deep = self.ic.interp_value(pars, [orig_par, deriv_prop])
-                lnp += self._priors[orig_par].lnpdf(orig_val)
-#                 print('{}: {}'.format(orig_par, lnp))
-
-                # Change of variables
-                lnp += np.log(np.abs(dx_deep))
-#                 print('change of vars: {}'.format(lnp))
+                if self.ic.eep_replaces == 'age':
+                    lnp += self._priors['eep'].lnpdf(val, mass=pars[0], feh=pars[2])
+                elif self.ic.eep_replaces == 'mass':
+                    lnp += self._priors['eep'].lnpdf(val, age=pars[1], feh=pars[2])
             else:
                 lnp += self._priors[par].lnpdf(val)
-#                 print('{}: {}'.format(par, lnp))
 
         return lnp
 
@@ -1455,25 +1460,35 @@ class BasicStarModel(StarModel):
         self._samples = df
         self._derived_samples = self.ic(*[df[c].values for c in self.param_names])
         self._derived_samples['parallax'] = 1000./df['distance']
+        self._derived_samples['distance'] = df['distance']
+        self._derived_samples['AV'] = df['AV']
 
     def sample_from_prior(self, n):
         pars = []
+        columns =  []
         for p in self.param_names:
-            samples = self._priors[p].sample(n)
-            pars.append(samples)
-        df = pd.DataFrame(np.array(pars).T, columns=self.param_names)
+            if p != 'eep':
+                samples = self._priors[p].sample(n)
+                pars.append(samples)
+                columns.append(p)
+        df = pd.DataFrame(np.array(pars).T, columns=columns)
 
         # Resample EEPs with proper weights
         if self.ic.eep_replaces == 'age':
-            values = self.ic.interp_value([df['mass'], df['eep'], df['feh']], ['dt_deep', 'age'])
-            dt_deep, age = [values[:, 0], values[:, 1]]
-            weights = np.log10(age)/np.log10(np.e) * dt_deep
-            df['eep'] = df['eep'].sample(n, weights=weights, replace=True).values
+            df['eep'] = self._priors['eep'].sample(n, mass=df['mass'], feh=df['feh'])
+        else:
+            df['eep'] = self._priors['eep'].sample(n, age=df['age'], feh=df['feh'])
 
         return df
 
     def corner_params(self, **kwargs):
         fig = corner.corner(self.samples, labels=self.samples.columns, **kwargs)
+        fig.suptitle(self.name, fontsize=22)
+        return fig
+
+    def corner_physical(self, **kwargs):
+        cols = ['mass', 'radius', 'age', 'Teff', 'logg', 'feh', 'distance', 'AV']
+        fig = corner.corner(self.derived_samples[cols], labels=cols, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
 
@@ -1487,6 +1502,171 @@ class BasicStarModel(StarModel):
         fig = corner.corner(self.derived_samples[cols], truths=truths, labels=cols, range=ranges, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
+
+    @property
+    def posterior_predictive(self):
+        chisq = 0
+        for b in self.bands:
+            val, unc = self.kwargs[b]
+            chisq += (val - self.derived_samples['{}_mag'.format(b)])**2 / unc**2
+        for p in self.props:
+            val, unc = self.kwargs[p]
+            chisq += (val - self.derived_samples[p])**2 / unc**2
+        return chisq.mean()/(len(self.bands) + len(self.props))
+
+    @property
+    def map_pars(self):
+        i_max = self.samples.lnprob.idxmax()
+        return self.samples.loc[i_max].drop('lnprob').values
+
+    def save_hdf(self, filename, path='', overwrite=False, append=False):
+        """Saves object data to HDF file (only works if MCMC is run)
+
+        Samples are saved to /samples location under given path,
+        :class:`ObservationTree` is saved to /obs location under given path.
+
+        :param filename:
+            Name of file to save to.  Should be .h5 file.
+
+        :param path: (optional)
+            Path within HDF file structure to save to.
+
+        :param overwrite: (optional)
+            If ``True``, delete any existing file by the same name
+            before writing.
+
+        :param append: (optional)
+            If ``True``, then if a file exists, then just the path
+            within the file will be updated.
+        """
+        if os.path.exists(filename):
+            with pd.HDFStore(filename) as store:
+                if path in store:
+                    if overwrite:
+                        os.remove(filename)
+                    elif not append:
+                        raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
+
+        if self.samples is not None:
+            self.samples.to_hdf(filename, path+'/samples')
+            self.derived_samples.to_hdf(filename, path+'/derived_samples')
+        else:
+            pd.DataFrame().to_hdf(filename, path+'/samples')
+            pd.Dataframe().to_hdf(filename, path+'/derived_samples')
+
+        with pd.HDFStore(filename) as store:
+            # store = pd.HDFStore(filename)
+            attrs = store.get_storer('{}/samples'.format(path)).attrs
+
+            attrs.ic_type = type(self.ic)
+            attrs.ic_bands = list(self.ic.bands)
+            attrs.use_emcee = self.use_emcee
+            if hasattr(self, '_mnest_basename'):
+                attrs._mnest_basename = self._mnest_basename
+
+            attrs.kwargs = self.kwargs
+            attrs._bounds = self._bounds
+            attrs._priors = {k: v for k, v in self._priors.items() if k != 'eep'}
+            attrs.eep_bounds = self.eep_bounds
+
+            attrs.name = self.name
+            attrs.directory = self.directory
+
+
+    @classmethod
+    def load_hdf(cls, filename, path='', name=None):
+        """
+        A class method to load a saved StarModel from an HDF5 file.
+
+        File must have been created by a call to :func:`StarModel.save_hdf`.
+
+        :param filename:
+            H5 file to load.
+
+        :param path: (optional)
+            Path within HDF file.
+
+        :return:
+            :class:`StarModel` object.
+        """
+        if not os.path.exists(filename):
+            raise IOError('{} does not exist.'.format(filename))
+
+        with pd.HDFStore(filename) as store:
+            try:
+                samples = store[path+'/samples']
+                derived_samples = store[path+'/derived_samples']
+                attrs = store.get_storer(path+'/samples').attrs
+            except:
+                store.close()
+                raise
+
+            try:
+                ic = attrs.ic_type(attrs.ic_bands)
+            except AttributeError:
+                ic = attrs.ic_type
+
+            use_emcee = attrs.use_emcee
+            mnest = True
+            try:
+                basename = attrs._mnest_basename
+            except AttributeError:
+                mnest = False
+            bounds = attrs._bounds
+            priors = attrs._priors
+            eep_bounds = attrs.eep_bounds
+            kwargs = attrs.kwargs
+            directory = attrs.directory
+
+            if name is None:
+                try:
+                    name = attrs.name
+                except:
+                    name = ''
+
+        store.close()
+
+        mod = cls(ic, name=name, directory=directory, eep_bounds=eep_bounds, **kwargs)
+        mod._samples = samples
+        mod._derived_samples = derived_samples
+        if mnest:
+            mod._mnest_basename = basename
+        mod._priors.update(priors)
+        mod._bounds = bounds
+
+        return mod
+
+    def write_results(self, corner_kwargs=None, directory=None):
+        """
+
+        kwargs are passed to `.save_hdf()` (e.g., `overwrite=True`)
+        """
+        if self._samples is None:
+            raise RuntimeError('Run .fit() before .write_results()!')
+
+        if directory is None:
+            directory = self.directory
+        if corner_kwargs is None:
+            corner_kwargs = {}
+
+        # Save the StarModel to file
+        starmodel_filename = '{}starmodel.h5'.format(os.path.basename(self.mnest_basename))
+        starmodel_path = os.path.join(directory, starmodel_filename)
+        self.save_hdf(starmodel_path, overwrite=True)
+
+        # Create and save corner plots
+        corner_basename = os.path.join(directory, os.path.basename(self.mnest_basename))
+
+        fig_params = self.corner_params(**corner_kwargs)
+        fig_params.savefig('{}params.png'.format(corner_basename))
+
+        fig_observed = self.corner_observed(**corner_kwargs)
+        fig_observed.savefig('{}observed.png'.format(corner_basename))
+
+        fig_physical = self.corner_physical(**corner_kwargs)
+        fig_physical.savefig('{}physical.png'.format(corner_basename))
+
+
 ########## Utility functions ###############
 
 def N_options(N_stars, max_multiples=1, max_stars=2):
