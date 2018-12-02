@@ -20,7 +20,9 @@ class Grid(object):
         self.kwargs.update(kwargs)
 
         self._df = None
+        self._df_orig = None
         self._interp = None
+        self._interp_orig = None
         self._limits = dict(self.bounds)
 
     def get_limits(self, prop):
@@ -63,19 +65,21 @@ class Grid(object):
             logging.info('Extracting {}...'.format(tarball))
             tar.extractall(self.datadir)
 
-    def read_hdf(self):
+    def read_hdf(self, orig=False):
         h5file = self.hdf_filename
         try:
-            df = pd.read_hdf(h5file, 'df')
-        except FileNotFoundError:
-            df = self.write_hdf()
+            path = 'orig' if orig else 'df'
+            df = pd.read_hdf(h5file, path)
+        except (FileNotFoundError, KeyError):
+            df = self.write_hdf(orig=orig)
         return df
 
-    def write_hdf(self):
-        df = self.get_df()
+    def write_hdf(self, orig=False):
+        df = self.get_df(orig=orig)
         h5file = self.hdf_filename
-        df.to_hdf(h5file, 'df')
-        logging.info('{} written.'.format(h5file))
+        path = 'orig' if orig else 'df'
+        df.to_hdf(h5file, path)
+        logging.info('{} written to {}.'.format(path, h5file))
         return df
 
     @property
@@ -85,7 +89,22 @@ class Grid(object):
         return self._df
 
     @property
+    def df_orig(self):
+        if self._df_orig is None:
+            self._df_orig = self.read_hdf(orig=True)
+        return self._df_orig
+
+    @property
     def interp(self):
         if self._interp is None:
-            self._interp = DFInterpolator(self.df, is_full=self.is_full)
+            filename = getattr(self, 'interp_grid_npz_filename', None)
+            self._interp = DFInterpolator(self.df, filename=filename, is_full=self.is_full)
         return self._interp
+
+    @property
+    def interp_orig(self):
+        if self._interp_orig is None:
+            filename = getattr(self, 'interp_grid_orig_npz_filename', None)
+            self._interp_orig = DFInterpolator(self.df_orig, filename=filename, is_full=self.is_full)
+        return self._interp_orig
+
