@@ -83,14 +83,15 @@ class ModelGrid(Grid):
         df['density'] = df['mass'] * MSUN / (4./3 * np.pi * (df['radius'] * RSUN)**3)
         return df
 
-    def get_df(self):
+    def get_df(self, orig=False):
         """Returns column-mapped, pared-down, standardized version of model grid
         """
         df = self.df_all()
-        df = df.rename(columns=self.column_map)
-        df = self.compute_additional_columns(df)
-        # Select only the columns we want
-        df = df[list(self.default_columns)]
+        if not orig:
+            df = df.rename(columns=self.column_map)
+            df = self.compute_additional_columns(df)
+            # Select only the columns we want
+            df = df[list(self.default_columns)]
         return df
 
     @property
@@ -139,10 +140,8 @@ class ModelGrid(Grid):
         return os.path.join(self.datadir, 'full_grid{}.npz'.format(self.kwarg_tag))
 
     @property
-    def interp(self):
-        if self._interp is None:
-            self._interp = DFInterpolator(self.df, filename=self.interp_grid_npz_filename)
-        return self._interp
+    def interp_grid_orig_npz_filename(self):
+        return os.path.join(self.datadir, 'full_grid_orig{}.npz'.format(self.kwarg_tag))
 
 
 class ModelGridInterpolator(object):
