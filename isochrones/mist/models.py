@@ -206,7 +206,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     def get_feh_filenames(self, feh):
         directory = self.get_directory_path(feh)
         if not os.path.exists(directory):
-            self.extract_tarball(feh)
+            self.extract_tarball(feh=feh)
         return glob.glob(os.path.join(directory, '*.track.eep'))
 
     def get_feh_hdf_filename(self, feh):
