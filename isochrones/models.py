@@ -176,6 +176,14 @@ class ModelGridInterpolator(object):
             self._bc_grid = self.bc_type(self.bands)
         return self._bc_grid
 
+    def initialize(self, pars=None):
+        if pars is None:
+            pars = [1.04, 320, -0.35, 10000, 0.34]
+
+        Teff, logg, feh, mags = self.interp_mag([1.04, 320, -0.35, 10000, 0.34], self.bands)
+        assert all([np.isfinite(v) for v in [Teff, logg, feh]])
+        assert all([np.isfinite(m) for m in mags])
+
     def _prop(self, prop, *pars):
         return self.interp_value(pars, [prop]).squeeze()
 
@@ -245,6 +253,15 @@ class ModelGridInterpolator(object):
                                *self.model_grid.interp.index_columns,
                                self.bc_grid.interp.grid, i_bands,
                                *self.bc_grid.interp.index_columns)
+
+    def simulate_mag(self, pars, bands):
+        if isinstance(bands, str):
+            bands = [bands]
+        _, _, _, mags = self.interp_mag(pars, bands)
+        if np.size(mags) == 1:
+            return float(mags)
+        else:
+            return mags
 
     def __call__(self, p1, p2, p3, distance=10., AV=0.):
         p1, p2, p3, dist, AV = [np.atleast_1d(a).astype(float).squeeze()
