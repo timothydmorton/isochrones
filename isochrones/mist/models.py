@@ -164,13 +164,13 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
         version = self.kwargs['version']
         return 'http://waps.cfa.harvard.edu/MIST/data/tarballs_v{version}/{basename}.tar.gz'.format(version=version, basename=basename)
 
-    def get_tarball_filename(self, feh):
+    def get_tarball_file(self, feh):
         basename = self.get_file_basename(feh)
         return os.path.join(self.datadir, '{}.tar.gz'.format(basename))
 
     def download_and_extract_all(self):
         for feh in self.fehs:
-            self.extract_tarball(feh)
+            self.extract_tarball(feh=feh)
 
     @classmethod
     def get_mass(cls, filename):
