@@ -34,7 +34,7 @@ if not on_rtd:
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
-from .priors import salpeter_prior, feh_prior, FehPrior, EEP_prior
+from .priors import salpeter_prior, chabrier_prior, feh_prior, FehPrior, EEP_prior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
@@ -661,7 +661,7 @@ class StarModel(object):
 
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
-                      test=False,
+                      test=False, force_no_MPI=False,
                       **kwargs):
         """
         Fits model using MultiNest, via pymultinest.
@@ -707,7 +707,7 @@ class StarModel(object):
             logging.info('MultiNest basename: {}'.format(basename))
 
         folder = os.path.abspath(os.path.dirname(basename))
-        if rank==0:
+        if rank == 0 or force_no_MPI:
             if not os.path.exists(folder):
                 os.makedirs(folder)
 
@@ -718,7 +718,7 @@ class StarModel(object):
         short_basename = self._mnest_basename
 
         mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
-                        verbose=verbose)
+                        verbose=verbose, force_no_MPI=force_no_MPI)
 
         for k,v in kwargs.items():
             mnest_kwargs[k] = v
@@ -1301,7 +1301,7 @@ class BasicStarModel(StarModel):
 
         self._param_names = None
 
-        self._priors = {'mass': salpeter_prior,
+        self._priors = {'mass': chabrier_prior,
                         'feh': feh_prior,
                         'q': q_prior,
                         'age': age_prior,
@@ -1463,7 +1463,10 @@ class BasicStarModel(StarModel):
         self._derived_samples['distance'] = df['distance']
         self._derived_samples['AV'] = df['AV']
 
-    def sample_from_prior(self, n):
+    def sample_from_prior(self, n, values=False, require_valid=True):
+        if n == 0:
+            return pd.DataFrame(columns=self.param_names)
+
         pars = []
         columns =  []
         for p in self.param_names:
@@ -1479,29 +1482,50 @@ class BasicStarModel(StarModel):
         else:
             df['eep'] = self._priors['eep'].sample(n, age=df['age'], feh=df['feh'])
 
-        return df
+        if require_valid:
+            pars = df[list(self.param_names)].values
+            lnprob = np.array([self.lnpost(pars[i, :]) for i in range(len(pars))])
+            bad = np.logical_not(np.isfinite(lnprob))
+            nbad = bad.sum()
+            if nbad:
+                new_values = self.sample_from_prior(nbad, require_valid=True)
+                new_values.index = df.iloc[bad, :].index
+                df.iloc[bad, :] = new_values
+
+        if values:
+            return df[list(self.param_names)].values
+        else:
+            return df
 
     def corner_params(self, **kwargs):
         fig = corner.corner(self.samples, labels=self.samples.columns, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
 
-    def corner_physical(self, **kwargs):
-        cols = ['mass', 'radius', 'age', 'Teff', 'logg', 'feh', 'distance', 'AV']
+    @property
+    def physical_quantities(self):
+        return ['mass', 'radius', 'age', 'Teff', 'logg', 'feh', 'distance', 'AV']
+
+    @property
+    def observed_quantities(self):
+        return ['{}_mag'.format(b) for b in self.bands] + self.props
+
+    def corner_derived(self, cols, **kwargs):
         fig = corner.corner(self.derived_samples[cols], labels=cols, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
 
+    def corner_physical(self, **kwargs):
+        return self.corner_derived(self.physical_quantities)
+
     def corner_observed(self, **kwargs):
-        cols = ['{}_mag'.format(b) for b in self.bands] + self.props
+        cols = self.observed_quantities
         truths = [self.kwargs[b][0] for b in self.bands] + [self.kwargs[p][0] for p in self.props]
         ranges = [(min(truth-0.01, self.derived_samples[col].min()),
                    max(truth+0.01, self.derived_samples[col].max()))
                   for truth, col in zip(truths, cols)]
 
-        fig = corner.corner(self.derived_samples[cols], truths=truths, labels=cols, range=ranges, **kwargs)
-        fig.suptitle(self.name, fontsize=22)
-        return fig
+        return self.corner_derived(cols, truths=truths, range=ranges, **kwargs)
 
     @property
     def posterior_predictive(self):
@@ -1665,6 +1689,7 @@ class BasicStarModel(StarModel):
 
         fig_physical = self.corner_physical(**corner_kwargs)
         fig_physical.savefig('{}physical.png'.format(corner_basename))
+
 
 
 ########## Utility functions ###############

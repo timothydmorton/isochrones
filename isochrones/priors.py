@@ -7,7 +7,7 @@ if not on_rtd:
     import numpy as np
     import pandas as pd
     import scipy.stats
-    from scipy.stats import uniform
+    from scipy.stats import uniform, lognorm
     from scipy.integrate import quad
     from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
 
@@ -17,7 +17,9 @@ if not on_rtd:
 
 
 _norm_pdf_C = np.sqrt(2*np.pi)
+ONE_OVER_ROOT_2PI = 1./_norm_pdf_C
 _norm_pdf_logC = np.log(_norm_pdf_C)
+LOG_ONE_OVER_ROOT_2PI = np.log(ONE_OVER_ROOT_2PI)
 
 def _norm_pdf(x):
     return np.exp(-x**2/2.0) / _norm_pdf_C
@@ -32,6 +34,14 @@ class Prior(object):
     def __call__(self, x, **kwargs):
         return self.pdf(x, **kwargs)
 
+    @property
+    def bounds(self):
+        return (-np.inf, np.inf) if getattr(self, '_bounds', None) is None else self._bounds
+
+    @bounds.setter
+    def bounds(self, new):
+        self._bounds = new
+
     def pdf(self, x):
         raise NotImplementedError
 
@@ -43,10 +53,13 @@ class Prior(object):
             return np.log(pdf) if pdf else -np.inf
 
     def sample(self, n):
-        raise NotImplementedError
+        if hasattr(self, 'distribution'):
+            return self.distribution.rvs(n)
+        else:
+            raise NotImplementedError
 
     def test_integral(self):
-        assert np.isclose(1, quad(self.pdf, -np.inf, np.inf)[0])
+        assert np.isclose(1, quad(self.pdf, *self.bounds)[0])
 
     def test_sampling(self, n=100000, plot=False):
         x = self.sample(n)
@@ -75,7 +88,7 @@ class Prior(object):
 
 class BoundedPrior(Prior):
     def __init__(self, bounds=None):
-        self.bounds = bounds
+        self._bounds = bounds
         super(BoundedPrior, self).__init__()
 
     def test_integral(self):
@@ -100,11 +113,102 @@ class BoundedPrior(Prior):
             return np.log(pdf) if pdf else -np.inf
 
 
+class BrokenPrior(Prior):
+    """Composition of multiple stitched-together priors, with breakpoint(s)
+
+    Parameters
+    ----------
+    components : list of `Prior` objects
+        Components going into prior
+    breakpoints : array
+        List of breakpoints separating components. Length = n(components) - 1
+    """
+    def __init__(self, components, breakpoints, bounds=None):
+        self.components = components
+        self.n_components = len(components)
+        self.breakpoints = breakpoints
+
+        if bounds is None:
+            bounds = (-np.inf, np.inf)
+        self._bounds = bounds
+
+        self.quad_args = dict(limit=200)
+        self._initialize()
+
+    @property
+    def bounds(self):
+        return super().bounds
+
+    @bounds.setter
+    def bounds(self, new):
+        self._bounds = new
+        self._initialize()
+
+    def _initialize(self):
+        # lo = min([c.bounds[0] for c in self.components] + [self.bounds[0]])
+        # hi = max([c.bounds[1] for c in self.components] + [self.bounds[1]])
+        lo, hi = self.bounds
+        full_domain = [lo] + list(self.breakpoints) + [hi]
+        domains = [(a, b) for a, b in zip(full_domain[:-1], full_domain[1:])]
+        self.domains = domains
+
+        norms = np.ones(self.n_components)
+        for i in range(1, self.n_components):
+            x = self.breakpoints[i - 1]
+            norms[i] = self.components[i](x) / self.components[i-1](x)
+
+        # Compute total norm
+        tot = 0
+        for comp, (a, b), norm in zip(self.components, domains, norms):
+            fn = lambda x : comp(x) / norm
+            tot += quad(fn, a, b, **self.quad_args)[0]
+
+        self.norms = norms * tot
+        self.lognorms = np.log(self.norms)
+
+        cumnorm = np.zeros(self.n_components)
+        for i, (comp, (a, b), norm) in enumerate(zip(self.components, domains, self.norms)):
+            fn = lambda x : comp(x) / norm
+            cumnorm[i] = quad(fn, a, b, **self.quad_args)[0]
+
+        self.cumnorm = cumnorm
+
+
+    def pdf(self, x):
+        i = np.digitize(x, self.breakpoints)
+        return self.components[i](x) / self.norms[i]
+
+    def _lnpdf(self, x):
+        i = np.digitize(x, self.breakpoints)
+        return self.components[i].lnpdf(x) - self.lognorms[i]
+
+    def sample(self, n):
+        u = np.random.random(n)
+
+        x = np.zeros(n)
+        u_cumthresh = 0
+        for comp, u_thresh, (a, b) in zip(self.components, self.cumnorm, self.domains):
+            u_cumthresh += u_thresh
+            mask = (u < u_cumthresh) & (x == 0.)
+            n_comp = mask.sum()
+            samples = comp.sample(n_comp)
+            oob = (samples < a) | (samples > b)
+            n_oob = oob.sum()
+            while n_oob:
+                samples[oob] = comp.sample(n_oob)
+                oob = (samples < a) | (samples > b)
+                n_oob = oob.sum()
+
+            x[mask] = samples
+
+        return x
+
+
 class GaussianPrior(BoundedPrior):
     def __init__(self, mean, sigma, bounds=None):
         self.mean = mean
         self.sigma = sigma
-        self.bounds = bounds
+        self._bounds = bounds
 
         if bounds:
             lo, hi = bounds
@@ -123,8 +227,27 @@ class GaussianPrior(BoundedPrior):
     def _lnpdf(self, x):
         return _norm_logpdf((x - self.mean) / self.sigma) - np.log(self.sigma) - self.lognorm
 
-    def sample(self, n):
-        return self.distribution.rvs(n)
+
+class LogNormalPrior(Prior):
+    def __init__(self, mu, sigma, bounds=None):
+        self.mu = mu
+        self.sigma = sigma
+        self.bounds = bounds
+        self.scale = np.exp(mu)
+        self.log_s = np.log(sigma)
+
+        self.distribution = lognorm(sigma, scale=np.exp(mu))
+        self.bounds = (0, np.inf)
+
+    def pdf(self, x):
+        s = self.sigma
+        y = x / self.scale
+        return ONE_OVER_ROOT_2PI / (s * y) * np.exp(-0.5 * (np.log(y) / s)**2) / self.scale
+
+    def _lnpdf(self, x):
+        s = self.sigma
+        y = x / self.scale
+        return LOG_ONE_OVER_ROOT_2PI - (self.log_s + np.log(y)) - 0.5 * (np.log(y) / s)**2 - self.mu
 
 
 class FlatPrior(BoundedPrior):
@@ -289,8 +412,11 @@ class EEP_prior(BoundedPrior):
             deriv_val, orig_val = values[:, 0], values[:, 1]
             raise NotImplementedError('Implement proper weighting for EEP-replace-mass sampling!')
 
-        return eeps.sample(n, weights=weights, replace=True).values
-
+        try:
+            return eeps.sample(n, weights=weights, replace=True).values
+        except ValueError:
+            # If there are no valid samples, just run it again until you get valid results
+            return self.sample(n, **kwargs)
 
 # Utility numba PDFs for speed!
 @jit(nopython=True)
@@ -313,4 +439,6 @@ distance_prior = PowerLawPrior(alpha=2., bounds=(0,10000))
 AV_prior = FlatPrior(bounds=(0., 1.))
 q_prior = PowerLawPrior(alpha=0.3, bounds=(0.1, 1))
 salpeter_prior = PowerLawPrior(alpha=-2.35, bounds=(0.1, 10))
+chabrier_prior = BrokenPrior([LogNormalPrior(0.079, 0.69), PowerLawPrior(-2.35, (1., 100.))],
+                             [1.], bounds=(0.1, 100.))
 feh_prior = FehPrior(halo_fraction=0.001)
