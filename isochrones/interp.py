@@ -58,6 +58,40 @@ def find_indices(point, iis):
 
     return indices, norm_distances, out_of_bounds
 
+@jit(nopython=True)
+def find_indices_2d(x0, x1,
+                    ii0, ii1):
+
+    n0 = len(ii0)
+    n1 = len(ii1)
+
+    indices = np.empty(2, dtype=uint32)
+    norm_distances = np.empty(2, dtype=float64)
+
+    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
+            (x1 < ii1[0]) or (x1 > ii1[n1 - 1])):
+        return indices, norm_distances, True  # Out of bounds
+
+    ix, eq = searchsorted(ii0, x0)
+    if eq:
+        indices[0] = ix
+        norm_distances[0] = 0
+    else:
+        indices[0] = ix - 1
+        c0 = ii0[ix - 1]
+        norm_distances[0] = (x0 - c0) / (ii0[ix] - c0)
+
+    ix, eq = searchsorted(ii1, x1)
+    if eq:
+        indices[1] = ix
+        norm_distances[1] = 0
+    else:
+        indices[1] = ix - 1
+        c0 = ii1[ix - 1]
+        norm_distances[1] = (x1 - c0) / (ii1[ix] - c0)
+
+    return indices, norm_distances, False
+
 
 @jit(nopython=True)
 def find_indices_3d(x0, x1, x2,
@@ -161,6 +195,50 @@ def find_indices_4d(x0, x1, x2, x3,
 
     return indices, norm_distances, False
 
+@jit(nopython=True)
+def interp_value_2d(x0, x1,
+                    grid, icols,
+                    ii0, ii1):
+    if x0 != x0 or x1 != x1:
+        return np.array([np.nan for i in icols])
+
+    indices, norm_distances, out_of_bounds = find_indices_2d(x0, x1, ii0, ii1)
+
+    if out_of_bounds:
+        return np.array([np.nan for i in icols])
+    # The following should be equivalent to
+    #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
+
+    ndim = 2
+    n_edges = 2**ndim
+    edges = np.zeros((n_edges, ndim))
+    for i in range(n_edges):
+        for j in range(ndim):
+            edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
+
+    n_values = len(icols)
+    values = np.zeros(n_values, dtype=float64)
+
+    for j in range(n_edges):
+        edge_indices = np.zeros(ndim, dtype=uint32)
+        for k in range(ndim):
+            edge_indices[k] = edges[j, k]
+
+        weight = 1.
+        for ei, i, yi in zip(edge_indices, indices, norm_distances):
+            if ei == i:
+                weight *= 1 - yi
+            else:
+                weight *= yi
+
+        for i_icol in range(n_values):
+            icol = icols[i_icol]
+
+            # Now, get the value; this is why general ND doesn't work
+            grid_indices = (edge_indices[0], edge_indices[1], icol)
+            values[i_icol] += grid[grid_indices] * weight
+
+    return values
 
 @jit(nopython=True)
 def interp_value_3d(x0, x1, x2,
@@ -255,6 +333,27 @@ def interp_value_4d(x0, x1, x2, x3,
             values[i_icol] += grid[grid_indices] * weight
 
     return values
+
+@jit(nopython=True)
+def interp_values_2d(xx0, xx1,
+                     grid, icols,
+                     ii0, ii1):
+    """xx1, xx2, xx3 are all arrays at which values are desired
+
+
+    """
+
+    N = len(xx0)
+    ncols = len(icols)
+    results = np.empty((N, ncols), dtype=float64)
+    for i in range(N):
+        res = interp_value_3d(xx0[i], xx1[i],
+                              grid, icols,
+                              ii0, ii1)
+        for j in range(ncols):
+            results[i, j] = res[j]
+
+    return results
 
 
 @jit(nopython=True)
@@ -407,6 +506,7 @@ class DFInterpolator(object):
         self.filename = filename
         self.is_full = is_full
         self.columns = list(df.columns)
+        self.n_columns = len(self.columns)
         self.grid = self._make_grid(df, recalc=recalc)
         self.index_columns = tuple(np.array(l, dtype=float) for l in df.index.levels)
         self.index_names = df.index.names
@@ -451,9 +551,24 @@ class DFInterpolator(object):
                                  *self.index_columns, debug=debug)
 
     def __call__(self, p, cols):
-        icols = np.array([self.column_index[col] for col in cols])
+        if cols is 'all':
+            icols = np.arange(self.n_columns)
+        else:
+            icols = np.array([self.column_index[col] for col in cols])
         args = (p, self.grid, icols, self.index_columns)
 
+        if self.ndim == 2:
+            args = (p[0], p[1], self.grid, icols,
+                    self.index_columns[0], self.index_columns[1])
+            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
+                    (isinstance(p[1], float) or isinstance(p[1], int))):
+                values = interp_value_2d(*args)
+            else:
+                b = np.broadcast(*p)
+                pp = [np.atleast_1d(np.resize(x, b.shape)).astype(float) for x in p]
+                args = (*pp, self.grid, icols, *self.index_columns)
+                # print([(a, type(a)) for a in args])
+                values = interp_values_2d(*args)
         if self.ndim == 3:
             args = (p[0], p[1], p[2], self.grid, icols,
                     self.index_columns[0], self.index_columns[1],

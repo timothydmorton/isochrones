@@ -116,6 +116,8 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     default_columns = (tuple(set(MISTModelGrid.default_columns) - {'age'}) +
                             ('interpolated', 'star_age', 'age'))
 
+    primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._masses = None
