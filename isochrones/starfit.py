@@ -33,7 +33,7 @@ def initLogging(filename, logger):
 def starfit(folder, multiplicities=['single'], models='mist',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
             logger=None, starmodel_type=None, ini_file='star.ini',
-            no_plots=False, **kwargs):
+            no_plots=False, bands=None, **kwargs):
     """ Runs starfit routine for a given folder.
     """
     nstars = {'single':1,
@@ -84,7 +84,10 @@ def starfit(folder, multiplicities=['single'], models='mist',
                     c = ConfigObj(ini_file_path)
 
                     if ichrone is None:
-                        bands = StarModel.get_bands(ini_file_path)
+                        if bands is None:
+                            bands = StarModel.get_bands(ini_file_path)
+                        else:
+                            bands += StarModel.get_bands(ini_file_path)
                         ichrone = get_ichrone(models, bands)
 
                     N = nstars[mult] if 'N' not in c else None

@@ -47,6 +47,8 @@ if __name__=='__main__':
     parser.add_argument('--gaia', action='store_true')
     parser.add_argument('--write_ini', action='store_true')
     parser.add_argument('--rootdir', type=str, default=None)
+    parser.add_argument('--bands', nargs='*', default=None, 
+                        help='Additional band(s) to include in samples.')
 
     args = parser.parse_args()
 
@@ -80,7 +82,7 @@ if __name__=='__main__':
         print('{} of {}: {}'.format(i+1, len(args.folders), folder))
         kwargs = dict(multiplicities=multiplicities, models=args.models,
                         use_emcee=args.emcee, plot_only=args.plot_only, overwrite=args.overwrite,
-                        verbose=args.verbose, logger=logger)
+                        verbose=args.verbose, logger=logger, bands=args.bands)
         if args.gaia:
             kwargs['write_ini_file'] = args.write_ini
             kwargs['rootdir'] = args.rootdir
