@@ -263,6 +263,9 @@ class ModelGridInterpolator(object):
         else:
             return mags
 
+    def get_eep(self, mass, age, feh, approx=False):
+        return self.model_grid.get_eep(mass, age, feh, approx=approx)
+
     def __call__(self, p1, p2, p3, distance=10., AV=0.):
         p1, p2, p3, dist, AV = [np.atleast_1d(a).astype(float).squeeze()
                                 for a in np.broadcast_arrays(p1, p2, p3, distance, AV)]

@@ -6,10 +6,15 @@ import logging
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
+from scipy.optimize import curve_fit
 
 from isochrones.config import ISOCHRONES
 
 from ..models import ModelGrid
+from ..eep import fit_section_poly, eep_fn, eep_jac, eep_fn_p0
+from ..interp import DFInterpolator, searchsorted
+from ..utils import polyval
 from .utils import max_eep
 
 
@@ -31,6 +36,16 @@ class MISTModelGrid(ModelGrid):
               ('feh', (-4, 0.5)),
               ('eep', (0, 1710)),
               ('mass', (0.1, 300)))
+
+    fehs = (-4.00, -3.50, -3.00, -2.50, -2.00,
+            -1.75, -1.50, -1.25, -1.00, -0.75, -0.50,
+            -0.25, 0.00, 0.25, 0.50)
+
+    primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
+
+    @property
+    def eep_sections(self):
+        return [(a, b) for a, b in zip(self.primary_eeps[:-1], self.primary_eeps[1:])]
 
     @property
     def kwarg_tag(self):
@@ -107,20 +122,18 @@ class MISTBasicIsochroneGrid(MISTIsochroneGrid):
 class MISTEvolutionTrackGrid(MISTModelGrid):
     default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'afe': 0.0}
 
-    fehs = (-4.00, -3.50, -3.00, -2.50, -2.00,
-            -1.75, -1.50, -1.25, -1.00, -0.75, -0.50,
-            -0.25, 0.00, 0.25, 0.50)
 
     index_cols = ('initial_feh', 'initial_mass', 'EEP')
 
     default_columns = (tuple(set(MISTModelGrid.default_columns) - {'age'}) +
                             ('interpolated', 'star_age', 'age'))
 
-    primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._masses = None
+        self._approx_eep_interp = None
+        self._eep_interps = None
+        self._primary_eeps_arr = None
 
     @property
     def masses(self):
@@ -284,7 +297,8 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                     norm_distance = (m - mlo) / (mhi - mlo)
                     lo_index = pd.MultiIndex.from_product([[feh], [mlo], new_eeps])
                     hi_index = pd.MultiIndex.from_product([[feh], [mhi], new_eeps])
-                    new_data.loc[:, df.columns] = df.loc[lo_index, :].values * (1 - norm_distance) + df.loc[hi_index, :].values * norm_distance
+                    new_data.loc[:, df.columns] = (df.loc[lo_index, :].values * (1 - norm_distance) +
+                                                   df.loc[hi_index, :].values * norm_distance)
                     new_data.loc[:, 'interpolated'] = True
                     df_interp = pd.concat([df_interp, new_data])
 
@@ -335,4 +349,105 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             dt_deep = pd.read_hdf(filename, 'dt_deep')
 
         return dt_deep
+
+    @property
+    def eep_param_filename(self):
+        return os.path.join(self.datadir, 'eep_params{}.h5'.format(self.kwarg_tag))
+
+    def fit_eep_section(self, a, b, order=3):
+        fehs = self.df.index.levels[0]
+        ms = self.df.index.levels[1]
+        columns = ['p{}'.format(o) for o in range(order + 1)]
+        p_df = pd.DataFrame(index=pd.MultiIndex.from_product((fehs, ms)), columns=columns)
+
+        for feh, m in tqdm(itertools.product(fehs, ms),
+                           total=len(fehs)*len(ms),
+                           desc='Fitting age-eep relation for eeps {:.0f} to {:.0f} (order {})'.format(a, b, order)):
+            subdf = self.df.xs((feh, m), level=('initial_feh', 'initial_mass'))
+            try:
+                p = fit_section_poly(subdf.age.values, subdf.eep.values, a, b, order)
+            except (TypeError, ValueError):
+                p = [np.nan] * (order + 1)
+            for c, n in zip(p, range(order + 1)):
+                p_df.at[(feh, m), 'p{}'.format(n)] = c
+        return p_df
+
+    def fit_approx_eep(self, max_fit_eep=808):
+        fehs = self.df.index.levels[0]
+        ms = self.df.index.levels[1]
+        columns = ['p5', 'p4', 'p3', 'p2', 'p1', 'p0', 'A', 'x0', 'tau']
+        par_df = pd.DataFrame(index=pd.MultiIndex.from_product((fehs, ms)), columns=columns)
+        for feh, m in tqdm(itertools.product(fehs, ms),
+                           total=len(fehs)*len(ms),
+                           desc='Fitting approximate eep(age) function'):
+            subdf = self.df.xs((feh, m), level=('initial_feh', 'initial_mass'))
+            p0 = eep_fn_p0(subdf.age)
+            mask = subdf.eep < max_fit_eep
+            try:
+                if subdf.eep.max() < 500:
+                    raise RuntimeError
+                pfit, _ = curve_fit(eep_fn, subdf.age.values[mask], subdf.eep.values[mask], p0, jac=eep_jac)
+            except RuntimeError:  # if the full fit barfs, just use the polynomial
+                pfit = list(np.polyfit(subdf.age.values[mask], subdf.eep.values[mask], 5)) + [0, 0, 1]
+            par_df.loc[(feh, m), :] = pfit
+        return par_df.astype(float)
+
+    def write_eep_params(self, orders=None):
+        if orders is None:
+            orders = [7]*2 + [3] + [1]*6
+
+        p_dfs = [self.fit_eep_section(a, b, order=o) for (a, b), o in zip(self.eep_sections, orders)]
+        for df, (a, b) in zip(p_dfs, self.eep_sections):
+            df.to_hdf(self.eep_param_filename, 'eep_{:.0f}_{:.0f}'.format(a, b))
+
+        p_approx_df = self.fit_approx_eep()
+        p_approx_df.to_hdf(self.eep_param_filename, 'approx')
+
+    def get_eep_interps(self):
+        """Get list of interp functions for piecewise polynomial params
+        """
+        if not os.path.exists(self.eep_param_filename):
+            self.write_eep_params()
+
+        with pd.HDFStore(self.eep_param_filename) as store:
+            interps = [DFInterpolator(store['eep_{:.0f}_{:.0f}'.format(a, b)]) for a, b in self.eep_sections]
+        return interps
+
+    def get_approx_eep_interp(self):
+        if not os.path.exists(self.eep_param_filename):
+            self.write_eep_params()
+
+        with pd.HDFStore(self.eep_param_filename) as store:
+            interp = DFInterpolator(store['approx'])
+
+        return interp
+
+    @property
+    def approx_eep_interp(self):
+        if self._approx_eep_interp is None:
+            self._approx_eep_interp = self.get_approx_eep_interp()
+
+        return self._approx_eep_interp
+
+    @property
+    def eep_interps(self):
+        if self._eep_interps is None:
+            self._eep_interps = self.get_eep_interps()
+
+        return self._eep_interps
+
+    @property
+    def primary_eeps_arr(self):
+        if self._primary_eeps_arr is None:
+            self._primary_eeps_arr = np.array(self.primary_eeps)
+        return self._primary_eeps_arr
+
+    def get_eep(self, mass, age, feh, approx=False):
+        eep_fn_pars = self.approx_eep_interp([feh, mass], 'all')
+        eep = eep_fn(age, *eep_fn_pars)
+        if approx:
+            return eep
+        else:
+            i, _ = searchsorted(self.primary_eeps_arr, eep)
+            return polyval(self.eep_interps[i-1]([feh, mass], 'all'), age)
 
