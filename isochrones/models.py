@@ -254,17 +254,29 @@ class ModelGridInterpolator(object):
                                self.bc_grid.interp.grid, i_bands,
                                *self.bc_grid.interp.index_columns)
 
-    def simulate_mag(self, pars, bands):
-        if isinstance(bands, str):
-            bands = [bands]
+    def get_eep(self, mass, age, feh, approx=False):
+        return self.model_grid.get_eep(mass, age, feh, approx=approx)
+
+    def model_value(self, mass, age, feh, props):
+        if isinstance(props, str):
+            props = [props]
+        eep = self.get_eep(mass, age, feh)
+        values = self.interp_value([mass, eep, feh])
+        if np.size(values) == 1:
+            return float(values)
+        else:
+            return values
+
+    def model_mag(self, mass, age, feh, distance=10., AV=0., bands=None):
+        if bands is None:
+            bands = self.bands
+        eep = self.get_eep(mass, age, feh)
+        pars = [mass, eep, feh, distance, AV]
         _, _, _, mags = self.interp_mag(pars, bands)
         if np.size(mags) == 1:
             return float(mags)
         else:
             return mags
-
-    def get_eep(self, mass, age, feh, approx=False):
-        return self.model_grid.get_eep(mass, age, feh, approx=approx)
 
     def __call__(self, p1, p2, p3, distance=10., AV=0.):
         p1, p2, p3, dist, AV = [np.atleast_1d(a).astype(float).squeeze()
