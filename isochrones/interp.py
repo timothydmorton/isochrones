@@ -347,7 +347,7 @@ def interp_values_2d(xx0, xx1,
     ncols = len(icols)
     results = np.empty((N, ncols), dtype=float64)
     for i in range(N):
-        res = interp_value_3d(xx0[i], xx1[i],
+        res = interp_value_2d(xx0[i], xx1[i],
                               grid, icols,
                               ii0, ii1)
         for j in range(ncols):
