@@ -22,18 +22,16 @@ class MIST_Isochrone(FastIsochrone):
     logg_col = 4
     logL_col = 5
     modelgrid = MISTModelGrid
-    default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler','TESS')
+    default_bands = ('G','B','V','J','H','K','W1','W2','W3','g','r','i','z','Kepler', 'TESS', 'BP', 'RP')
 
     def __init__(self, *args, **kwargs):
         self.version = kwargs.get('version', MISTModelGrid.default_kwargs['version'])
-        if self.version == '1.1':
+        if self.version >= '1.1':
             self.mass_col = 3
             self.loggTeff_col = 4
             self.logg_col = 5
             self.logL_col = 6
             self.feh_col = 7
-
-            self.default_bands = self.default_bands + ('TESS', 'BP', 'RP')
 
         super().__init__(*args, **kwargs)
 

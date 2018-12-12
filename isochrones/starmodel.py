@@ -441,7 +441,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
-            elif k in ['Teff','logg','feh']:
+            elif k in ['Teff', 'logg', 'feh', 'density']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
