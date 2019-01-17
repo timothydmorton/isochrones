@@ -522,58 +522,61 @@ class StarModel(object):
         N = self.obs.Nstars
         i = 0
         lnp = 0
-        for s in self.obs.systems:
-            age, feh, dist, AV = p[i+N[s]:i+N[s]+4]
-            for prop, val in zip(['age','feh','distance','AV'],
-                                 [age, feh, dist, AV]):
-                lo,hi = self.bounds(prop)
-                if val < lo or val > hi:
+        if self.ic.eep_replaces == 'mass':
+            for s in self.obs.systems:
+                age, feh, dist, AV = p[i+N[s]:i+N[s]+4]
+                for prop, val in zip(['age','feh','distance','AV'],
+                                     [age, feh, dist, AV]):
+                    lo, hi = self.bounds(prop)
+                    if val < lo or val > hi:
+                        return -np.inf
+                    lnp += self._priors[prop].lnpdf(val)
+                    if not np.isfinite(lnp):
+                        logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
+                        return -np.inf
+
+                # Note: this all is just assuming proper order for multiple stars.
+                #  Is this OK?  Should keep eye out for bugs here.
+
+
+                # Compute EEP priors.  Note, this implicitly treats each stars as an independent
+                # draw from the IMF (i.e. flat mass-ratio prior):
+                for eep in p[i:i + N[s]]:
+                    lnp += self._priors['eep'].lnpdf(eep, age=p[i + N[s]],
+                                                     feh=p[i + N[s] + 1])
+
+                masses, dm_deeps = zip(*[self.ic.interp_value([eep, age, feh], ['initial_mass', 'dm_deep'])
+                                         for eep in eeps])
+                if any(np.isnan(masses)):
                     return -np.inf
-                lnp += np.log(self.prior(prop, val))
+
+                # Compute prior for primary
+                mass_lnprior = np.log(self.prior('mass', masses[0]))
                 if not np.isfinite(lnp):
-                    logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
-                    return -np.inf
+                    logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
 
-            # Note: this all is just assuming proper order for multiple stars.
-            #  Is this OK?  Should keep eye out for bugs here.
+                # Change of variables
+                eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deeps[0]))
 
+                lnp += eep_lnprior
 
-            # Need to compute EEP prior:
-            #  p(eep) = p(mass) * d(mass)/d(eep)
+                # Priors for mass ratios
+                for j in range(N[s]-1):
+                    q = masses[j+1]/masses[0]
+                    qmin, qmax = self.bounds('q')
 
-            # Compute masses, d(m)/d(eep) from eeps
-            eeps = [eep for eep in p[i:i+N[s]]]
+                    ## The following would enforce MA > MB > MC, but seems to make things very slow:
+                    #if j+1 > 1:
+                    #    qmax = masses[j] / masses[0]
 
-            masses, dm_deeps = zip(*[self.ic.interp_value([eep, age, feh], ['initial_mass', 'dm_deep'])
-                                     for eep in eeps])
-            if any(np.isnan(masses)):
-                return -np.inf
+                    lnp += np.log(self.prior('q', q))
+                    if not np.isfinite(lnp):
+                        logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
+                        return -np.inf
 
-            # Compute prior for primary
-            mass_lnprior = np.log(self.prior('mass', masses[0]))
-            if not np.isfinite(lnp):
-                logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
-
-            # Change of variables
-            eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deeps[0]))
-
-            lnp += eep_lnprior
-
-            # Priors for mass ratios
-            for j in range(N[s]-1):
-                q = masses[j+1]/masses[0]
-                qmin, qmax = self.bounds('q')
-
-                ## The following would enforce MA > MB > MC, but seems to make things very slow:
-                #if j+1 > 1:
-                #    qmax = masses[j] / masses[0]
-
-                lnp += np.log(self.prior('q', q))
-                if not np.isfinite(lnp):
-                    logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
-                    return -np.inf
-
-            i += N[s] + 4
+                i += N[s] + 4
+        elif self.ic.eep_replaces == 'mass':
+            raise NotImplementedError('Prior not implemented for isochrone grids')
 
         return lnp
 
@@ -1392,7 +1395,7 @@ class BasicStarModel(StarModel):
 
     @property
     def n_params(self):
-        return 5
+        return len(self.param_names)
 
     def lnlike(self, pars):
         pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)

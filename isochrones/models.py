@@ -5,13 +5,15 @@ import itertools
 import numpy as np
 import pandas as pd
 from astropy import constants as const
+from tqdm import tqdm
+from scipy.optimize import minimize
 
 G = const.G.cgs.value
 MSUN = const.M_sun.cgs.value
 RSUN = const.R_sun.cgs.value
 
 from .config import ISOCHRONES
-from .interp import DFInterpolator
+from .interp import DFInterpolator, interp_eep
 from .mags import interp_mag, interp_mags
 from .grid import Grid
 
@@ -143,6 +145,90 @@ class ModelGrid(Grid):
     def interp_grid_orig_npz_filename(self):
         return os.path.join(self.datadir, 'full_grid_orig{}.npz'.format(self.kwarg_tag))
 
+    def get_array_grids(self, recalc=False):
+        calculate = recalc or not os.path.exists(self.array_grid_filename)
+
+        if calculate:
+            if self.eep_replaces == 'age':
+                ii0 = self.fehs
+                ii1 = self.masses
+            elif self.eep_replaces == 'mass':
+                raise NotImplementedError('Not implemented for isochrone grids yet!')
+
+            n = len(ii0) * len(ii1)
+            age_arrays = np.zeros((n, self.n_eep)) * np.nan
+            dt_deep_arrays = np.zeros((n, self.n_eep)) * np.nan
+            lengths = np.zeros(n) * np.nan
+            for i, (x0, x1) in tqdm(enumerate(itertools.product(ii0, ii1)), total=n,
+                                    desc='building irregular age grid'):
+                subdf = self.df.xs((x0, x1), level=(0, 1))
+                xs = subdf[self.eep_replaces].values
+                lengths[i] = len(xs)
+                try:
+                    age_arrays[i, :len(xs)] = xs
+                    dt_deep_arrays[i, :len(xs)] = subdf.dt_deep.values
+                except ValueError:
+                    import pdb
+                    pdb.set_trace()
+
+            np.savez(self.array_grid_filename, age=age_arrays, dt_deep=dt_deep_arrays, lengths=lengths.astype(int))
+
+        d = np.load(self.array_grid_filename)
+
+        return d['age'], d['dt_deep'], d['lengths']
+
+    @property
+    def array_grid_filename(self):
+        return os.path.join(self.datadir, 'array_grid{}.npz'.format(self.kwarg_tag))
+
+    @property
+    def age_grid(self):
+        try:
+            return self._age_grid
+        except AttributeError:
+            age_grid, dt_deep_grid, lengths = self.get_array_grids()
+            self._age_grid = age_grid
+            self._dt_deep_grid = dt_deep_grid
+            self._array_lengths = lengths
+            return self._age_grid
+
+    @property
+    def dt_deep_grid(self):
+        try:
+            return self._dt_deep_grid
+        except AttributeError:
+            age_grid, dt_deep_grid, lengths = self.get_array_grid()
+            self._age_grid = age_grid
+            self._dt_deep_grid = arrays
+            self._array_lengths = lengths
+            return self._dt_deep_grid
+
+    @property
+    def array_lengths(self):
+        try:
+            return self._array_lengths
+        except AttributeError:
+            age_grid, dt_deep_grid, lengths = self.get_array_grid()
+            self._age_grid = age_grid
+            self._dt_deep_grid = arrays
+            self._array_lengths = lengths
+            return self._array_lengths
+
+    @property
+    def n_masses(self):
+        try:
+            return self._n_masses
+        except AttributeError:
+            self._n_masses = len(self.masses)
+            return self._n_masses
+
+    def get_eep_interp(self, mass, age, feh):
+
+        if self.eep_replaces == 'age':
+            return interp_eep(age, feh, mass, self.fehs, self.masses, self.n_masses, self.age_grid, self.dt_deep_grid, self.array_lengths)
+        elif self.eep_replaces == 'mass':
+            raise NotImplementedError
+
 
 class ModelGridInterpolator(object):
 
@@ -160,9 +246,39 @@ class ModelGridInterpolator(object):
 
         self.param_index_order = list(self._param_index_order)
 
+        self._fehs = None
+        self._ages = None
+        self._masses = None
+
+    @property
+    def fehs(self):
+        if self._fehs is None:
+            self._fehs = self.model_grid.fehs
+        return self._fehs
+
+    @property
+    def ages(self):
+        if not self.eep_replaces == 'age':
+            raise AttributeError('Age is not a dimension of model grid type {}!'.format(self.grid_type))
+        if self._ages is None:
+            self._ages = self.model_grid.ages
+        return self._ages
+
+    @property
+    def masses(self):
+        if not self.eep_replaces == 'mass':
+            raise AttributeError('Mass is not a dimension of this model grid!'.format(self.grid_type))
+        if self._masses is None:
+            self._masses = self.model_grid.masses
+        return self._masses
+
     @property
     def name(self):
         return self.grid_type.name
+
+    @property
+    def eep_replaces(self):
+        return self.grid.eep_replaces
 
     @property
     def model_grid(self):
@@ -254,23 +370,20 @@ class ModelGridInterpolator(object):
                                self.bc_grid.interp.grid, i_bands,
                                *self.bc_grid.interp.index_columns)
 
-    def get_eep(self, mass, age, feh, approx=False):
-        return self.model_grid.get_eep(mass, age, feh, approx=approx)
-
-    def model_value(self, mass, age, feh, props):
+    def model_value(self, mass, age, feh, props, approx=False):
         if isinstance(props, str):
             props = [props]
-        eep = self.get_eep(mass, age, feh)
+        eep = self.get_eep(mass, age, feh, approx=approx)
         values = self.interp_value([mass, eep, feh])
         if np.size(values) == 1:
             return float(values)
         else:
             return values
 
-    def model_mag(self, mass, age, feh, distance=10., AV=0., bands=None):
+    def model_mag(self, mass, age, feh, distance=10., AV=0., bands=None, approx=False):
         if bands is None:
             bands = self.bands
-        eep = self.get_eep(mass, age, feh)
+        eep = self.get_eep(mass, age, feh, approx=approx)
         pars = [mass, eep, feh, distance, AV]
         _, _, _, mags = self.interp_mag(pars, bands)
         if np.size(mags) == 1:
@@ -289,3 +402,68 @@ class ModelGridInterpolator(object):
         cols = list(prop_cols) + ['{}_mag'.format(b) for b in self.bands]
         values = np.concatenate([np.atleast_2d(props), np.atleast_2d(mags)], axis=1)
         return pd.DataFrame(values, columns=cols)
+
+    def mass_age_resid(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def get_eep(self, mass, age, feh, eep0=370, resid_tol=0.01, method='nelder-mead',
+                **kwargs):
+        result = minimize(self.mass_age_resid, eep0, args=(mass, age, feh), method=method,
+                          options=kwargs)
+
+        if result.success and result.fun < resid_tol**2:
+            return result.x
+        else:
+            raise RuntimeError('EEP minimization not successful: {}'.format((mass, age, feh)))
+
+
+class EvolutionTrackInterpolator(ModelGridInterpolator):
+    param_names = ('mass', 'eep', 'feh', 'distance', 'AV')
+    eep_replaces = 'age'
+
+    # Relation between parameters and the order of indices in the grid
+    _param_index_order = (2, 0, 1, 3, 4)
+    _iso_type = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._iso = None
+
+    @property
+    def iso(self):
+        if self._iso is None:
+            if self._iso_type is None:
+                raise ValueError('{} has no _iso_type!.'.format(type(self)))
+            self._iso = self._iso_type(bands=self.bands)
+        return self._iso
+
+    def mass_age_resid(self, eep, mass, age, feh):
+        mass_interp = self.iso.interp_value([eep, age, feh], ['mass'])
+        age_interp = self.interp_value([mass, eep, feh], ['age'])
+        return (mass - mass_interp)**2 + (age - age_interp)**2
+
+
+class IsochroneInterpolator(ModelGridInterpolator):
+    param_names = ('eep', 'age', 'feh', 'distance', 'AV')
+    eep_replaces = 'mass'
+
+    # Relation between parameters and the order of indices in the grid
+    _param_index_order = (1, 2, 0, 3, 4)
+    _track_type = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._track = None
+
+    @property
+    def track(self):
+        if self._track is None:
+            if self._track_type is None:
+                raise ValueError('{} has no _track_type!'.format(type(self)))
+            self._track = self._track_type(bands=self.bands)
+        return self._track
+
+    def mass_age_resid(self, eep, mass, age, feh):
+        mass_interp = self.interp_value([eep, age, feh], ['mass'])
+        age_interp = self.track.interp_value([mass, eep, feh], ['age'])
+        return (mass - mass_interp)**2 + (age - age_interp)**2

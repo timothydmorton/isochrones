@@ -9,10 +9,12 @@ import pandas as pd
 
 
 @jit(nopython=True)
-def searchsorted(arr, x):
+def searchsorted(arr, x, N=-1):
     """N is length of arr
     """
-    N = len(arr)
+    if N == -1:
+        N = len(arr)
+
     L = 0
     R = N-1
     done = False
@@ -153,7 +155,7 @@ def find_indices_4d(x0, x1, x2, x3,
 
     if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
             (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
-            (x2 < ii2[0]) or (x2 > ii2[n2 - 1]) or 
+            (x2 < ii2[0]) or (x2 > ii2[n2 - 1]) or
             (x3 < ii3[0]) or (x3 > ii3[n3 - 1])):
         return indices, norm_distances, True  # Out of bounds
 
@@ -496,6 +498,67 @@ def find_closest3(val, a, b,
     return x1
 
 
+@jit(nopython=True)
+def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
+    """
+    """
+
+    (i0, i1), (d0, d1), oob = find_indices_2d(x0, x1, ii0, ii1)
+
+    ind_00 = i0 * n1 + i1
+    ind_01 = i0 * n1 + (i1 + 1)
+    ind_10 = (i0 + 1) * n1 + i1
+    ind_11 = (i0 + 1) * n1 + (i1 + 1)
+
+    # The EEP value is just the same as the index + 1
+    i_eep_00, _ = searchsorted(arrays[ind_00, :], x, N=lengths[ind_00])
+    i_eep_01, _ = searchsorted(arrays[ind_01, :], x, N=lengths[ind_01])
+    i_eep_10, _ = searchsorted(arrays[ind_10, :], x, N=lengths[ind_10])
+    i_eep_11, _ = searchsorted(arrays[ind_11, :], x, N=lengths[ind_11])
+
+    eep_00 = i_eep_00 + 1
+    eep_01 = i_eep_01 + 1
+    eep_10 = i_eep_10 + 1
+    eep_11 = i_eep_11 + 1
+
+    w_00 = weight_arrays[ind_00, i_eep_00]
+    w_01 = weight_arrays[ind_01, i_eep_01]
+    w_10 = weight_arrays[ind_10, i_eep_10]
+    w_11 = weight_arrays[ind_11, i_eep_11]
+
+    if i_eep_00 >= lengths[ind_00]:
+        eep_00 = eep_01
+        w_00 = 0
+    if i_eep_01 >= lengths[ind_01]:
+        eep_01 = eep_00
+        w_01 = 0
+    if i_eep_10 >= lengths[ind_10]:
+        eep_10 = eep_11
+        w_10 = 0
+    if i_eep_11 >= lengths[ind_11]:
+        eep_11 = eep_10
+        w_11 = 0
+
+    w_tot = w_00 + w_01 + w_10 + w_11
+
+    eep_0 = (1 - d1) * eep_00 + d1 * eep_01
+    eep_1 = (1 - d1) * eep_10 + d1 * eep_11
+
+    return ((1 - d0) * eep_0 + d0 * eep_1) #,
+            # (eep_00, eep_01, eep_10, eep_11),
+            # (w_00, w_01, w_10, w_11),
+            # (d0, d1))
+
+
+
+    # a_00 = eep_00
+    # a_10 = eep_10 - eep_00
+    # a_01 = eep_01 - eep_00
+    # a_11 = (eep_11 + eep_00) - (eep_10 + eep_01)
+
+    # return a_00 + a_10 * d0 + a_01 * d1 + a_11 * (d0 * d1)
+
+
 class DFInterpolator(object):
     """Interpolate column values of DataFrame with full-grid hierarchical index
 
@@ -524,6 +587,7 @@ class DFInterpolator(object):
                 raise ValueError('DataFrame columns do not match columns loaded from full grid!')
         else:
             if not self.is_full:  # Need to make a full grid and pad with nans
+                logging.info('Generating full grid for interpolation...')
                 idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
 
                 # Make an empty dataframe with the completely gridded index, and fill
@@ -550,7 +614,7 @@ class DFInterpolator(object):
                                  self.grid, icol,
                                  *self.index_columns, debug=debug)
 
-    def __call__(self, p, cols):
+    def __call__(self, p, cols='all'):
         if cols is 'all':
             icols = np.arange(self.n_columns)
         else:

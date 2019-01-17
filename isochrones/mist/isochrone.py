@@ -1,22 +1,33 @@
-from ..models import ModelGridInterpolator
-from .models import MISTIsochroneGrid, MISTEvolutionTrackGrid
+from ..models import EvolutionTrackInterpolator, IsochroneInterpolator
+from .models import MISTIsochroneGrid, MISTBasicIsochroneGrid, MISTEvolutionTrackGrid
 from .bc import MISTBolometricCorrectionGrid
 
 
-class MIST_Isochrone(ModelGridInterpolator):
-
+class MIST_Isochrone(IsochroneInterpolator):
     grid_type = MISTIsochroneGrid
     bc_type = MISTBolometricCorrectionGrid
-    _param_index_order = (1, 2, 0, 3, 4)
-    param_names = ('eep', 'age', 'feh', 'distance', 'AV')
-    eep_replaces = 'mass'
     eep_bounds = (0, 1710)
 
-class MIST_EvolutionTrack(ModelGridInterpolator):
 
+class MIST_BasicIsochrone(IsochroneInterpolator):
+    grid_type = MISTBasicIsochroneGrid
+    bc_type = MISTBolometricCorrectionGrid
+    eep_bounds = (0, 1710)
+
+
+class MIST_EvolutionTrack(EvolutionTrackInterpolator):
     grid_type = MISTEvolutionTrackGrid
     bc_type = MISTBolometricCorrectionGrid
-    _param_index_order = (2, 0, 1, 3, 4)
-    param_names = ('mass', 'eep', 'feh', 'distance', 'AV')
-    eep_replaces = 'age'
     eep_bounds = (0, 1710)
+
+
+class MIST_BasicEvolutionTrack(EvolutionTrackInterpolator):
+    grid_type = MISTEvolutionTrackGrid
+    bc_type = MISTBolometricCorrectionGrid
+    eep_bounds = (0, 1710)
+
+
+MIST_Isochrone._track_type = MIST_EvolutionTrack
+MIST_BasicIsochrone._track_type = MIST_BasicEvolutionTrack
+MIST_EvolutionTrack._iso_type = MIST_Isochrone
+MIST_BasicEvolutionTrack._iso_type = MIST_BasicIsochrone

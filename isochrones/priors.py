@@ -400,7 +400,8 @@ class EEP_prior(BoundedPrior):
                 feh = feh.values
             values = self.ic.interp_value([mass, eeps, feh], ['dt_deep', 'age'])
             deriv_val, orig_val = values[:, 0], values[:, 1]
-            weights = np.log10(orig_val)/np.log10(np.e) * deriv_val
+            orig_pr = np.array([self.orig_prior(v) for v in orig_val])
+            weights = orig_pr * np.log10(orig_val)/np.log10(np.e) * deriv_val 
         elif self.orig_par == 'mass':
             age = kwargs['age']
             if isinstance(age, pd.Series):

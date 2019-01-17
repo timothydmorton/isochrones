@@ -1,3 +1,4 @@
+
 def default_max_eep(mass):
     """For MIST v1.2
     """

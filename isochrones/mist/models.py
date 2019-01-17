@@ -3,6 +3,7 @@ import re
 import glob
 import itertools
 import logging
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ from ..models import ModelGrid
 from ..eep import fit_section_poly, eep_fn, eep_jac, eep_fn_p0
 from ..interp import DFInterpolator, searchsorted
 from ..utils import polyval
-from .utils import max_eep
+from .eep import max_eep
 
 
 class MISTModelGrid(ModelGrid):
@@ -37,11 +38,13 @@ class MISTModelGrid(ModelGrid):
               ('eep', (0, 1710)),
               ('mass', (0.1, 300)))
 
-    fehs = (-4.00, -3.50, -3.00, -2.50, -2.00,
+    fehs = np.array((-4.00, -3.50, -3.00, -2.50, -2.00,
             -1.75, -1.50, -1.25, -1.00, -0.75, -0.50,
-            -0.25, 0.00, 0.25, 0.50)
+            -0.25, 0.00, 0.25, 0.50))
+    n_fehs = 15
 
     primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
+    n_eep = 1710
 
     @property
     def eep_sections(self):
@@ -73,6 +76,7 @@ class MISTIsochroneGrid(MISTModelGrid):
     index_cols = ('log10_isochrone_age_yr', 'feh', 'EEP')
 
     filename_pattern = '\.iso'
+    eep_replaces = 'mass'
 
     @property
     def kwarg_tag(self):
@@ -117,6 +121,14 @@ class MISTIsochroneGrid(MISTModelGrid):
 class MISTBasicIsochroneGrid(MISTIsochroneGrid):
 
     default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'kind': 'basic_isos'}
+    default_columns = ModelGrid.default_columns + ('phase',)
+
+    def compute_additional_columns(self, df):
+        """
+        """
+        df = ModelGrid.compute_additional_columns(self, df)
+        # df['feh'] = df['log_surf_z'] - np.log10(df['surface_h1']) - np.log10(0.0181)  # Aaron Dotter says
+        return df
 
 
 class MISTEvolutionTrackGrid(MISTModelGrid):
@@ -128,9 +140,13 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     default_columns = (tuple(set(MISTModelGrid.default_columns) - {'age'}) +
                             ('interpolated', 'star_age', 'age'))
 
+    eep_replaces = 'age'
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._fehs = None
         self._masses = None
+
         self._approx_eep_interp = None
         self._eep_interps = None
         self._primary_eeps_arr = None
@@ -138,7 +154,14 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     @property
     def masses(self):
         if self._masses is None:
-            self._masses = self.df.index.levels[1]
+            self._masses = np.array(self.df.index.levels[1])
+        return self._masses
+
+    # @property
+    # def fehs(self):
+    #     if self._fehs is None:
+    #         self._fehs = np.array(self.df.index.levels[0])
+    #     return self._fehs
 
     @property
     def datadir(self):
@@ -257,7 +280,8 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             df_interp = df.copy()
             df_interp['interpolated'] = False
             masses = df.index.levels[1]
-            for i, m in enumerate(masses):
+            for i, m in tqdm(enumerate(masses), total=len(masses),
+                             desc="interpolating missing values in evolution tracks (feh={})'".format(feh)):
                 n_eep = len(df.xs(m, level='initial_mass'))
                 eep_max = max_eep(m, feh)
                 if not eep_max:
@@ -289,7 +313,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                             raise ValueError('Did not find mhi for ({}, {})'.format(m, feh))
 
                     logging.info('{}: {} (expected {}).  Interpolating between {} and {}'.format(m, n_eep, eep_max, mlo, mhi))
-                    new_eeps = np.arange(n_eep, eep_max + 1)
+                    new_eeps = np.arange(n_eep + 1, eep_max + 1)
                     new_index = pd.MultiIndex.from_product([[feh], [m], new_eeps])
                     new_data = pd.DataFrame(index=new_index, columns=df_interp.columns, dtype=float)
 
@@ -339,7 +363,9 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             df['dt_deep'] = np.nan
 
             # Compute derivative for each (feh, age) isochrone, and fill in
-            for f, m in itertools.product(*df.index.levels[:2]):
+            for f, m in tqdm(itertools.product(*df.index.levels[:2]),
+                             total=len(list(itertools.product(*df.index.levels[:2]))),
+                             desc='Computing dt/deep'):
                 subdf = df.loc[f, m]
                 log_age = np.log10(subdf['star_age'])
                 deriv = np.gradient(log_age, subdf['eep'])
@@ -381,14 +407,17 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                            total=len(fehs)*len(ms),
                            desc='Fitting approximate eep(age) function'):
             subdf = self.df.xs((feh, m), level=('initial_feh', 'initial_mass'))
-            p0 = eep_fn_p0(subdf.age)
+            p0 = eep_fn_p0(subdf.age, subdf.eep)
+            last_pfit = p0
             mask = subdf.eep < max_fit_eep
             try:
                 if subdf.eep.max() < 500:
                     raise RuntimeError
                 pfit, _ = curve_fit(eep_fn, subdf.age.values[mask], subdf.eep.values[mask], p0, jac=eep_jac)
-            except RuntimeError:  # if the full fit barfs, just use the polynomial
-                pfit = list(np.polyfit(subdf.age.values[mask], subdf.eep.values[mask], 5)) + [0, 0, 1]
+            except RuntimeError:  # if the full fit barfs, just use the polynomial by setting A to zero, and the rest same as previous.
+                pfit = list(np.polyfit(subdf.age.values[mask], subdf.eep.values[mask], 5)) + last_pfit[-3:]
+                pfit[-3] = 0
+            last_pfit = pfit
             par_df.loc[(feh, m), :] = pfit
         return par_df.astype(float)
 
@@ -442,12 +471,47 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             self._primary_eeps_arr = np.array(self.primary_eeps)
         return self._primary_eeps_arr
 
-    def get_eep(self, mass, age, feh, approx=False):
+    def get_eep_fit(self, mass, age, feh, approx=False):
         eep_fn_pars = self.approx_eep_interp([feh, mass], 'all')
         eep = eep_fn(age, *eep_fn_pars)
         if approx:
             return eep
         else:
             i, _ = searchsorted(self.primary_eeps_arr, eep)
-            return polyval(self.eep_interps[i-1]([feh, mass], 'all'), age)
+            try:
+                return polyval(self.eep_interps[i-1]([feh, mass], 'all'), age)
+            except IndexError:
+                if age > eep_fn_pars[-2]:
+                    return polyval(self.eep_interps[-1]([feh, mass], 'all'), age)  # assume you're in last bit
+                else:
+                    logging.warning('EEP conversion failed for mass={}, age={}, feh={} (approx eep = {}).  Returning nan.'.format(mass, age, feh, eep))
+                    return np.nan
 
+    def view_eep_fit(self, mass, feh, plot_fit=True, order=5, p0=None, plot_p0=False):
+        import holoviews as hv
+        hv.extension('bokeh')
+        subdf = self.df.xs((mass, feh), level=('initial_mass', 'initial_feh'))
+
+        ds = hv.Dataset(subdf)
+        pts = hv.Points(ds, kdims=['age', 'eep'], vdims=['phase', 'interpolated']).options(tools=['hover'], width=800, height=400, marker='+')
+        primary_eeps = self.primary_eeps
+        primary_ages = [subdf.loc[e].age for e in primary_eeps if e < subdf.eep.max()]
+
+        from isochrones.eep import eep_fn, eep_jac, eep_fn_p0
+        from scipy.optimize import curve_fit
+        if p0 is None:
+            p0 = eep_fn_p0(subdf.age.values, subdf.eep.values, order=order)
+
+        m = subdf.eep < 808
+        if plot_fit:
+            pfit, _ = curve_fit(partial(eep_fn, order=order), subdf.age.values[m], subdf.eep.values[m], p0, jac=partial(eep_jac, order=order))
+            fit = hv.Points([(a, eep_fn(a, *pfit)) for a in subdf.age])
+        if plot_p0:
+            p0_fit = hv.Points([(a, eep_fn(a, *p0)) for a in subdf.age])
+
+        olay = pts * hv.Points([(a, e) for a, e in zip(primary_ages, primary_eeps)]).options(size=8)
+        if plot_fit:
+            olay = olay * fit
+        if plot_p0:
+            olay = olay * p0_fit
+        return olay

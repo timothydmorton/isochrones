@@ -42,7 +42,7 @@ else:
 from .config import ISOCHRONES
 # from .grid import ModelGrid
 
-def get_ichrone(models, bands=None, default=False, tracks=False, **kwargs):
+def get_ichrone(models, bands=None, default=False, tracks=False, basic=False, **kwargs):
     """Gets Isochrone Object by name, or type, with the right bands
 
     If `default` is `True`, then will set bands
@@ -61,8 +61,12 @@ def get_ichrone(models, bands=None, default=False, tracks=False, **kwargs):
             from isochrones.mist import MIST_EvolutionTrack
             ichrone = MIST_EvolutionTrack(bands=bands, **kwargs)
         else:
-            from isochrones.mist import MIST_Isochrone
-            ichrone = MIST_Isochrone(bands=bands, **kwargs)
+            if basic:
+                from isochrones.mist import MISTBasic_Isochrone
+                ichrone = MISTBasic_Isochrone(bands=bands, **kwargs)
+            else:
+                from isochrones.mist import MIST_Isochrone
+                ichrone = MIST_Isochrone(bands=bands, **kwargs)           
     else:
         raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone
