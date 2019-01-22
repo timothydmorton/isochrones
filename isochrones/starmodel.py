@@ -38,6 +38,7 @@ from .priors import salpeter_prior, chabrier_prior, feh_prior, FehPrior, EEP_pri
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
+from .fit import fit_emcee3
 
 def _parse_config_value(v):
     try:
@@ -817,7 +818,10 @@ class StarModel(object):
 
         return p0
 
-    def fit_mcmc(self,nwalkers=300,nburn=200,niter=100,
+    def fit_mcmc(self, **kwargs):
+        return fit_emcee3(self, **kwargs)
+
+    def fit_mcmc_old(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
                  ninitial=50, loglike_kwargs=None,
                  **kwargs):
@@ -1693,6 +1697,93 @@ class BasicStarModel(StarModel):
         fig_physical = self.corner_physical(**corner_kwargs)
         fig_physical.savefig('{}physical.png'.format(corner_basename))
 
+
+class IsoTrackModel(BasicStarModel):
+
+    param_names = ['eep', 'mass', 'age', 'feh', 'distance', 'AV']
+    
+    def __init__(self, iso, track, **kwargs):
+        self._iso = iso
+        self._track = track
+
+        super().__init__(iso, **kwargs)
+
+        self.set_prior('eep', EEP_prior(self.track, self._priors['age'],
+                                        bounds=self.eep_bounds))
+        
+    @property
+    def ic(self):
+        return self.track
+    
+    @property
+    def iso(self):
+        if type(self._iso)==type:
+            self._iso = self._iso()
+        return self._iso
+
+    @property
+    def track(self):
+        if type(self._track)==type:
+            self._track = self._track()
+        return self._track
+    
+    def lnlike(self, pars):
+        # eep, age, feh, distance, AV 
+        iso_pars = np.array([pars[0], pars[2], pars[3], pars[4], pars[5]], dtype=float)
+
+        # mass, eep, feh, distance, AV
+        track_pars = np.array([pars[1], pars[0], pars[3], pars[4], pars[5]], dtype=float)
+                
+        spec_vals, spec_uncs = zip(*[prop for prop in self.spec_props])
+        if self.bands:
+            mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
+            i_mags = [self.ic.bc_grid.interp.column_index[b] for b in self.bands]
+        else:
+            mag_vals, mag_uncs = np.array([], dtype=float), np.array([], dtype=float)
+            i_mags = np.array([], dtype=int)
+    
+        iso_lnlike = star_lnlike(iso_pars, self.iso.param_index_order,
+                                 spec_vals, spec_uncs,
+                                 mag_vals, mag_uncs, i_mags,
+                                 self.iso.model_grid.interp.grid,
+                                 self.iso.model_grid.interp.column_index['Teff'],
+                                 self.iso.model_grid.interp.column_index['logg'],
+                                 self.iso.model_grid.interp.column_index['feh'],
+                                 self.iso.model_grid.interp.column_index['Mbol'],
+                                 *self.iso.model_grid.interp.index_columns,
+                                 self.iso.bc_grid.interp.grid,
+                                 *self.iso.bc_grid.interp.index_columns)
+        
+        track_lnlike = star_lnlike(track_pars, self.track.param_index_order,
+                                   spec_vals, spec_uncs,
+                                   mag_vals, mag_uncs, i_mags,
+                                   self.track.model_grid.interp.grid,
+                                   self.track.model_grid.interp.column_index['Teff'],
+                                   self.track.model_grid.interp.column_index['logg'],
+                                   self.track.model_grid.interp.column_index['feh'],
+                                   self.track.model_grid.interp.column_index['Mbol'],
+                                   *self.track.model_grid.interp.index_columns,
+                                   self.track.bc_grid.interp.grid,
+                                   *self.track.bc_grid.interp.index_columns)
+
+        lnlike = iso_lnlike + track_lnlike
+        
+        if 'parallax' in self.kwargs:
+            lnlike += gauss_lnprob(*self.kwargs['parallax'], 1000./pars[4])
+
+        return lnlike
+
+    def lnprior(self, pars):
+        lnp = 0
+        for val, par in zip(pars, self.param_names):
+            if par == 'eep':
+                lnp += self._priors['eep'].lnpdf(val, mass=pars[1], feh=pars[3])
+            else:
+                lnp += self._priors[par].lnpdf(val)
+
+        return lnp
+    
+    
 
 
 ########## Utility functions ###############
