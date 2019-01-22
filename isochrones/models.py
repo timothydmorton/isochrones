@@ -412,7 +412,7 @@ class ModelGridInterpolator(object):
                           options=kwargs)
 
         if result.success and result.fun < resid_tol**2:
-            return result.x
+            return float(result.x)
         else:
             raise RuntimeError('EEP minimization not successful: {}'.format((mass, age, feh)))
 
