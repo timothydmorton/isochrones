@@ -94,6 +94,7 @@ class StarModel(object):
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
                  RA=None, dec=None, coords=None,
+                 eep_bounds=None,
                  **kwargs):
 
         self.name = name if name else self._default_name
@@ -131,8 +132,9 @@ class StarModel(object):
                         'q': q_prior,
                         'age': age_prior,
                         'distance': distance_prior,
-                        'AV': AV_prior,
-                        'eep': FlatPrior(bounds=self.ic.model_grid.get_limits('eep'))}
+                        'AV': AV_prior}
+        self._priors['eep'] = EEP_prior(self.ic, self._priors[self.ic.eep_replaces],
+                                        bounds=eep_bounds)
 
         self._bounds = {'mass': None,
                         'feh': None,
@@ -140,7 +142,7 @@ class StarModel(object):
                         'q': q_prior.bounds,
                         'distance': distance_prior.bounds,
                         'AV': AV_prior.bounds,
-                        'eep': self.ic.model_grid.get_limits('eep')}
+                        'eep': self._priors['eep'].bounds}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -525,7 +527,7 @@ class StarModel(object):
         lnp = 0
         if self.ic.eep_replaces == 'mass':
             for s in self.obs.systems:
-                age, feh, dist, AV = p[i+N[s]:i+N[s]+4]
+                age, feh, dist, AV = p[i+N[s]: i+N[s]+4]
                 for prop, val in zip(['age','feh','distance','AV'],
                                      [age, feh, dist, AV]):
                     lo, hi = self.bounds(prop)
@@ -542,7 +544,8 @@ class StarModel(object):
 
                 # Compute EEP priors.  Note, this implicitly treats each stars as an independent
                 # draw from the IMF (i.e. flat mass-ratio prior):
-                for eep in p[i:i + N[s]]:
+                eeps = p[i:i + N[s]]
+                for eep in eeps:
                     lnp += self._priors['eep'].lnpdf(eep, age=p[i + N[s]],
                                                      feh=p[i + N[s] + 1])
 
@@ -550,16 +553,6 @@ class StarModel(object):
                                          for eep in eeps])
                 if any(np.isnan(masses)):
                     return -np.inf
-
-                # Compute prior for primary
-                mass_lnprior = np.log(self.prior('mass', masses[0]))
-                if not np.isfinite(lnp):
-                    logging.debug('lnp=-inf for mass={} (system {})'.format(masses[0],s))
-
-                # Change of variables
-                eep_lnprior =  mass_lnprior + np.log(np.abs(dm_deeps[0]))
-
-                lnp += eep_lnprior
 
                 # Priors for mass ratios
                 for j in range(N[s]-1):
@@ -576,10 +569,25 @@ class StarModel(object):
                         return -np.inf
 
                 i += N[s] + 4
-        elif self.ic.eep_replaces == 'mass':
-            raise NotImplementedError('Prior not implemented for isochrone grids')
+
+        elif self.ic.eep_replaces == 'age':
+            raise NotImplementedError('Prior not implemented for evolution track grids')
 
         return lnp
+
+    def prior_transform(self, cube):
+        pars = np.array(cube) * 0
+        i = 0
+        for _, n in self.obs.Nstars.items():
+            mineep, maxeep = self.bounds('eep')
+            for j in range(n):
+                pars[i+j] = (maxeep - mineep)*cube[i+j] + mineep
+
+            for j, par in enumerate(['age', 'feh', 'distance', 'AV']):
+                lo, hi = self.bounds(par)
+                pars[i+n+j] = (hi - lo)*cube[i+n+j] + lo
+            i += 4 + n
+        return pars
 
     def set_prior(self, prop, prior):
         self._priors[prop] = prior
