@@ -401,7 +401,8 @@ class EEP_prior(BoundedPrior):
             values = self.ic.interp_value([mass, eeps, feh], ['dt_deep', 'age'])
             deriv_val, orig_val = values[:, 0], values[:, 1]
             orig_pr = np.array([self.orig_prior(v) for v in orig_val])
-            weights = orig_pr * np.log10(orig_val)/np.log10(np.e) * deriv_val 
+            # weights = orig_pr * np.log10(orig_val)/np.log10(np.e) * deriv_val  # why like this?
+            weights = orig_pr * deriv_val
         elif self.orig_par == 'mass':
             age = kwargs['age']
             if isinstance(age, pd.Series):
@@ -411,7 +412,8 @@ class EEP_prior(BoundedPrior):
                 feh = feh.values
             values = self.ic.interp_value([eeps, age, feh], ['dm_deep', 'mass'])
             deriv_val, orig_val = values[:, 0], values[:, 1]
-            raise NotImplementedError('Implement proper weighting for EEP-replace-mass sampling!')
+            orig_pr = np.array([self.orig_prior(v) for v in orig_val])
+            weights = orig_pr * deriv_val
 
         try:
             return eeps.sample(n, weights=weights, replace=True).values
