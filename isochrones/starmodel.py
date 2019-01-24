@@ -38,7 +38,11 @@ from .priors import salpeter_prior, chabrier_prior, feh_prior, FehPrior, EEP_pri
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
-from .fit import fit_emcee3
+
+try:
+    from .fit import fit_emcee3
+except ImportError:
+    logging.warning('Emcee3 not imported; be advised.')
 
 def _parse_config_value(v):
     try:
@@ -50,7 +54,6 @@ def _parse_config_value(v):
             val = v
     #print('{} becomes {}, type={}'.format(v,val,type(val)))
     return val
-
 
 
 class StarModel(object):
