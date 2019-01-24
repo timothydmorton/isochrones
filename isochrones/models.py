@@ -294,9 +294,12 @@ class ModelGridInterpolator(object):
 
     def initialize(self, pars=None):
         if pars is None:
-            pars = [1.04, 320, -0.35, 10000, 0.34]
+            if self.eep_replaces == 'age':
+                pars = [1.04, 320., -0.35, 10000., 0.34]
+            elif self.eep_replaces == 'mass':
+                pars = [320, 9.7, -0.35, 10000., 0.34]
 
-        Teff, logg, feh, mags = self.interp_mag([1.04, 320, -0.35, 10000, 0.34], self.bands)
+        Teff, logg, feh, mags = self.interp_mag(pars, self.bands)
         assert all([np.isfinite(v) for v in [Teff, logg, feh]])
         assert all([np.isfinite(m) for m in mags])
 
