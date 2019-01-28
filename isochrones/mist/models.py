@@ -88,11 +88,15 @@ class MISTIsochroneGrid(MISTModelGrid):
 
     def get_tarball_file(self, **kwargs):
         filename = self.get_directory_path(**kwargs)
-        return '{}.tar.gz'.format(filename)
+        return '{}.txz'.format(filename)
 
     def get_tarball_url(self, **kwargs):
+        """
+        e.g.
+        http://waps.cfa.harvard.edu/MIST/data/tarballs_v1.2/MIST_v1.2_vvcrit0.4_full_isos.txz
+        """
         return 'http://waps.cfa.harvard.edu/MIST/data/tarballs' + \
-               '_v{version}/MIST_v{version}_vvcrit{vvcrit}_{kind}.tar.gz'.format(**self.kwargs)
+               '_v{version}/MIST_v{version}_vvcrit{vvcrit}_{kind}.txz'.format(**self.kwargs)
 
     @classmethod
     def get_feh(cls, filename):
@@ -200,11 +204,11 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     def get_tarball_url(self, feh):
         basename = self.get_file_basename(feh)
         version = self.kwargs['version']
-        return 'http://waps.cfa.harvard.edu/MIST/data/tarballs_v{version}/{basename}.tar.gz'.format(version=version, basename=basename)
+        return 'http://waps.cfa.harvard.edu/MIST/data/tarballs_v{version}/{basename}.txz'.format(version=version, basename=basename)
 
     def get_tarball_file(self, feh):
         basename = self.get_file_basename(feh)
-        return os.path.join(self.datadir, '{}.tar.gz'.format(basename))
+        return os.path.join(self.datadir, '{}.txz'.format(basename))
 
     def download_and_extract_all(self):
         for feh in self.fehs:
