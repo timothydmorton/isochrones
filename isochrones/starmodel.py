@@ -733,7 +733,10 @@ class StarModel(object):
         short_basename = self._mnest_basename
 
         mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
-                        verbose=verbose, force_no_MPI=force_no_MPI)
+                        verbose=verbose)
+        
+        if force_no_MPI:
+            mnest_kwargs['force_no_MPI'] = force_no_MPI
 
         for k,v in kwargs.items():
             mnest_kwargs[k] = v
