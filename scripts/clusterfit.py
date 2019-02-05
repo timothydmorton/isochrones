@@ -1,41 +1,14 @@
 #!/usr/bin/env python
-import argparse
-
-import pandas as pd
-
-from isochrones.cluster import StarClusterModel, StarCatalog
-from isochrones import get_ichrone
-
-
-def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
-               mineep=200, maxeep=800, maxAV=0.1, minq=0.2,
-               overwrite=False, nlive=1000,
-               name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
-
-    if rank == 0:
-        stars = pd.read_hdf(starfile)
-
-        cat = StarCatalog(stars, bands=bands, props=props)
-        print('bands = {}'.format(cat.bands))
-        print(cat.df.head())
-
-        ic = get_ichrone(models, bands=cat.bands)
-
-        model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
-                                 max_distance=max_distance, minq=minq,
-                                 halo_fraction=halo_fraction,
-                                 max_AV=maxAV, name=name)
-
-    else:
-        model = None
-
-    if comm:
-        model = comm.bcast(model, root=0)
-
-    model.fit(overwrite=overwrite, n_live_points=nlive, max_iter=max_iter)
 
 
 if __name__ == '__main__':
+    import argparse
+
+    import pandas as pd
+
+    from isochrones.cluster import clusterfit
+
+
     try:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD

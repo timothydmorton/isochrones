@@ -14,6 +14,34 @@ from .utils import addmags, band_pairs
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
 
 
+def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
+               mineep=200, maxeep=800, maxAV=0.1, minq=0.2,
+               overwrite=False, nlive=1000,
+               name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
+
+    if rank == 0:
+        stars = pd.read_hdf(starfile)
+
+        cat = StarCatalog(stars, bands=bands, props=props)
+        print('bands = {}'.format(cat.bands))
+        print(cat.df.head())
+
+        ic = get_ichrone(models, bands=cat.bands)
+
+        model = StarClusterModel(ic, cat, eep_bounds=(mineep, maxeep),
+                                 max_distance=max_distance, minq=minq,
+                                 halo_fraction=halo_fraction,
+                                 max_AV=maxAV, name=name)
+
+    else:
+        model = None
+
+    if comm:
+        model = comm.bcast(model, root=0)
+
+    model.fit(overwrite=overwrite, n_live_points=nlive, max_iter=max_iter)
+
+
 class StarCatalog(object):
     """
     """
@@ -158,9 +186,9 @@ class SimulatedCluster(StarCatalog):
         N = self.N
         _, feh, distance, AV, alpha, gamma, fB = self.pars
 
-        pri_eeps = np.array([self.ic.eep_from_mass(m, age, feh)
+        pri_eeps = np.array([self.ic.get_eep(m, age, feh)
                              for m in pri_masses])
-        sec_eeps = np.array([self.ic.eep_from_mass(m, age, feh) if m else 0
+        sec_eeps = np.array([self.ic.get_eep(m, age, feh) if m else 0
                              for m in sec_masses])
 
         mags = {}
@@ -406,7 +434,8 @@ class StarClusterModel(StarModel):
 
 
 def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB,
-                     bands='JHK', mass_range=(0.8, 2.5), distance_scatter=5):
+                     bands='JHK', mass_range=(0.8, 2.5), distance_scatter=5,
+                     iso=None):
     u = np.random.random(N)
     is_binary = u < fB
 
@@ -414,17 +443,18 @@ def simulate_cluster(N, age, feh, distance, AV, alpha, gamma, fB,
     qs = PowerLawPrior(gamma, (0.1, 1)).sample(N)
     sec_masses = pri_masses * qs * is_binary
 
-    mist = get_ichrone('mist')
+    if iso is None:
+        iso = get_ichrone('mist')
 
-    pri_eeps = np.array([mist.eep_from_mass(m, age, feh) for m in pri_masses])
-    sec_eeps = np.array([mist.eep_from_mass(m, age, feh) for m in sec_masses])
+    pri_eeps = np.array([iso.get_eep(m, age, feh) for m in pri_masses])
+    sec_eeps = np.array([iso.get_eep(m, age, feh, return_nan=True) for m in sec_masses])
 
     mags = {}
     # slightly different distance for each star
     distances = distance + np.random.randn(N) * distance_scatter
     for b in bands:
-        pri = np.array([mist.mag[b](e, age, feh, d, AV) for e, d in zip(pri_eeps, distances)])
-        sec = np.array([mist.mag[b](e, age, feh, d, AV) for e, d in zip(sec_eeps, distances)])
+        pri = np.array([float(iso.interp_mag([e, age, feh, d, AV], [b])[3]) for e, d in zip(pri_eeps, distances)])
+        sec = np.array([float(iso.interp_mag([e, age, feh, d, AV], [b])[3]) for e, d in zip(sec_eeps, distances)])
         sec[~is_binary] = np.inf
         mags['{}_mag'.format(b)] = addmags(pri, sec)
 

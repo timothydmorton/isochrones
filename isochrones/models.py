@@ -409,15 +409,22 @@ class ModelGridInterpolator(object):
     def mass_age_resid(self, *args, **kwargs):
         raise NotImplementedError
 
-    def get_eep(self, mass, age, feh, eep0=370, resid_tol=0.01, method='nelder-mead',
+    def get_eep(self, mass, age, feh, eep0=370, resid_tol=0.02, method='nelder-mead',
+                return_object=False, return_nan=False,
                 **kwargs):
         result = minimize(self.mass_age_resid, eep0, args=(mass, age, feh), method=method,
                           options=kwargs)
 
+        if return_object:
+            return result
+
         if result.success and result.fun < resid_tol**2:
             return float(result.x)
         else:
-            raise RuntimeError('EEP minimization not successful: {}'.format((mass, age, feh)))
+            if return_nan:
+                return np.nan
+            else:
+                raise RuntimeError('EEP minimization not successful: {}'.format((mass, age, feh)))
 
 
 class EvolutionTrackInterpolator(ModelGridInterpolator):
@@ -441,9 +448,10 @@ class EvolutionTrackInterpolator(ModelGridInterpolator):
         return self._iso
 
     def mass_age_resid(self, eep, mass, age, feh):
-        mass_interp = self.iso.interp_value([eep, age, feh], ['mass'])
+        # mass_interp = self.iso.interp_value([eep, age, feh], ['mass'])
         age_interp = self.interp_value([mass, eep, feh], ['age'])
-        return (mass - mass_interp)**2 + (age - age_interp)**2
+        # return (mass - mass_interp)**2 + (age - age_interp)**2
+        return (age - age_interp)**2
 
 
 class IsochroneInterpolator(ModelGridInterpolator):
@@ -468,5 +476,6 @@ class IsochroneInterpolator(ModelGridInterpolator):
 
     def mass_age_resid(self, eep, mass, age, feh):
         mass_interp = self.interp_value([eep, age, feh], ['mass'])
-        age_interp = self.track.interp_value([mass, eep, feh], ['age'])
-        return (mass - mass_interp)**2 + (age - age_interp)**2
+        # age_interp = self.track.interp_value([mass, eep, feh], ['age'])
+        # return (mass - mass_interp)**2 + (age - age_interp)**2
+        return (mass - mass_interp)**2
