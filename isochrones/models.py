@@ -306,6 +306,12 @@ class ModelGridInterpolator(object):
     def _prop(self, prop, *pars):
         return self.interp_value(pars, [prop]).squeeze()
 
+    def mass(self, *pars):
+        return self._prop('mass', *pars)
+
+    def initial_mass(self, *pars):
+        return self._prop('initial_mass', *pars)
+
     def radius(self, *pars):
         return self._prop('radius', *pars)
 
