@@ -162,7 +162,7 @@ class StarModel(object):
     @property
     def bands(self):
         if self._bands is None:
-            self._bands = [k for k in self.kwargs if k in self.ic.bc_grid.bands]
+            self._bands = list({n.band for n in self.obs.get_obs_nodes()})
         return self._bands
 
     @property
