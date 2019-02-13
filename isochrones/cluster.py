@@ -337,11 +337,12 @@ class StarClusterModel(StarModel):
 
         model_masses = model_masses[ok]
         eeps = eeps[ok]
-        dm_deeps = self.ic.interp_value(eeps, age, feh, 'dm_deep')
+        dm_deeps = self.ic.interp_value([eeps, age, feh], ['dm_deep'])
         ln_dm_deeps = np.log(np.absolute(dm_deeps))
 
         # Compute model mags at each eep
-        model_mags = {b: self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
+        # model_mags = {b: self.ic.mag[b](eeps, age, feh, distance, AV) for b in self.bands}
+        _, _, _, model_mags_arr = self.ic.interp_mag([eeps, age, feh, distance, AV], self.bands)
 
         # Compute the log-likelihood of the (non-mag) props
         #  This needs to be added (appropriately) to lnlike_photmass
@@ -374,11 +375,11 @@ class StarClusterModel(StarModel):
         mass_lo, mass_hi = self.bounds('mass')
         Neep = len(eeps)
         Nbands = len(self.stars.bands)
-        model_mags_arr = np.empty((Neep, Nbands), dtype=float)
+        # model_mags_arr = np.empty((Neep, Nbands), dtype=float)
         vals_arr = np.empty((Nstars, Nbands), dtype=float)
         uncs_arr = np.empty((Nstars, Nbands), dtype=float)
         for i, (b, (vals, uncs)) in enumerate(self.stars.iter_bands(values=True)):
-            model_mags_arr[:, i] = model_mags[b]
+            # model_mags_arr[:, i] = model_mags[b]
             vals_arr[:, i] = vals
             uncs_arr[:, i] = uncs
 
