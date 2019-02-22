@@ -34,7 +34,7 @@ if not on_rtd:
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
-from .priors import salpeter_prior, feh_prior
+from .priors import salpeter_prior, feh_prior,logL_prior,radius_prior
 from .isochrone import get_ichrone, Isochrone
 
 def _parse_config_value(v):
@@ -83,7 +83,7 @@ class StarModel(object):
 
     # These are allowable parameters that are not photometric bands
     _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax',
-                  'logg','Teff','feh','density', 'separation',
+                  'logg','Teff','feh','density','logL','radius', 'separation',
                  'PA','resolution','relative','N','index', 'id')
 
     _default_name = 'single'
@@ -128,14 +128,18 @@ class StarModel(object):
                         'q':q_prior,
                         'age':age_prior,
                         'distance':distance_prior,
-                        'AV':AV_prior}
+                        'AV':AV_prior,
+                        'radius':radius_prior,
+                        'logL':logL_prior}
 
         self._bounds = {'mass':None,
                         'feh':None,
                         'age':None,
                         'q':q_prior.bounds,
                         'distance':distance_prior.bounds,
-                        'AV':AV_prior.bounds}
+                        'AV':AV_prior.bounds,
+                        'radius':None,
+                        'logL':None}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -441,7 +445,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
-            elif k in ['Teff', 'logg', 'feh', 'density']:
+            elif k in ['Teff','logg','feh','logL','radius']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
@@ -598,7 +602,7 @@ class StarModel(object):
 
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
-                      test=False,
+                      test=False,evidence_tolerance=0.5,sampling_efficiency=0.8,max_modes=100,mode_tolerance=-1e+90,max_iter=0,
                       **kwargs):
         """
         Fits model using MultiNest, via pymultinest.
@@ -673,7 +677,7 @@ class StarModel(object):
         short_basename = self._mnest_basename
 
         mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
-                        verbose=verbose)
+                        verbose=verbose,evidence_tolerance=evidence_tolerance,sampling_efficiency=sampling_efficiency,max_modes=max_modes,mode_tolerance=mode_tolerance,max_iter=max_iter)
 
         for k,v in kwargs.items():
             mnest_kwargs[k] = v
@@ -973,6 +977,10 @@ class StarModel(object):
                 priors.append(lambda x: self.prior('distance', x, bounds=self.bounds('distance')))
             elif re.match('AV', p):
                 priors.append(lambda x: self.prior('AV', x, bounds=self.bounds('AV')))
+            elif re.match('logL', p):
+                priors.append(lambda x: self.prior('logL', x, bounds=self.bounds('logL')))
+            elif re.match('radius', p):
+                priors.append(lambda x: self.prior('radius', x, bounds=self.bounds('radius')))
             else:
                 priors.append(None)
 
