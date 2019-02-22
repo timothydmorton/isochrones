@@ -34,7 +34,7 @@ if not on_rtd:
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import age_prior, distance_prior, AV_prior, q_prior
-from .priors import salpeter_prior, feh_prior
+from .priors import salpeter_prior, feh_prior,logL_prior,radius_prior
 from .isochrone import get_ichrone, Isochrone
 
 def _parse_config_value(v):
@@ -83,7 +83,7 @@ class StarModel(object):
 
     # These are allowable parameters that are not photometric bands
     _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax',
-                  'logg','Teff','feh','density', 'separation',
+                  'logg','Teff','feh','density','logL','radius', 'separation',
                  'PA','resolution','relative','N','index', 'id')
 
     _default_name = 'single'
@@ -128,14 +128,18 @@ class StarModel(object):
                         'q':q_prior,
                         'age':age_prior,
                         'distance':distance_prior,
-                        'AV':AV_prior}
+                        'AV':AV_prior,
+                        'radius':radius_prior,
+                        'logL':logL_prior}
 
         self._bounds = {'mass':None,
                         'feh':None,
                         'age':None,
                         'q':q_prior.bounds,
                         'distance':distance_prior.bounds,
-                        'AV':AV_prior.bounds}
+                        'AV':AV_prior.bounds,
+                        'radius':None,
+                        'logL':None}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -441,7 +445,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
-            elif k in ['Teff', 'logg', 'feh', 'density']:
+            elif k in ['Teff','logg','feh','density','logL','radius']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
@@ -973,6 +977,10 @@ class StarModel(object):
                 priors.append(lambda x: self.prior('distance', x, bounds=self.bounds('distance')))
             elif re.match('AV', p):
                 priors.append(lambda x: self.prior('AV', x, bounds=self.bounds('AV')))
+            elif re.match('logL', p):
+                priors.append(lambda x: self.prior('logL', x, bounds=self.bounds('logL')))
+            elif re.match('radius', p):
+                priors.append(lambda x: self.prior('radius', x, bounds=self.bounds('radius')))
             else:
                 priors.append(None)
 
