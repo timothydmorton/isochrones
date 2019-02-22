@@ -721,7 +721,7 @@ class ObservationTree(Node):
     but should *usually* do the right thing.  Check out `obs.print_ascii()`
     to visualize what this has done.
     """
-    spec_props = ['Teff', 'logg', 'feh','logL','radius']
+    spec_props = ['Teff', 'logg', 'feh','density','logL','radius']
 
     def __init__(self, observations=None, name=None):
 
