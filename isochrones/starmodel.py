@@ -445,7 +445,7 @@ class StarModel(object):
         for k,v in kwargs.items():
             if k=='parallax':
                 self.obs.add_parallax(v)
-            elif k in ['Teff','logg','feh','logL','radius']:
+            elif k in ['Teff','logg','feh','density','logL','radius']:
                 par = {k:v}
                 self.obs.add_spectroscopy(**par)
             elif re.search('_', k):
@@ -602,7 +602,7 @@ class StarModel(object):
 
     def fit_multinest(self, n_live_points=1000, basename=None,
                       verbose=True, refit=False, overwrite=False,
-                      test=False,evidence_tolerance=0.5,sampling_efficiency=0.8,max_modes=100,mode_tolerance=-1e+90,max_iter=0,
+                      test=False,
                       **kwargs):
         """
         Fits model using MultiNest, via pymultinest.
@@ -677,7 +677,7 @@ class StarModel(object):
         short_basename = self._mnest_basename
 
         mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
-                        verbose=verbose,evidence_tolerance=evidence_tolerance,sampling_efficiency=sampling_efficiency,max_modes=max_modes,mode_tolerance=mode_tolerance,max_iter=max_iter)
+                        verbose=verbose)
 
         for k,v in kwargs.items():
             mnest_kwargs[k] = v
