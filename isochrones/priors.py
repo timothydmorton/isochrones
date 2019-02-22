@@ -165,6 +165,8 @@ class FehPrior(Prior):
 
 #  Uniform true age prior; where 'age' is actually log10(age)
 age_prior = FlatLogPrior(bounds=(9, 10.15))
+logL_prior = FlatLogPrior(bounds=(-10,10))
+radius_prior = FlatPrior(bounds=(0.001,100))
 distance_prior = PowerLawPrior(alpha=2., bounds=(0,3000))
 AV_prior = FlatPrior(bounds=(0., 1.))
 q_prior = PowerLawPrior(alpha=0.3, bounds=(0.1, 1))
