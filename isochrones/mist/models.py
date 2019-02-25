@@ -14,6 +14,7 @@ from isochrones.config import ISOCHRONES
 
 from ..models import ModelGrid
 from ..eep import fit_section_poly, eep_fn, eep_jac, eep_fn_p0
+from .eep import max_eep
 from ..interp import DFInterpolator, searchsorted
 from ..utils import polyval
 from .eep import max_eep
@@ -45,6 +46,9 @@ class MISTModelGrid(ModelGrid):
 
     primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
     n_eep = 1710
+
+    def max_eep(self, mass, feh):
+        return max_eep(mass, feh)
 
     @property
     def eep_sections(self):
