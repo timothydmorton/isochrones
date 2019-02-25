@@ -162,7 +162,10 @@ class StarModel(object):
     @property
     def bands(self):
         if self._bands is None:
-            self._bands = list({n.band for n in self.obs.get_obs_nodes()})
+            try:
+                self._bands = list({n.band for n in self.obs.get_obs_nodes()})
+            except AttributeError:  # if no magnitudes are in obs
+                self._bands = []
         return self._bands
 
     @property
@@ -411,7 +414,7 @@ class StarModel(object):
         """Replaces old parameter vectors containing mass with the closest EEP equivalent
         """
         pardict = self.obs.p2pardict(pars)
-        eeps = {s: self.ic.eep_from_mass(*p[0:3]) for s, p in pardict.items()}
+        eeps = {s: self.ic.get_eep(*p[0:3]) for s, p in pardict.items()}
 
         new_pardict = pardict.copy()
         for s in pardict:
@@ -792,12 +795,17 @@ class StarModel(object):
 
         def sample_row(nstars, n=nwalkers):
             p = []
-            eep0 = (np.random.random(n) * (self.ic.maxeep - self.ic.mineep)
-                    + self.ic.mineep) # Should define an EEP prior function
+
             age0 = self._priors['age'].sample(n)
             feh0 = self._priors['feh'].sample(n)
             d0 = self._priors['distance'].sample(n)
             AV0 = self._priors['AV'].sample(n)
+
+            mass0 = self._priors['mass'].sample(n)
+            if self.ic.eep_replaces == 'age':
+                eep0 = self._priors['eep'].sample(n, mass=mass0, feh=feh0)
+            else:
+                eep0 = self._priors['eep'].sample(n, age=age0, feh=feh0)
 
             for i in range(nstars):
                 p += [eep0]
@@ -888,6 +896,7 @@ class StarModel(object):
         npars = self.n_params
 
         if p0 is None:
+            logging.debug('Generating initial p0 for {} walkers...'.format(nwalkers))
             p0 = self.emcee_p0(nwalkers)
             if initial_burn:
                 sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
@@ -1235,6 +1244,9 @@ class StarModel(object):
         if mnest:
             mod._mnest_basename = basename
         mod._directory = os.path.dirname(filename)
+
+        mod._priors.update(priors)
+        mod._bounds = bounds
         return mod
 
 class BinaryStarModel(StarModel):
