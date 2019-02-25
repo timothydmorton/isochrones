@@ -225,7 +225,8 @@ class ModelGrid(Grid):
     def get_eep_interp(self, mass, age, feh):
 
         if self.eep_replaces == 'age':
-            return interp_eep(age, feh, mass, self.fehs, self.masses, self.n_masses, self.age_grid, self.dt_deep_grid, self.array_lengths)
+            return interp_eep(age, feh, mass, self.fehs, self.masses, self.n_masses,
+                              self.age_grid, self.dt_deep_grid, self.array_lengths)
         elif self.eep_replaces == 'mass':
             raise NotImplementedError
 
@@ -238,7 +239,7 @@ class ModelGridInterpolator(object):
     # transformation from desired param order to that expected by interp functions
     _param_index_order = (1, 2, 0, 3, 4)
 
-    def __init__(self, bands=None):
+    def __init__(self, bands=None, **kwargs):
         self.bands = bands if bands is not None else list(self.bc_type.default_bands)
 
         self._model_grid = None
@@ -246,9 +247,43 @@ class ModelGridInterpolator(object):
 
         self.param_index_order = list(self._param_index_order)
 
+        self.kwargs = kwargs
+
         self._fehs = None
         self._ages = None
         self._masses = None
+
+    @property
+    def minfeh(self):
+        return self.model_grid.get_limits('feh')[0]
+
+    @property
+    def maxfeh(self):
+        return self.model_grid.get_limits('feh')[1]
+
+    @property
+    def mineep(self):
+        return self.model_grid.get_limits('eep')[0]
+
+    @property
+    def maxeep(self):
+        return self.model_grid.get_limits('eep')[1]
+
+    @property
+    def minage(self):
+        return self.model_grid.get_limits('age')[0]
+
+    @property
+    def maxage(self):
+        return self.model_grid.get_limits('age')[1]
+
+    @property
+    def minmass(self):
+        return self.model_grid.get_limits('mass')[0]
+
+    @property
+    def maxmass(self):
+        return self.model_grid.get_limits('mass')[1]
 
     @property
     def fehs(self):
@@ -258,7 +293,7 @@ class ModelGridInterpolator(object):
 
     @property
     def ages(self):
-        if not self.eep_replaces == 'age':
+        if not self.eep_replaces == 'mass':
             raise AttributeError('Age is not a dimension of model grid type {}!'.format(self.grid_type))
         if self._ages is None:
             self._ages = self.model_grid.ages
@@ -266,7 +301,7 @@ class ModelGridInterpolator(object):
 
     @property
     def masses(self):
-        if not self.eep_replaces == 'mass':
+        if not self.eep_replaces == 'age':
             raise AttributeError('Mass is not a dimension of this model grid!'.format(self.grid_type))
         if self._masses is None:
             self._masses = self.model_grid.masses
@@ -283,7 +318,7 @@ class ModelGridInterpolator(object):
     @property
     def model_grid(self):
         if self._model_grid is None:
-            self._model_grid = self.grid_type()
+            self._model_grid = self.grid_type(**self.kwargs)
         return self._model_grid
 
     @property
@@ -350,7 +385,10 @@ class ModelGridInterpolator(object):
 
         pars : age, feh, eep, distance, AV
         """
-        i_bands = [self.bc_grid.interp.columns.index(b) for b in bands]
+        if not bands:
+            i_bands = np.array([], dtype=int)
+        else:
+            i_bands = [self.bc_grid.interp.columns.index(b) for b in bands]
 
         try:
             pars = np.atleast_1d(pars).astype(float).squeeze()
@@ -412,12 +450,34 @@ class ModelGridInterpolator(object):
         values = np.concatenate([np.atleast_2d(props), np.atleast_2d(mags)], axis=1)
         return pd.DataFrame(values, columns=cols)
 
+    def isochrone(self, age, feh=0.0, eep_range=None, distance=10., AV=0.0, dropna=True):
+        if eep_range is None:
+            eep_range = self.model_grid.get_limits('eep')
+        eeps = np.arange(*eep_range)
+
+        df = self(eeps, age, feh, distance=distance, AV=AV)
+        if dropna:
+            return df.dropna()
+        else:
+            return df
+
     def mass_age_resid(self, *args, **kwargs):
         raise NotImplementedError
 
-    def get_eep(self, mass, age, feh, eep0=370, resid_tol=0.02, method='nelder-mead',
+    def max_eep(self, mass, feh):
+        return self.model_grid.max_eep(mass, feh)
+
+    def get_eep(self, mass, age, feh, eep0=300, resid_tol=0.02, method='nelder-mead',
                 return_object=False, return_nan=False,
                 **kwargs):
+
+        eeps_to_try = [min(self.max_eep(mass, feh) - 20, 600), 100, 200]
+        while np.isnan(self.mass_age_resid(eep0, mass, age, feh)):
+            try:
+                eep0 = eeps_to_try.pop()
+            except IndexError:
+                raise ValueError('eep0 gives nan for all initial guesses! {}'.format(eep0, (mass, age, feh)))
+
         result = minimize(self.mass_age_resid, eep0, args=(mass, age, feh), method=method,
                           options=kwargs)
 
@@ -481,7 +541,7 @@ class IsochroneInterpolator(ModelGridInterpolator):
         return self._track
 
     def mass_age_resid(self, eep, mass, age, feh):
-        mass_interp = self.interp_value([eep, age, feh], ['mass'])
+        mass_interp = self.interp_value([eep, age, feh], ['initial_mass'])
         # age_interp = self.track.interp_value([mass, eep, feh], ['age'])
         # return (mass - mass_interp)**2 + (age - age_interp)**2
         return (mass - mass_interp)**2
