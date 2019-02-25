@@ -841,7 +841,7 @@ class ObservationTree(Node):
                 store.close()
 
         df = self.to_df()
-        df.to_hdf(filename, path+'/df')
+        df.to_hdf(filename, path+'/df', format='table')
         with pd.HDFStore(filename) as store:
             # store = pd.HDFStore(filename)
             attrs = store.get_storer(path+'/df').attrs
