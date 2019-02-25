@@ -33,8 +33,8 @@ if not on_rtd:
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
-from .priors import age_prior, distance_prior, AV_prior, q_prior, FlatPrior
-from .priors import salpeter_prior, chabrier_prior, feh_prior, FehPrior, EEP_prior
+from .priors import AgePrior, DistancePrior, AVPrior, QPrior, FlatPrior
+from .priors import SalpeterPrior, ChabrierPrior, FehPrior, EEP_prior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
@@ -130,22 +130,17 @@ class StarModel(object):
                 self.obs.define_models(ic, N=N, index=index)
                 self._add_properties(**kwargs)
 
-        self._priors = {'mass': salpeter_prior,
-                        'feh': feh_prior,
-                        'q': q_prior,
-                        'age': age_prior,
-                        'distance': distance_prior,
-                        'AV': AV_prior}
+        self._priors = {'mass': ChabrierPrior(),
+                        'feh': FehPrior(),
+                        'q': QPrior(),
+                        'age': AgePrior(),
+                        'distance': DistancePrior(),
+                        'AV': AVPrior()}
         self._priors['eep'] = EEP_prior(self.ic, self._priors[self.ic.eep_replaces],
                                         bounds=eep_bounds)
 
-        self._bounds = {'mass': None,
-                        'feh': None,
-                        'age': None,
-                        'q': q_prior.bounds,
-                        'distance': distance_prior.bounds,
-                        'AV': AV_prior.bounds,
-                        'eep': self._priors['eep'].bounds}
+        self._bounds = {k: p.bounds if k not in ['mass', 'feh', 'age'] else None
+                            for k, p in self._priors.items()}
 
         if 'maxAV' in kwargs:
             self.set_bounds(AV=(0, kwargs['maxAV']))
@@ -1183,7 +1178,8 @@ class StarModel(object):
                 attrs._mnest_basename = self._mnest_basename
 
             attrs._bounds = self._bounds
-            attrs._priors = self._priors
+            attrs._priors = {k: v for k, v in self._priors.items() if k != 'eep'}
+            # attrs._priors = self._priors
 
             attrs.name = self.name
             store.close()
@@ -1334,12 +1330,12 @@ class BasicStarModel(StarModel):
 
         self._param_names = None
 
-        self._priors = {'mass': chabrier_prior,
-                        'feh': feh_prior,
-                        'q': q_prior,
-                        'age': age_prior,
-                        'distance': distance_prior,
-                        'AV': AV_prior}
+        self._priors = {'mass': ChabrierPrior(),
+                        'feh': FehPrior(),
+                        'q': QPrior(),
+                        'age': AgePrior(),
+                        'distance': DistancePrior(),
+                        'AV': AVPrior()}
         self._priors['eep'] = EEP_prior(self.ic, self._priors[self.ic.eep_replaces],
                                         bounds=eep_bounds)
 

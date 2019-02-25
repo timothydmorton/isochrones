@@ -9,7 +9,7 @@ if not on_rtd:
     import scipy.stats
     from scipy.stats import uniform, lognorm
     from scipy.integrate import quad
-    from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
+    # from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
 
     import matplotlib.pyplot as plt
     from numba import jit
@@ -21,6 +21,7 @@ ONE_OVER_ROOT_2PI = 1./_norm_pdf_C
 _norm_pdf_logC = np.log(_norm_pdf_C)
 LOG_ONE_OVER_ROOT_2PI = np.log(ONE_OVER_ROOT_2PI)
 
+
 def _norm_pdf(x):
     return np.exp(-x**2/2.0) / _norm_pdf_C
 
@@ -31,6 +32,9 @@ def _norm_logpdf(x):
 
 class Prior(object):
 
+    def __init__(self, *args, **kwargs):
+        self._norm = 1.
+
     def __call__(self, x, **kwargs):
         return self.pdf(x, **kwargs)
 
@@ -40,10 +44,19 @@ class Prior(object):
 
     @bounds.setter
     def bounds(self, new):
+        self._norm = quad(self._pdf, *new)[0]
         self._bounds = new
+        self.test_integral()
 
-    def pdf(self, x):
+    def _pdf(self, x, **kwargs):
         raise NotImplementedError
+
+    def pdf(self, x, **kwargs):
+        lo, hi = self.bounds
+        if x < lo or x > hi:
+            return 0
+        else:
+            return self._pdf(x, **kwargs) / self._norm
 
     def lnpdf(self, x, **kwargs):
         if hasattr(self, '_lnpdf'):
@@ -64,7 +77,10 @@ class Prior(object):
     def test_sampling(self, n=100000, plot=False):
         x = self.sample(n)
         if hasattr(self, 'bounds'):
-            rng = self.bounds
+            if self.bounds == (-np.inf, np.inf):
+                rng = None
+            else:
+                rng = self.bounds
         else:
             rng = None
         hn, _ = np.histogram(x, range=rng)
@@ -86,13 +102,11 @@ class Prior(object):
         else:
             assert max((resid / sigma)[hn > 50]) < 4
 
+
 class BoundedPrior(Prior):
     def __init__(self, bounds=None):
         self._bounds = bounds
         super(BoundedPrior, self).__init__()
-
-    def test_integral(self):
-        assert np.isclose(1, quad(self.pdf, *self.bounds)[0])
 
     def __call__(self, x, **kwargs):
         if self.bounds is not None:
@@ -100,6 +114,15 @@ class BoundedPrior(Prior):
             if x < lo or x > hi:
                 return 0
         return self.pdf(x, **kwargs)
+
+    @property
+    def bounds(self):
+        return self._bounds
+
+    @bounds.setter
+    def bounds(self, new):
+        self._bounds = new
+        self.test_integral()
 
     def lnpdf(self, x, **kwargs):
         if self.bounds is not None:
@@ -131,6 +154,7 @@ class BrokenPrior(Prior):
         if bounds is None:
             bounds = (-np.inf, np.inf)
         self._bounds = bounds
+        self._norm = 1.
 
         self.quad_args = dict(limit=200)
         self._initialize()
@@ -174,7 +198,7 @@ class BrokenPrior(Prior):
         self.cumnorm = cumnorm
 
 
-    def pdf(self, x):
+    def _pdf(self, x):
         i = np.digitize(x, self.breakpoints)
         return self.components[i](x) / self.norms[i]
 
@@ -221,7 +245,7 @@ class GaussianPrior(BoundedPrior):
             self.norm = 1.
             self.lognorm = 0.
 
-    def pdf(self, x):
+    def _pdf(self, x):
         return _norm_pdf((x - self.mean) / self.sigma) / self.sigma / self.norm
 
     def _lnpdf(self, x):
@@ -232,14 +256,15 @@ class LogNormalPrior(Prior):
     def __init__(self, mu, sigma, bounds=None):
         self.mu = mu
         self.sigma = sigma
-        self.bounds = bounds
         self.scale = np.exp(mu)
         self.log_s = np.log(sigma)
 
         self.distribution = lognorm(sigma, scale=np.exp(mu))
-        self.bounds = (0, np.inf)
+        self._bounds = (0, np.inf)
 
-    def pdf(self, x):
+        super().__init__(self)
+
+    def _pdf(self, x):
         s = self.sigma
         y = x / self.scale
         return ONE_OVER_ROOT_2PI / (s * y) * np.exp(-0.5 * (np.log(y) / s)**2) / self.scale
@@ -253,9 +278,9 @@ class LogNormalPrior(Prior):
 class FlatPrior(BoundedPrior):
 
     def __init__(self, bounds):
-        super(FlatPrior, self).__init__(bounds=bounds)
+        super().__init__(bounds=bounds)
 
-    def pdf(self, x):
+    def _pdf(self, x):
         lo, hi = self.bounds
         return 1./(hi - lo)
 
@@ -267,7 +292,7 @@ class FlatLogPrior(BoundedPrior):
     def __init__(self, bounds):
         super(FlatLogPrior, self).__init__(bounds=bounds)
 
-    def pdf(self, x):
+    def _pdf(self, x):
         lo, hi = self.bounds
         return np.log(10) * 10**x/ (10**hi - 10**lo)
 
@@ -280,7 +305,7 @@ class PowerLawPrior(BoundedPrior):
         self.alpha = alpha
         super(PowerLawPrior, self).__init__(bounds=bounds)
 
-    def pdf(self, x):
+    def _pdf(self, x):
         lo, hi = self.bounds
         C = (1 + self.alpha)/(hi**(1 + self.alpha) - lo**(1 + self.alpha))
         # C = 1/(1/(self.alpha+1)*(1 - lo**(self.alpha+1)))
@@ -319,13 +344,13 @@ class FehPrior(Prior):
     2D gaussian fit based on Casagrande (2011)
     """
 
-    def __init__(self, halo_fraction=0.001, local=True):
+    def __init__(self, halo_fraction=0.001, local=True, **kwargs):
         self.halo_fraction = halo_fraction
         self.local = local
 
-        super(FehPrior, self).__init__()
+        super().__init__(**kwargs)
 
-    def pdf(self, x):
+    def _pdf(self, x):
         feh = x
 
         if self.local:
@@ -371,7 +396,8 @@ class EEP_prior(BoundedPrior):
     def __init__(self, ic, orig_prior, bounds=None):
         self.ic = ic
         self.orig_prior = orig_prior
-        self.bounds = bounds if bounds is not None else ic.eep_bounds
+        self._bounds = bounds if bounds is not None else ic.eep_bounds
+        self._norm = 1.
         self.orig_par = ic.eep_replaces
         if self.orig_par == 'age':
             self.deriv_prop = 'dt_deep'
@@ -380,7 +406,7 @@ class EEP_prior(BoundedPrior):
         else:
             raise ValueError('wtf.')
 
-    def pdf(self, eep, **kwargs):
+    def _pdf(self, eep, **kwargs):
         if self.orig_par == 'age':
             pars = [kwargs['mass'], eep, kwargs['feh']]
         elif self.orig_par == 'mass':
@@ -435,13 +461,29 @@ def powerlaw_lnpdf(x, alpha, lo, hi):
     return log(C) + alpha * log(x)
 
 
+class AgePrior(FlatLogPrior):
+    """Uniform true age prior, where 'age' is actually log10(age)
+    """
+    def __init__(self, **kwargs):
+        super().__init__(bounds=(5, 10.15), **kwargs)
 
-#  Uniform true age prior; where 'age' is actually log10(age)
-age_prior = FlatLogPrior(bounds=(5, 10.15))
-distance_prior = PowerLawPrior(alpha=2., bounds=(0,10000))
-AV_prior = FlatPrior(bounds=(0., 1.))
-q_prior = PowerLawPrior(alpha=0.3, bounds=(0.1, 1))
-salpeter_prior = PowerLawPrior(alpha=-2.35, bounds=(0.1, 10))
-chabrier_prior = BrokenPrior([LogNormalPrior(0.079, 0.69), PowerLawPrior(-2.35, (1., 100.))],
-                             [1.], bounds=(0.1, 100.))
-feh_prior = FehPrior(halo_fraction=0.001)
+class DistancePrior(PowerLawPrior):
+    def __init__(self, **kwargs):
+        super().__init__(alpha=2., bounds=(0, 10000), **kwargs)
+
+class AVPrior(FlatPrior):
+    def __init__(self, **kwargs):
+        super().__init__(bounds=(0., 1.))
+
+class QPrior(PowerLawPrior):
+    def __init__(self, **kwargs):
+        super().__init__(alpha=0.3, bounds=(0.1, 1), **kwargs)
+
+class SalpeterPrior(PowerLawPrior):
+    def __init__(self, **kwargs):
+        super().__init__(alpha=-2.35, bounds=(0.1, 10), **kwargs)
+
+class ChabrierPrior(BrokenPrior):
+    def __init__(self, **kwargs):
+        super().__init__([LogNormalPrior(0.079, 0.69), PowerLawPrior(-2.35, (1., 100.))],
+                             [1.], bounds=(0.1, 100.), **kwargs)
