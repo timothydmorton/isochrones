@@ -6,7 +6,6 @@ import logging
 
 from pandas.util.testing import assert_frame_equal
 
-from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel
 from isochrones.starfit import starfit
@@ -25,10 +24,8 @@ props = dict(Teff=(5800, 100), logg=(4.5, 0.1),
              J=(3.58,0.05), K=(3.22, 0.05))
 
 def test_fitting():
-    # mod_dar = _check_fitting(StarModel(Dartmouth_Isochrone, **props))
     mod_mist = _check_fitting(StarModel(MIST_Isochrone, **props))
 
-    # _check_saving(mod_dar)
     _check_saving(mod_mist)
 
 def test_starfit():

@@ -1,17 +1,15 @@
 import os
 import numpy as np
 
-from isochrones.dartmouth import Dartmouth_Isochrone
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel, BinaryStarModel, TripleStarModel
+from isochrones.starmodel import BasicStarModel
 
 FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
-DAR = Dartmouth_Isochrone()
 MIST = MIST_Isochrone()
 
 def test_ini():
-    _check_ini(DAR)
     _check_ini(MIST)
 
 
@@ -54,7 +52,7 @@ class IniCheck(object):
         assert np.isfinite(mod.lnlike(eep_pars))
 
     def check_p0(self, mod):
-        p0 = mod.emcee_p0(200)
+        p0 = mod.emcee_p0(10)
         nbad = 0
         for i,p in enumerate(p0):
             if not np.isfinite(mod.lnpost(p)):
@@ -63,13 +61,15 @@ class IniCheck(object):
         assert nbad==0
 
     def check(self, ic, folder):
+        print('checking {}'.format(folder))
         mod = self.get_mod(ic, folder)
+        mod.print_ascii()
         self.check_asserts(mod)
         self.check_p0(mod)
 
-        if hasattr(self, 'get_mod_special'):
-            mod = self.get_mod_special(ic, folder)
-            self.check_asserts(mod)
+        # if hasattr(self, 'get_mod_special'):
+        #     mod = self.get_mod_special(ic, folder)
+        #     self.check_asserts(mod)
 
 class SingleCheck(IniCheck):
     pars = [1.0, 9.4, 0.0, 100, 0.2]
