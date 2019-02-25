@@ -184,7 +184,7 @@ class StarModel(object):
     def _parse_band(cls, kw):
         """Returns photometric band from inifile keyword
         """
-        m = re.search('([a-zA-Z0-9]+)(_\d+)?', kw)
+        m = re.search(r'([a-zA-Z0-9]+)(_\d+)?', kw)
         if m:
             if m.group(1) in cls._not_a_band:
                 return None
@@ -329,18 +329,18 @@ class StarModel(object):
                     tags = []
                     bands = []
                     for label in c[k]:
-                        m = re.search('separation(_\w+)?', label)
+                        m = re.search(r'separation(_\w+)?', label)
                         if m:
                             multiple = True
                             if m.group(1) is not None:
                                 if m.group(1) not in tags:
                                     tags.append(m.group(1))
-                        elif re.search('PA', label) or re.search('id', label) or \
+                        elif re.search(r'PA', label) or re.search(r'id', label) or \
                                 label in ['resolution', 'relative']:
                             continue
                         else:
                             # At this point, this should be a photometric band
-                            m = re.search('([a-zA-Z0-9]+)(_\w+)?', label)
+                            m = re.search(r'([a-zA-Z0-9]+)(_\w+)?', label)
                             b = m.group(1)
                             if b not in bands:
                                 bands.append(b)
@@ -483,8 +483,8 @@ class StarModel(object):
             elif k in ['Teff', 'logg', 'feh', 'density']:
                 par = {k: v}
                 self.obs.add_spectroscopy(**par)
-            elif re.search('_', k):
-                m = re.search('^(\w+)_(\w+)$', k)
+            elif re.search(r'_', k):
+                m = re.search(r'^(\w+)_(\w+)$', k)
                 prop = m.group(1)
                 tag = m.group(2)
                 self.obs.add_spectroscopy(**{prop: v, 'label': '0_{}'.format(tag)})
@@ -836,7 +836,7 @@ class StarModel(object):
         return p0
 
     def fit_mcmc(self, **kwargs):
-        return fit_emcee3(self, **kwargs)
+        return self.fit_mcmc_old(**kwargs)
 
     def fit_mcmc_old(self,nwalkers=300,nburn=200,niter=100,
                  p0=None,initial_burn=None,
