@@ -61,9 +61,14 @@ class Grid(object):
         if not os.path.exists(tarball):
             self.download_tarball(**kwargs)
 
-        with tarfile.open(tarball) as tar:
-            logging.info('Extracting {}...'.format(tarball))
-            tar.extractall(self.datadir)
+        try:
+            with tarfile.open(tarball) as tar:
+                logging.info('Extracting {}...'.format(tarball))
+                tar.extractall(self.datadir)
+        except EOFError:
+            logging.error('{} corrupted; deleting and re-downloading.'.format(tarball))
+            os.remove(tarball)
+            self.extract_tarball(**kwargs)
 
     def read_hdf(self, orig=False):
         h5file = self.hdf_filename
