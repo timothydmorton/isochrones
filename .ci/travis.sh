@@ -15,6 +15,6 @@ conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
 source activate test
 
-conda install -c conda-forge numpy numba cython nose pytables
+conda install -c conda-forge numpy numba cython nose pytables pandas
 
 python setup.py develop
