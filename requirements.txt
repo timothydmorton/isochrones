@@ -3,3 +3,4 @@ numba
 nose
 pytables
 pandas
+pyviz
