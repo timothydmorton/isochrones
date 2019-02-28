@@ -31,7 +31,7 @@ class MISTModelGrid(ModelGrid):
     logg_col = 'log_g'
     logL_col = 'log_L'
 
-    default_kwargs = {'version': '1.2', 'vvcrit': 0.0, 'kind': 'full_isos'}
+    default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'kind': 'full_isos'}
     default_columns = ModelGrid.default_columns + ('delta_nu', 'nu_max', 'phase')
 
     bounds = (('age', (5, 10.13)),
@@ -40,12 +40,19 @@ class MISTModelGrid(ModelGrid):
               ('mass', (0.1, 300)))
 
     fehs = np.array((-4.00, -3.50, -3.00, -2.50, -2.00,
-            -1.75, -1.50, -1.25, -1.00, -0.75, -0.50,
-            -0.25, 0.00, 0.25, 0.50))
+                     -1.75, -1.50, -1.25, -1.00, -0.75, -0.50,
+                     -0.25, 0.00, 0.25, 0.50))
     n_fehs = 15
 
     primary_eeps = (1, 202, 353, 454, 605, 631, 707, 808, 1409, 1710)
+    eep_labels = ('PMS', 'ZAMS', 'IAMS', 'TAMS', 'RGBTip', 'ZAHB', 'TAHB',
+                  'TPAGB', 'post-AGB', 'WDCS')
+    eep_labels_highmass = ('PMS', 'ZAMS', 'IAMS', 'TAMS', 'RGBTip', 'ZACHeB', 'TACHeB', 'C-burn')
     n_eep = 1710
+
+    @property
+    def foo(self):
+        return self._foo
 
     def max_eep(self, mass, feh):
         return max_eep(mass, feh)
@@ -104,7 +111,7 @@ class MISTIsochroneGrid(MISTModelGrid):
 
     @classmethod
     def get_feh(cls, filename):
-        m = re.search('feh_([mp])([0-9]\.[0-9]{2})_afe', filename)
+        m = re.search(r'feh_([mp])([0-9]\.[0-9]{2})_afe', filename)
         if m:
             sign = 1 if m.group(1) == 'p' else -1
             return float(m.group(2)) * sign

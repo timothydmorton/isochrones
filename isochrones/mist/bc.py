@@ -31,7 +31,7 @@ class MISTBolometricCorrectionGrid(BolometricCorrectionGrid):
                       SPITZER=['IRAC_3.6', 'IRAC_4.5', 'IRAC_5.8', 'IRAC_8.0'],
                       UKIDSS=['UKIDSS_Z', 'UKIDSS_Y', 'UKIDSS_J',
                               'UKIDSS_H', 'UKIDSS_K'],
-                      SDSS=['SDSS_u', 'SDSS_g', 'SDSS_r', 'SDSS_i', 'SDSS_z'])
+                      SDSSugriz=['SDSS_u', 'SDSS_g', 'SDSS_r', 'SDSS_i', 'SDSS_z'])
 
     default_bands = ('J', 'H', 'K', 'G', 'BP', 'RP', 'W1', 'W2', 'W3', 'TESS', 'Kepler')
 
@@ -48,7 +48,7 @@ class MISTBolometricCorrectionGrid(BolometricCorrectionGrid):
 
         # Default to SDSS for these
         if b in ['u', 'g', 'r', 'i', 'z']:
-            phot = 'SDSS'
+            phot = 'SDSSugriz'
             band = 'SDSS_{}'.format(b)
         elif b in ['U', 'B', 'V', 'R', 'I']:
             phot = 'UBVRIplus'
