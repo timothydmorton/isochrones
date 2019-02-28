@@ -32,6 +32,7 @@ import isochrones
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
@@ -52,7 +53,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'isochrones'
-copyright = u'2015, Timothy Morton'
+copyright = u'2019, Timothy Morton'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -75,7 +76,7 @@ release = isochrones.__version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -115,7 +116,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'scrolls'
+html_theme = 'sphinx_rtd_theme'
 
 # import os
 # on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
