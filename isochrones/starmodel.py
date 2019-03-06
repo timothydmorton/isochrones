@@ -92,15 +92,13 @@ class StarModel(object):
                   'logg','Teff','feh','density', 'separation',
                  'PA','resolution','relative','N','index', 'id')
 
-    _default_name = 'single'
-
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
                  RA=None, dec=None, coords=None,
                  eep_bounds=None,
                  **kwargs):
 
-        self.name = name if name else self._default_name
+        self.name = name
 
         if coords is None:
             if RA is not None and dec is not None:
@@ -550,24 +548,24 @@ class StarModel(object):
                     lnp += self._priors['eep'].lnpdf(eep, age=p[i + N[s]],
                                                      feh=p[i + N[s] + 1])
 
-                masses, dm_deeps = zip(*[self.ic.interp_value([eep, age, feh], ['initial_mass', 'dm_deep'])
-                                         for eep in eeps])
-                if any(np.isnan(masses)):
-                    return -np.inf
+                # masses, dm_deeps = zip(*[self.ic.interp_value([eep, age, feh], ['initial_mass', 'dm_deep'])
+                #                          for eep in eeps])
+                # if any(np.isnan(masses)):
+                #     return -np.inf
 
-                # Priors for mass ratios
-                for j in range(N[s]-1):
-                    q = masses[j+1]/masses[0]
-                    qmin, qmax = self.bounds('q')
+                # # Priors for mass ratios
+                # for j in range(N[s]-1):
+                #     q = masses[j+1]/masses[0]
+                #     qmin, qmax = self.bounds('q')
 
-                    ## The following would enforce MA > MB > MC, but seems to make things very slow:
-                    #if j+1 > 1:
-                    #    qmax = masses[j] / masses[0]
+                #     ## The following would enforce MA > MB > MC, but seems to make things very slow:
+                #     #if j+1 > 1:
+                #     #    qmax = masses[j] / masses[0]
 
-                    lnp += np.log(self.prior('q', q))
-                    if not np.isfinite(lnp):
-                        logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
-                        return -np.inf
+                #     lnp += np.log(self.prior('q', q))
+                #     if not np.isfinite(lnp):
+                #         logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
+                #         return -np.inf
 
                 i += N[s] + 4
 
@@ -590,8 +588,9 @@ class StarModel(object):
             i += 4 + n
         return pars
 
-    def set_prior(self, prop, prior):
-        self._priors[prop] = prior
+    def set_prior(self, **kwargs):
+        for prop, prior in kwargs.items():
+            self._priors[prop] = prior
 
     def prior(self, prop, val, **kwargs):
         return self._priors[prop](val, **kwargs)
@@ -606,12 +605,12 @@ class StarModel(object):
 
     def mnest_prior(self, cube, ndim, nparams):
         i = 0
-        for _,n in self.obs.Nstars.items():
+        for _, n in self.obs.Nstars.items():
             mineep, maxeep = self.bounds('eep')
             for j in range(n):
                 cube[i+j] = (maxeep - mineep)*cube[i+j] + mineep
 
-            for j, par in enumerate(['age','feh','distance','AV']):
+            for j, par in enumerate(['age', 'feh', 'distance', 'AV']):
                 lo, hi = self.bounds(par)
                 cube[i+n+j] = (hi - lo)*cube[i+n+j] + lo
             i += 4 + n
@@ -637,14 +636,16 @@ class StarModel(object):
         """
         if not hasattr(self, '_mnest_basename'):
             s = self.labelstring
-            if s=='0_0':
+            if s == '0_0':
                 s = 'single'
-            elif s=='0_0-0_1':
+            elif s == '0_0-0_1':
                 s = 'binary'
-            elif s=='0_0-0_1-0_2':
+            elif s == '0_0-0_1-0_2':
                 s = 'triple'
 
             s = '{}-{}'.format(self.ic.name, s)
+            if self.name:
+                s = '{}-{}'.format(self.name, s)
             self._mnest_basename = os.path.join('chains', s+'-')
 
         if os.path.isabs(self._mnest_basename):
@@ -732,7 +733,7 @@ class StarModel(object):
 
         mnest_kwargs = dict(n_live_points=n_live_points, outputfiles_basename=short_basename,
                         verbose=verbose)
-        
+
         if force_no_MPI:
             mnest_kwargs['force_no_MPI'] = force_no_MPI
 
@@ -949,18 +950,18 @@ class StarModel(object):
 
         df = pd.DataFrame()
 
-        i=0
-        for s,n in self.obs.Nstars.items():
-            age = chain[:,i+n]
-            feh = chain[:,i+n+1]
-            distance = chain[:,i+n+2]
-            AV = chain[:,i+n+3]
+        i = 0
+        for s, n in self.obs.Nstars.items():
+            age = chain[:, i+n]
+            feh = chain[:, i+n+1]
+            distance = chain[:, i+n+2]
+            AV = chain[:, i+n+3]
             for j in range(n):
-                mass = chain[:,i+j]
+                mass = chain[:, i+j]
                 d = self.ic(mass, age, feh,
                              distance=distance, AV=AV)
                 for c in d.columns:
-                    df[c+'_{}_{}'.format(s,j)] = d[c]
+                    df[c + '_{}_{}'.format(s, j)] = d[c]
             df['age_{}'.format(s)] = age
             df['feh_{}'.format(s)] = feh
             df['distance_{}'.format(s)] = distance
@@ -1109,10 +1110,10 @@ class StarModel(object):
                 truths.append(n.value[0])
 
             names.append(name)
-            rng.append((min(truths[-1], np.percentile(samples[-1],0.5)),
-                        max(truths[-1], np.percentile(samples[-1],99.5))))
+            rng.append((min(truths[-1], np.percentile(samples[-1], 0.5)),
+                        max(truths[-1], np.percentile(samples[-1], 99.5))))
 
-        for s,d in self.obs.spectroscopy.items():
+        for s, d in self.obs.spectroscopy.items():
             for k in d:
                 try:
                     name = '{}_{}'.format(k, s)
@@ -1123,14 +1124,21 @@ class StarModel(object):
                     samples.append(self.samples[name])
                 truths.append(d[k][0])
 
-                rng.append((min(truths[-1], np.percentile(samples[-1],0.5)),
-                            max(truths[-1], np.percentile(samples[-1],99.5))))
+                rng.append((min(truths[-1], np.percentile(samples[-1], 0.5)),
+                            max(truths[-1], np.percentile(samples[-1], 99.5))))
                 names.append(name)
+
+        for s, val in self.obs.parallax.items():
+            plax_samples = 1000./self.samples['distance_{}'.format(s)]
+            samples.append(plax_samples)
+            truths.append(val[0])
+            rng.append((min(truths[-1], np.percentile(samples[-1], 0.5)),
+                        max(truths[-1], np.percentile(samples[-1], 99.5))))
+            names.append('parallax_{}'.format(s))
 
         samples = np.array(samples).T
 
         return corner.corner(samples, labels=names, truths=truths, range=rng, **kwargs)
-
 
     def save_hdf(self, filename, path='', overwrite=False, append=False):
         """Saves object data to HDF file (only works if MCMC is run)
@@ -1161,9 +1169,9 @@ class StarModel(object):
                         raise IOError('{} in {} exists.  Set either overwrite or append option.'.format(path,filename))
 
         if self.samples is not None:
-            self.samples.to_hdf(filename, path+'/samples')
+            self.samples.to_hdf(filename, path+'/samples', format='table')
         else:
-            pd.DataFrame().to_hdf(filename, path+'/samples')
+            pd.DataFrame().to_hdf(filename, path+'/samples', format='table')
 
         self.obs.save_hdf(filename, path+'/obs', append=True)
 
@@ -1315,13 +1323,16 @@ class BasicStarModel(StarModel):
 
     use_emcee = False
 
-    def __init__(self, ic, eep_bounds=None, name='', directory='.',
+    def __init__(self, ic, eep_bounds=None, name='', directory='.', N=1,
                  maxAV=None, max_distance=None, halo_fraction=None, **kwargs):
         self._ic = ic
 
         self.eep_bounds = eep_bounds if eep_bounds is not None else self.ic.eep_bounds
         self.name = str(name)
 
+        if N > 1 and ic.eep_replaces == 'age':
+            raise ValueError('Can only fit mulitple stars with IsochroneInterpolator!')
+        self.N = 1
         self.kwargs = kwargs
 
         self._bands = None
@@ -1362,12 +1373,21 @@ class BasicStarModel(StarModel):
 
     @property
     def labelstring(self):
-        return 'single'
+        if self.N == 1:
+            return 'single'
+        elif self.N == 2:
+            return 'binary'
+        elif self.N == 3:
+            return 'triple'
 
     @property
     def param_names(self):
         if self._param_names is None:
             self._param_names = self.ic.param_names
+            if self.N == 2:
+                self._param_names = ['eep_0', 'eep_1'] + self.ic.param_names[1:]
+            elif self.N == 3:
+                self._param_names = ['eep_0', 'eep_1', 'eep_2'] + self.ic.param_names[1:]
         return self._param_names
 
     @property
@@ -1389,6 +1409,8 @@ class BasicStarModel(StarModel):
         return self._spec_props
 
     def bounds(self, prop):
+        if prop in ['eep_0', 'eep_1', 'eep_2']:
+            prop == 'eep'
         if self._bounds[prop] is not None:
             return self._bounds[prop]
         elif prop == 'mass':
@@ -1723,20 +1745,20 @@ class BasicStarModel(StarModel):
 class IsoTrackModel(BasicStarModel):
 
     param_names = ['eep', 'mass', 'age', 'feh', 'distance', 'AV']
-    
+
     def __init__(self, iso, track, **kwargs):
         self._iso = iso
         self._track = track
 
         super().__init__(iso, **kwargs)
 
-        self.set_prior('eep', EEP_prior(self.track, self._priors['age'],
-                                        bounds=self.eep_bounds))
-        
+        self.set_prior(eep=EEP_prior(self.track, self._priors['age'],
+                                     bounds=self.eep_bounds))
+
     @property
     def ic(self):
         return self.track
-    
+
     @property
     def iso(self):
         if type(self._iso)==type:
@@ -1748,14 +1770,14 @@ class IsoTrackModel(BasicStarModel):
         if type(self._track)==type:
             self._track = self._track()
         return self._track
-    
+
     def lnlike(self, pars):
-        # eep, age, feh, distance, AV 
+        # eep, age, feh, distance, AV
         iso_pars = np.array([pars[0], pars[2], pars[3], pars[4], pars[5]], dtype=float)
 
         # mass, eep, feh, distance, AV
         track_pars = np.array([pars[1], pars[0], pars[3], pars[4], pars[5]], dtype=float)
-                
+
         spec_vals, spec_uncs = zip(*[prop for prop in self.spec_props])
         if self.bands:
             mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
@@ -1763,7 +1785,7 @@ class IsoTrackModel(BasicStarModel):
         else:
             mag_vals, mag_uncs = np.array([], dtype=float), np.array([], dtype=float)
             i_mags = np.array([], dtype=int)
-    
+
         iso_lnlike = star_lnlike(iso_pars, self.iso.param_index_order,
                                  spec_vals, spec_uncs,
                                  mag_vals, mag_uncs, i_mags,
@@ -1775,7 +1797,7 @@ class IsoTrackModel(BasicStarModel):
                                  *self.iso.model_grid.interp.index_columns,
                                  self.iso.bc_grid.interp.grid,
                                  *self.iso.bc_grid.interp.index_columns)
-        
+
         track_lnlike = star_lnlike(track_pars, self.track.param_index_order,
                                    spec_vals, spec_uncs,
                                    mag_vals, mag_uncs, i_mags,
@@ -1789,7 +1811,7 @@ class IsoTrackModel(BasicStarModel):
                                    *self.track.bc_grid.interp.index_columns)
 
         lnlike = iso_lnlike + track_lnlike
-        
+
         if 'parallax' in self.kwargs:
             lnlike += gauss_lnprob(*self.kwargs['parallax'], 1000./pars[4])
 
@@ -1804,8 +1826,8 @@ class IsoTrackModel(BasicStarModel):
                 lnp += self._priors[par].lnpdf(val)
 
         return lnp
-    
-    
+
+
 
 
 ########## Utility functions ###############

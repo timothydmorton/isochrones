@@ -47,8 +47,7 @@ if rank == 0:
 
     model = StarClusterModel(ic, cat, eep_bounds=(args.mineep, args.maxeep),
                              max_distance=args.distance*3, max_AV=args.maxAV, name=args.name)
-    model.set_prior('feh', FehPrior(halo_fraction=0.5))
-    model.set_prior('age', FlatLogPrior((6, 9.5)))
+    model.set_prior(feh=FehPrior(halo_fraction=0.5), age=FlatLogPrior((6, 9.5)))
 
     print('lnprior, lnlike, lnpost: {}'.format([model.lnprior(pars),
                                                 model.lnlike(pars),

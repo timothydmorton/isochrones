@@ -233,6 +233,7 @@ class GaussianPrior(BoundedPrior):
         self.mean = mean
         self.sigma = sigma
         self._bounds = bounds
+        self._norm = 1.
 
         if bounds:
             lo, hi = bounds
@@ -468,8 +469,8 @@ class AgePrior(FlatLogPrior):
         super().__init__(bounds=(5, 10.15), **kwargs)
 
 class DistancePrior(PowerLawPrior):
-    def __init__(self, **kwargs):
-        super().__init__(alpha=2., bounds=(0, 10000), **kwargs)
+    def __init__(self, max_distance=10000, **kwargs):
+        super().__init__(alpha=2., bounds=(0, max_distance), **kwargs)
 
 class AVPrior(FlatPrior):
     def __init__(self, **kwargs):

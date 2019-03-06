@@ -499,6 +499,20 @@ def find_closest3(val, a, b,
 
 
 @jit(nopython=True)
+def interp_eeps(xs, x0s, x1s, ii0, ii1, n1, arrays, weight_arrays, lengths):
+    n = len(xs)
+    results = np.empty(n, dtype=float64)
+
+    for i in range(n):
+        x = xs[i]
+        x0 = x0s[i]
+        x1 = x1s[i]
+        results[i] = interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths)
+
+    return results
+
+
+@jit(nopython=True)
 def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     """
     """
@@ -587,7 +601,6 @@ class DFInterpolator(object):
                 raise ValueError('DataFrame columns do not match columns loaded from full grid!')
         else:
             if not self.is_full:  # Need to make a full grid and pad with nans
-                logging.info('Generating full grid for interpolation...')
                 idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
 
                 # Make an empty dataframe with the completely gridded index, and fill

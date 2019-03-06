@@ -13,7 +13,7 @@ MSUN = const.M_sun.cgs.value
 RSUN = const.R_sun.cgs.value
 
 from .config import ISOCHRONES
-from .interp import DFInterpolator, interp_eep
+from .interp import DFInterpolator, interp_eep, interp_eeps
 from .mags import interp_mag, interp_mags
 from .grid import Grid
 
@@ -221,15 +221,6 @@ class ModelGrid(Grid):
         except AttributeError:
             self._n_masses = len(self.masses)
             return self._n_masses
-
-    def get_eep_interp(self, mass, age, feh):
-
-        if self.eep_replaces == 'age':
-            return interp_eep(age, feh, mass, self.fehs, self.masses, self.n_masses,
-                              self.age_grid, self.dt_deep_grid, self.array_lengths)
-        elif self.eep_replaces == 'mass':
-            raise NotImplementedError
-
 
 class ModelGridInterpolator(object):
 
@@ -467,16 +458,41 @@ class ModelGridInterpolator(object):
     def max_eep(self, mass, feh):
         return self.model_grid.max_eep(mass, feh)
 
-    def get_eep(self, mass, age, feh, eep0=300, resid_tol=0.02, method='nelder-mead',
-                return_object=False, return_nan=False,
-                **kwargs):
+    def get_eep(self, mass, age, feh, accurate=False):
+        grid = self.model_grid
+        if ((isinstance(mass, float) or isinstance(mass, int)) and
+                (isinstance(age, float) or isinstance(age, int)) and
+                (isinstance(feh, float) or isinstance(feh, int))):
+            if accurate:
+                return self.get_eep_accurate(mass, age, feh)
+            else:
+                if grid.eep_replaces == 'age':
+                    return interp_eep(age, feh, mass, grid.fehs, grid.masses, grid.n_masses,
+                                      grid.age_grid, grid.dt_deep_grid, grid.array_lengths)
+                elif grid.eep_replaces == 'mass':
+                    raise NotImplementedError
+        else:
+            b = np.broadcast(mass, age, feh)
+            pars = [np.atleast_1d(np.resize(x, b.shape)).astype(float)
+                    for x in [age, feh, mass]]
+            if accurate:
+                return np.array([self.get_eep_accurate(m, a, f) for a, f, m in zip(*pars)])
+            else:
+                if grid.eep_replaces == 'age':
+                    return interp_eeps(*pars, grid.fehs, grid.masses, grid.n_masses,
+                                       grid.age_grid, grid.dt_deep_grid, grid.array_lengths)
+                elif grid.eep_replaces == 'mass':
+                    raise NotImplementedError
+
+    def get_eep_accurate(self, mass, age, feh, eep0=300, resid_tol=0.02, method='nelder-mead',
+                         return_object=False, return_nan=False, **kwargs):
 
         eeps_to_try = [min(self.max_eep(mass, feh) - 20, 600), 100, 200]
         while np.isnan(self.mass_age_resid(eep0, mass, age, feh)):
             try:
                 eep0 = eeps_to_try.pop()
             except IndexError:
-                raise ValueError('eep0 gives nan for all initial guesses! {}'.format(eep0, (mass, age, feh)))
+                raise ValueError('eep0 gives nan for all initial guesses! {}'.format((mass, age, feh)))
 
         result = minimize(self.mass_age_resid, eep0, args=(mass, age, feh), method=method,
                           options=kwargs)
@@ -491,6 +507,29 @@ class ModelGridInterpolator(object):
                 return np.nan
             else:
                 raise RuntimeError('EEP minimization not successful: {}'.format((mass, age, feh)))
+
+    def generate(self, mass, age, feh, props='all', bands=None,
+                 return_df=True, return_dict=False,
+                 distance=10, AV=0, accurate=False):
+        if bands is None:
+            bands = self.bands
+        eeps = self.get_eep(mass, age, feh, accurate=accurate)
+        values = self.interp_value([mass, eeps, feh], props)
+        if bands:
+            _, _, _, mags = self.interp_mag([mass, eeps, feh, distance, AV], bands=bands)
+            axis = 1 if values.ndim == 2 else 0
+            values = np.concatenate([values, mags], axis=axis)
+
+        if return_dict:
+            if props == 'all':
+                props = self.model_grid.interp.columns + bands
+            values = dict(zip(props, values))
+        elif return_df:
+            if props == 'all':
+                props = self.model_grid.interp.columns
+            values = pd.DataFrame(np.atleast_2d(values), columns=props + bands)
+
+        return values
 
 
 class EvolutionTrackInterpolator(ModelGridInterpolator):
