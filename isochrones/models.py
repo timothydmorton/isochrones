@@ -458,13 +458,13 @@ class ModelGridInterpolator(object):
     def max_eep(self, mass, feh):
         return self.model_grid.max_eep(mass, feh)
 
-    def get_eep(self, mass, age, feh, accurate=False):
+    def get_eep(self, mass, age, feh, accurate=False, **kwargs):
         grid = self.model_grid
         if ((isinstance(mass, float) or isinstance(mass, int)) and
                 (isinstance(age, float) or isinstance(age, int)) and
                 (isinstance(feh, float) or isinstance(feh, int))):
             if accurate:
-                return self.get_eep_accurate(mass, age, feh)
+                return self.get_eep_accurate(mass, age, feh, **kwargs)
             else:
                 if grid.eep_replaces == 'age':
                     return interp_eep(age, feh, mass, grid.fehs, grid.masses, grid.n_masses,
@@ -476,7 +476,7 @@ class ModelGridInterpolator(object):
             pars = [np.atleast_1d(np.resize(x, b.shape)).astype(float)
                     for x in [age, feh, mass]]
             if accurate:
-                return np.array([self.get_eep_accurate(m, a, f) for a, f, m in zip(*pars)])
+                return np.array([self.get_eep_accurate(m, a, f, **kwargs) for a, f, m in zip(*pars)])
             else:
                 if grid.eep_replaces == 'age':
                     return interp_eeps(*pars, grid.fehs, grid.masses, grid.n_masses,

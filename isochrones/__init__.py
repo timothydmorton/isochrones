@@ -7,4 +7,4 @@ except NameError:
 
 if not __ISOCHRONES_SETUP__:
     from .isochrone import get_ichrone
-    from .starmodel import StarModel, BinaryStarModel, TripleStarModel
+    from .starmodel import StarModel, SingleStarModel, BinaryStarModel, TripleStarModel

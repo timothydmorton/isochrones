@@ -9,7 +9,7 @@ if not on_rtd:
     import scipy.stats
     from scipy.stats import uniform, lognorm
     from scipy.integrate import quad
-    # from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
+    from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
 
     import matplotlib.pyplot as plt
     from numba import jit
@@ -447,6 +447,9 @@ class EEP_prior(BoundedPrior):
         except ValueError:
             # If there are no valid samples, just run it again until you get valid results
             return self.sample(n, **kwargs)
+
+    def test_integral(self):
+        pass
 
 # Utility numba PDFs for speed!
 @jit(nopython=True)

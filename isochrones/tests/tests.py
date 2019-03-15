@@ -49,7 +49,8 @@ def _check_closest_eep(ic, n=3000, resid_tol=0.02):
     masses = np.random.random(n) * 2.5 + 0.1
     fehs = np.random.random(n) * (ic.maxfeh - ic.minfeh) + ic.minfeh
     ages = np.random.random(n) * (10.0 - ic.minage) + ic.minage
-    eeps = [ic.get_eep(m, a, f, return_nan=True, resid_tol=resid_tol) for m, a, f in zip(masses, ages, fehs)]
+    eeps = [ic.get_eep(m, a, f, return_nan=True, 
+                       resid_tol=resid_tol, accurate=True) for m, a, f in zip(masses, ages, fehs)]
     for e, a, f, m in zip(eeps, ages, fehs, masses):
         if not np.isnan(e):
             try:
@@ -62,7 +63,8 @@ def _check_closest_eep(ic, n=3000, resid_tol=0.02):
     # make sure the minmass edge case works.
     for feh in ic.fehs[1: -1]:  # first and last feh of mist doesn't work.
         try:
-            assert np.isfinite(ic.get_eep(ic.minmass+0.01, 9.0, feh, return_nan=True, resid_tol=resid_tol))
+            assert np.isfinite(ic.get_eep(ic.minmass+0.01, 9.0, feh, return_nan=True, 
+                                          resid_tol=resid_tol, accurate=True))
         except AssertionError:
             ic.get_eep(ic.minmass+0.01, 9.0, feh, debug=True)
             print((ic.minmass+0.01, 9.0, feh))
@@ -71,7 +73,7 @@ def _check_closest_eep(ic, n=3000, resid_tol=0.02):
 
 def _basic_ic_checks(ic):
     age, feh = (9.5, -0.2)
-    eep = ic.get_eep(1.0, age, feh)
+    eep = ic.get_eep(1.0, age, feh, accurate=True)
     assert np.isfinite(ic.radius(eep, age, feh))
     assert np.isfinite(ic.radius(np.ones(100)*eep, age, feh)).all()
     assert np.isfinite(ic.radius(eep, np.ones(100)*age, feh)).all()
@@ -103,7 +105,7 @@ def _basic_ic_checks(ic):
 
 def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700, 100), logg=(4.5, 0.1), feh=(0.0, 0.2))
-    eep = ic.get_eep(1., 9.6, 0.1)
+    eep = ic.get_eep(1., 9.6, 0.1, accurate=True)
     assert np.isfinite(mod.lnlike([eep, 9.6, 0.1, 200, 0.2]))
 
 

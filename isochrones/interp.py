@@ -618,6 +618,15 @@ class DFInterpolator(object):
 
         return grid
 
+    def add_column(self, values, name):
+        newgrid = np.empty((self.grid.shape[:-1]) + (self.n_columns + 1,))
+        newgrid[..., :-1] = self.grid
+        newgrid[..., -1] = values
+        self.column_index[name] = self.n_columns
+        self.n_columns += 1
+        self.columns += [name]
+        self.grid = newgrid
+
     def find_closest(self, val, lo, hi, v1, v2,
                      col='initial_mass', debug=False):
         icol = self.column_index[col]

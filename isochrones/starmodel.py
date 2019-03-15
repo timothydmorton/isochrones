@@ -34,7 +34,7 @@ if not on_rtd:
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
 from .priors import AgePrior, DistancePrior, AVPrior, QPrior, FlatPrior
-from .priors import SalpeterPrior, ChabrierPrior, FehPrior, EEP_prior
+from .priors import SalpeterPrior, ChabrierPrior, FehPrior, EEP_prior, QPrior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
@@ -99,6 +99,9 @@ class StarModel(object):
                  **kwargs):
 
         self.name = name
+        if not name:
+            if obs is not None:
+                self.name = obs.name
 
         if coords is None:
             if RA is not None and dec is not None:
@@ -407,7 +410,7 @@ class StarModel(object):
         """Replaces old parameter vectors containing mass with the closest EEP equivalent
         """
         pardict = self.obs.p2pardict(pars)
-        eeps = {s: self.ic.get_eep(*p[0:3]) for s, p in pardict.items()}
+        eeps = {s: self.ic.get_eep(*p[0:3], accurate=True) for s, p in pardict.items()}
 
         new_pardict = pardict.copy()
         for s in pardict:
@@ -527,23 +530,29 @@ class StarModel(object):
         if self.ic.eep_replaces == 'mass':
             for s in self.obs.systems:
                 age, feh, dist, AV = p[i+N[s]: i+N[s]+4]
-                for prop, val in zip(['age','feh','distance','AV'],
+                for prop, val in zip(['age', 'feh', 'distance', 'AV'],
                                      [age, feh, dist, AV]):
                     lo, hi = self.bounds(prop)
                     if val < lo or val > hi:
                         return -np.inf
                     lnp += self._priors[prop].lnpdf(val)
                     if not np.isfinite(lnp):
-                        logging.debug('lnp=-inf for {}={} (system {})'.format(prop,val,s))
+                        logging.debug('lnp=-inf for {}={} (system {})'.format(prop, val, s))
                         return -np.inf
 
                 # Note: this all is just assuming proper order for multiple stars.
                 #  Is this OK?  Should keep eye out for bugs here.
 
-
                 # Compute EEP priors.  Note, this implicitly treats each stars as an independent
                 # draw from the IMF (i.e. flat mass-ratio prior):
-                eeps = p[i:i + N[s]]
+
+                # eeps = p[i:i + N[s]]
+
+                # Enforce that eeps are in descending order
+                eeps = np.array(p[i:i + N[s]])
+                if not (eeps[1:] <= eeps[:-1]).all():
+                    return -np.inf
+
                 for eep in eeps:
                     lnp += self._priors['eep'].lnpdf(eep, age=p[i + N[s]],
                                                      feh=p[i + N[s] + 1])
@@ -564,7 +573,7 @@ class StarModel(object):
 
                 #     lnp += np.log(self.prior('q', q))
                 #     if not np.isfinite(lnp):
-                #         logging.debug('lnp=-inf for q={} (system {})'.format(q,s))
+                #         logging.debug('lnp=-inf for q={} (system {})'.format(q, s))
                 #         return -np.inf
 
                 i += N[s] + 4
@@ -591,10 +600,10 @@ class StarModel(object):
     def set_prior(self, **kwargs):
         for prop, prior in kwargs.items():
             self._priors[prop] = prior
+            self._bounds[prop] = prior.bounds
 
     def prior(self, prop, val, **kwargs):
         return self._priors[prop](val, **kwargs)
-
 
     @property
     def n_params(self):
@@ -607,13 +616,17 @@ class StarModel(object):
         i = 0
         for _, n in self.obs.Nstars.items():
             mineep, maxeep = self.bounds('eep')
+            eeps = [(maxeep - mineep)*cube[i+j] + mineep for j in range(n)]
+            eeps.sort(reverse=True)
             for j in range(n):
-                cube[i+j] = (maxeep - mineep)*cube[i+j] + mineep
+                cube[i+j] = eeps[j]
 
             for j, par in enumerate(['age', 'feh', 'distance', 'AV']):
                 lo, hi = self.bounds(par)
                 cube[i+n+j] = (hi - lo)*cube[i+n+j] + lo
             i += 4 + n
+
+
 
     def mnest_loglike(self, cube, ndim, nparams):
         """loglikelihood function for multinest
@@ -1253,27 +1266,6 @@ class StarModel(object):
         mod._bounds = bounds
         return mod
 
-class BinaryStarModel(StarModel):
-    _default_name = 'binary'
-    def __init__(self, *args, **kwargs):
-        kwargs['N'] = 2
-        super(BinaryStarModel, self).__init__(*args, **kwargs)
-
-    @classmethod
-    def from_ini(cls, *args, **kwargs):
-        kwargs['N'] = 2
-        return super(BinaryStarModel, cls).from_ini(*args, **kwargs)
-
-class TripleStarModel(StarModel):
-    _default_name = 'triple'
-    def __init__(self, *args, **kwargs):
-        kwargs['N'] = 3
-        super(TripleStarModel, self).__init__(*args, **kwargs)
-
-    @classmethod
-    def from_ini(cls, *args, **kwargs):
-        kwargs['N'] = 3
-        return super(TripleStarModel, cls).from_ini(*args, **kwargs)
 
 class StarModelGroup(object):
     """A collection of StarModel objects with different model node specifications
@@ -1315,10 +1307,12 @@ class StarModelGroup(object):
     def model_options(self):
         return [(N, index) for N in self.N_options for index in self.index_options]
 
-class BasicStarModel(StarModel):
-    """StarModel for just a single star
 
-    prototype for new object design.
+class BasicStarModel(StarModel):
+    """Bare bones starmodel, without "obs" complication.
+
+    Use this for straight-up single, binary, or triple fits, no
+    mix of blended/unblended.
     """
 
     use_emcee = False
@@ -1332,7 +1326,29 @@ class BasicStarModel(StarModel):
 
         if N > 1 and ic.eep_replaces == 'age':
             raise ValueError('Can only fit mulitple stars with IsochroneInterpolator!')
-        self.N = 1
+        if N == 1:
+            if ic.eep_replaces == 'age':
+                self.mass_index = 0
+                self.feh_index = 2
+                self.distance_index = 3
+                self.AV_index = 4
+            elif ic.eep_replaces == 'mass':
+                self.age_index = 1
+                self.feh_index = 2
+                self.distance_index = 3
+                self.AV_index = 4
+        elif N == 2:
+            self.age_index = 2
+            self.feh_index = 3
+            self.distance_index = 4
+            self.AV_index = 5
+        elif N == 3:
+            self.age_index = 3
+            self.feh_index = 4
+            self.distance_index = 5
+            self.AV_index = 6
+
+        self.N = N
         self.kwargs = kwargs
 
         self._bands = None
@@ -1343,7 +1359,6 @@ class BasicStarModel(StarModel):
 
         self._priors = {'mass': ChabrierPrior(),
                         'feh': FehPrior(),
-                        'q': QPrior(),
                         'age': AgePrior(),
                         'distance': DistancePrior(),
                         'AV': AVPrior()}
@@ -1353,9 +1368,8 @@ class BasicStarModel(StarModel):
         self._bounds = {'mass': None,
                         'feh': None,
                         'age': None,
-                        'q': q_prior.bounds,
-                        'distance': distance_prior.bounds,
-                        'AV': AV_prior.bounds,
+                        'distance': DistancePrior().bounds,
+                        'AV': AVPrior().bounds,
                         'eep': self._priors['eep'].bounds}
 
         if maxAV is not None:
@@ -1385,9 +1399,9 @@ class BasicStarModel(StarModel):
         if self._param_names is None:
             self._param_names = self.ic.param_names
             if self.N == 2:
-                self._param_names = ['eep_0', 'eep_1'] + self.ic.param_names[1:]
+                self._param_names = tuple(['eep_0', 'eep_1'] + list(self.ic.param_names[1:]))
             elif self.N == 3:
-                self._param_names = ['eep_0', 'eep_1', 'eep_2'] + self.ic.param_names[1:]
+                self._param_names = tuple(['eep_0', 'eep_1', 'eep_2'] + list(self.ic.param_names[1:]))
         return self._param_names
 
     @property
@@ -1410,7 +1424,7 @@ class BasicStarModel(StarModel):
 
     def bounds(self, prop):
         if prop in ['eep_0', 'eep_1', 'eep_2']:
-            prop == 'eep'
+            prop = 'eep'
         if self._bounds[prop] is not None:
             return self._bounds[prop]
         elif prop == 'mass':
@@ -1429,24 +1443,20 @@ class BasicStarModel(StarModel):
             raise ValueError('Unknown property {}'.format(prop))
         return self._bounds[prop]
 
-    def set_bounds(self, **kwargs):
-        for k,v in kwargs.items():
-            if len(v) != 2:
-                raise ValueError('Must provide (min, max)')
-            self._bounds[k] = v
-            self._priors[k].bounds = v
-
-    def set_prior(self, prop, prior):
-        self._priors[prop] = prior
-        if getattr(prior, 'bounds', None) is not None:
-            self.set_bounds(**{prop: prior.bounds})
-
     @property
     def n_params(self):
         return len(self.param_names)
 
     def lnlike(self, pars):
-        pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)
+        if self.N == 1:
+            pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)
+        elif self.N == 2:
+            pars = np.array([pars[0], pars[1], pars[2],
+                             pars[3], pars[4], pars[5]], dtype=float)
+        elif self.N == 3:
+            pars = np.array([pars[0], pars[1], pars[2],
+                             pars[3], pars[4], pars[5], pars[6]], dtype=float)
+
         spec_vals, spec_uncs = zip(*[prop for prop in self.spec_props])
         if self.bands:
             mag_vals, mag_uncs = zip(*[self.kwargs[b] for b in self.bands])
@@ -1467,18 +1477,27 @@ class BasicStarModel(StarModel):
                              *self.ic.bc_grid.interp.index_columns)
 
         if 'parallax' in self.kwargs:
-            lnlike += gauss_lnprob(*self.kwargs['parallax'], 1000./pars[3])
+            plax, plax_unc = self.kwargs['parallax']
+            lnlike += gauss_lnprob(plax, plax_unc, 1000./pars[self.distance_index])
 
         return lnlike
 
     def lnprior(self, pars):
         lnp = 0
+        if self.N == 2:
+            if pars[1] > pars[0]:
+                return -np.inf
+        elif self.N == 3:
+            if not (pars[0] > pars[1]) and (pars[1] > pars[2]):
+                return -np.inf
         for val, par in zip(pars, self.param_names):
-            if par == 'eep':
+            if par in ['eep', 'eep_0', 'eep_1', 'eep_2']:
                 if self.ic.eep_replaces == 'age':
-                    lnp += self._priors['eep'].lnpdf(val, mass=pars[0], feh=pars[2])
+                    lnp += self._priors['eep'].lnpdf(val, mass=pars[self.mass_index],
+                                                     feh=pars[self.feh_index])
                 elif self.ic.eep_replaces == 'mass':
-                    lnp += self._priors['eep'].lnpdf(val, age=pars[1], feh=pars[2])
+                    lnp += self._priors['eep'].lnpdf(val, age=pars[self.age_index],
+                                                     feh=pars[self.feh_index])
             else:
                 lnp += self._priors[par].lnpdf(val)
 
@@ -1509,7 +1528,49 @@ class BasicStarModel(StarModel):
             raise
 
         self._samples = df
-        self._derived_samples = self.ic(*[df[c].values for c in self.param_names])
+
+        if self.N == 1:
+            self._derived_samples = self.ic(*[df[c].values for c in self.param_names])
+        elif self.N == 2 or self.N == 3:
+            self._derived_samples = df.copy()
+
+            primary_params = ['eep_0', 'age', 'feh', 'distance', 'AV']
+            primary_df = self.ic(*[df[c].values for c in primary_params])
+            column_map = {c: '{}_0'.format(c) for c in primary_df.columns
+                          if c not in ['eep_0', 'age', 'distance', 'AV']}
+            primary_df = primary_df.rename(columns=column_map).drop(['age'], axis=1)
+
+            secondary_params = ['eep_1', 'age', 'feh', 'distance', 'AV']
+            secondary_df = self.ic(*[df[c].values for c in secondary_params])
+            column_map = {c: '{}_1'.format(c) for c in secondary_df.columns
+                          if c not in ['eep_1', 'age', 'distance', 'AV']}
+            secondary_df = secondary_df.rename(columns=column_map).drop(['age'], axis=1)
+
+            self._derived_samples = pd.concat([self._derived_samples,
+                                               primary_df, secondary_df], axis=1)
+
+            if self.N == 2:
+                for b in self.bands:
+                    mag_0 = self._derived_samples[b + '_mag_0']
+                    mag_1 = self._derived_samples[b + '_mag_1']
+                    self._derived_samples[b + '_mag'] = addmags(mag_0, mag_1)
+
+        if self.N == 3:
+            tertiary_params = ['eep_2', 'age', 'feh', 'distance', 'AV']
+            tertiary_df = self.ic(*[df[c].values for c in tertiary_params])
+            column_map = {c: '{}_2'.format(c) for c in tertiary_df.columns
+                          if c not in ['eep_2', 'age', 'distance', 'AV']}
+            tertiary_df = tertiary_df.rename(columns=column_map).drop(['age'], axis=1)
+
+            self._derived_samples = pd.concat([self._derived_samples, tertiary_df], axis=1)
+
+            for b in self.bands:
+                mag_0 = self._derived_samples[b + '_mag_0']
+                mag_1 = self._derived_samples[b + '_mag_1']
+                mag_2 = self._derived_samples[b + '_mag_2']
+                self._derived_samples[b + '_mag'] = addmags(mag_0, mag_1, mag_2)
+
+
         self._derived_samples['parallax'] = 1000./df['distance']
         self._derived_samples['distance'] = df['distance']
         self._derived_samples['AV'] = df['AV']
@@ -1555,11 +1616,29 @@ class BasicStarModel(StarModel):
 
     @property
     def physical_quantities(self):
-        return ['mass', 'radius', 'age', 'Teff', 'logg', 'feh', 'distance', 'AV']
+        if self.N == 1:
+            cols = ['mass', 'radius', 'age', 'Teff', 'logg', 'feh', 'distance', 'AV']
+        elif self.N == 2:
+            cols = ['mass_0', 'radius_0', 'mass_1', 'radius_1',
+                    'Teff_0', 'Teff_1', 'logg_0', 'logg_1',
+                    'age', 'feh', 'distance', 'AV']
+        elif self.N == 3:
+            cols = ['mass_0', 'radius_0', 'mass_1', 'radius_1', 'mass_2', 'radius_2',
+                    'Teff_0', 'Teff_1', 'Teff_2', 'logg_0', 'logg_1', 'logg_2',
+                    'age', 'feh', 'distance', 'AV']
+
+        return cols
 
     @property
     def observed_quantities(self):
-        return ['{}_mag'.format(b) for b in self.bands] + self.props
+        if self.N == 1:
+            cols = ['{}_mag'.format(b) for b in self.bands] + self.props
+        elif self.N == 2 or self.N == 3:
+            cols = ['{}_mag'.format(b) for b in self.bands]
+            cols += [p if p in self.derived_samples.columns else '{}_0'.format(p)
+                     for p in self.props]
+
+        return cols
 
     def corner_derived(self, cols, **kwargs):
         fig = corner.corner(self.derived_samples[cols], labels=cols, **kwargs)
@@ -1742,6 +1821,24 @@ class BasicStarModel(StarModel):
         fig_physical.savefig('{}physical.png'.format(corner_basename))
 
 
+class SingleStarModel(BasicStarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 1
+        super().__init__(*args, **kwargs)
+
+
+class BinaryStarModel(BasicStarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 2
+        super().__init__(*args, **kwargs)
+
+
+class TripleStarModel(BasicStarModel):
+    def __init__(self, *args, **kwargs):
+        kwargs['N'] = 3
+        super().__init__(*args, **kwargs)
+
+
 class IsoTrackModel(BasicStarModel):
 
     param_names = ['eep', 'mass', 'age', 'feh', 'distance', 'AV']
@@ -1820,7 +1917,7 @@ class IsoTrackModel(BasicStarModel):
     def lnprior(self, pars):
         lnp = 0
         for val, par in zip(pars, self.param_names):
-            if par == 'eep':
+            if par in ['eep', 'eep_0', 'eep_1', 'eep_2']:
                 lnp += self._priors['eep'].lnpdf(val, mass=pars[1], feh=pars[3])
             else:
                 lnp += self._priors[par].lnpdf(val)
