@@ -505,7 +505,7 @@ class StarModel(object):
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
         if not np.isfinite(lnpr):
-            return lnpr
+            return -np.inf
         return lnpr + self.lnlike(p, **kwargs)
 
     def lnlike(self, p, **kwargs):
@@ -852,10 +852,10 @@ class StarModel(object):
     def fit_mcmc(self, **kwargs):
         return self.fit_mcmc_old(**kwargs)
 
-    def fit_mcmc_old(self,nwalkers=300,nburn=200,niter=100,
-                 p0=None,initial_burn=None,
-                 ninitial=50, loglike_kwargs=None,
-                 **kwargs):
+    def fit_mcmc_old(self, nwalkers=300, nburn=200, niter=100,
+                     p0=None, initial_burn=None,
+                     ninitial=50, loglike_kwargs=None,
+                     **kwargs):
         """Fits stellar model using MCMC.
 
         :param nwalkers: (optional)
@@ -898,7 +898,7 @@ class StarModel(object):
 
         """
 
-        #clear any saved _samples
+        # clear any saved _samples
         if self._samples is not None:
             self._samples = None
 
@@ -908,23 +908,23 @@ class StarModel(object):
             logging.debug('Generating initial p0 for {} walkers...'.format(nwalkers))
             p0 = self.emcee_p0(nwalkers)
             if initial_burn:
-                sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost,
+                sampler = emcee.EnsembleSampler(nwalkers, npars, self.lnpost,
                                                 **kwargs)
-                #ninitial = 300 #should this be parameter?
+                # ninitial = 300 #should this be parameter?
                 pos, prob, state = sampler.run_mcmc(p0, ninitial)
 
                 # Choose walker with highest final lnprob to seed new one
-                i,j = np.unravel_index(sampler.lnprobability.argmax(),
+                i, j = np.unravel_index(sampler.lnprobability.argmax(),
                                         sampler.shape)
-                p0_best = sampler.chain[i,j,:]
+                p0_best = sampler.chain[i, j, :]
                 logging.debug("After initial burn, p0={}".format(p0_best))
-                p0 = p0_best * (1 + rand.normal(size=p0.shape)*0.001)
+                p0 = p0_best * (1 + rand.normal(size=p0.shape) * 0.001)
                 logging.debug(p0)
         else:
             p0 = np.array(p0)
-            p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
+            p0 = rand.normal(size=(nwalkers, npars))*0.01 + p0.T[None, :]
 
-        sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
+        sampler = emcee.EnsembleSampler(nwalkers, npars, self.lnpost)
         pos, prob, state = sampler.run_mcmc(p0, nburn)
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)

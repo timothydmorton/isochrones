@@ -8,6 +8,22 @@ from .interp import DFInterpolator
 
 
 class Grid(object):
+    """Generalized model grid manager object
+
+    This is the base class for model grids, defined as a set of
+    simulated or computed numbers as a function of a few regularly gridded
+    parameters.  The canonical example for which this was developed
+    is grids of stellar evolution models. This object manages all of the following:
+
+    * Downloading and unpacking raw grids from remote URLs
+        (usually as many files in multiple folders),
+    * Re-formatting full grid into a single dataframe with multi-level index,
+      and writing grid to disk in binary (HDF5) format.
+    * Defining a `DFInterpolator` object that allows for fast linear interpolation in this grid.
+
+    This is the base class, so must be subclassed, but we can use `MistModelGrid`
+
+    """
     is_full = False
     bounds = tuple()
 
