@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 
 from isochrones.config import ISOCHRONES
 
-from ..models import ModelGrid
+from ..models import StellarModelGrid
 from ..eep import fit_section_poly, eep_fn, eep_jac, eep_fn_p0
 from .eep import max_eep
 from ..interp import DFInterpolator, searchsorted
@@ -20,7 +20,7 @@ from ..utils import polyval
 from .eep import max_eep
 
 
-class MISTModelGrid(ModelGrid):
+class MISTModelGrid(StellarModelGrid):
     name = 'mist'
     eep_col = 'EEP'
     age_col = 'log10_isochrone_age_yr'
@@ -32,7 +32,7 @@ class MISTModelGrid(ModelGrid):
     logL_col = 'log_L'
 
     default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'kind': 'full_isos'}
-    default_columns = ModelGrid.default_columns + ('delta_nu', 'nu_max', 'phase')
+    default_columns = StellarModelGrid.default_columns + ('delta_nu', 'nu_max', 'phase')
 
     bounds = (('age', (5, 10.13)),
               ('feh', (-4, 0.5)),
@@ -136,12 +136,12 @@ class MISTIsochroneGrid(MISTModelGrid):
 class MISTBasicIsochroneGrid(MISTIsochroneGrid):
 
     default_kwargs = {'version': '1.2', 'vvcrit': 0.4, 'kind': 'basic_isos'}
-    default_columns = ModelGrid.default_columns + ('phase',)
+    default_columns = StellarModelGrid.default_columns + ('phase',)
 
     def compute_additional_columns(self, df):
         """
         """
-        df = ModelGrid.compute_additional_columns(self, df)
+        df = StellarModelGrid.compute_additional_columns(self, df)
         # df['feh'] = df['log_surf_z'] - np.log10(df['surface_h1']) - np.log10(0.0181)  # Aaron Dotter says
         return df
 

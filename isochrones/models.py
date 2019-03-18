@@ -18,7 +18,7 @@ from .mags import interp_mag, interp_mags
 from .grid import Grid
 
 
-class ModelGrid(Grid):
+class StellarModelGrid(Grid):
 
     default_columns = ('eep', 'age', 'feh', 'mass', 'initial_mass', 'radius',
                        'density', 'logTeff', 'Teff', 'logg', 'logL', 'Mbol')
