@@ -21,9 +21,22 @@ class Grid(object):
       and writing grid to disk in binary (HDF5) format.
     * Defining a `DFInterpolator` object that allows for fast linear interpolation in this grid.
 
-    This is the base class, so must be subclassed, but we can use `MistModelGrid`
+    `Grid` itself is the base class for two other more specific base classes implemented in
+    **isochrones**, each of which is subclassed for specific cases: `StellarModelGrid`
+    and `BolometricCorrectionGrid`.
+
+    Arbitrary keywords may be passed, and will be stored in the `.kwargs` attribute.
+
+    The key attributes are
+
+    * `.df`: the grid data as a single dataframe, and
+    * `.interp`: `DFInterpolator` object of the grid data.
+
+    To subclass this, please see `StellarModelGrid` and `BolometricCorrectionGrid`
+    as examples for the various methods that need to be implemented.
 
     """
+    index_cols = None
     is_full = False
     bounds = tuple()
 

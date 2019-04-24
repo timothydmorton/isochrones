@@ -52,3 +52,4 @@ def test_chabrier():
     chabrier_prior.test_integral()
     chabrier_prior.test_sampling()
 
+

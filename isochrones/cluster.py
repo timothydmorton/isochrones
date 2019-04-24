@@ -19,6 +19,9 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
                overwrite=False, nlive=1000,
                name='', halo_fraction=0.5, comm=None, rank=0, max_iter=0):
 
+    """Fit cluster properties to a table of member stars
+    """
+
     if rank == 0:
         stars = pd.read_hdf(starfile)
 
@@ -43,7 +46,22 @@ def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=100
 
 
 class StarCatalog(object):
-    """
+    """Catalog of star measurements
+
+
+    Parameters
+    ----------
+    df : `pandas.DataFrame`
+        Table containing stellar measurements.  Names of uncertainty columns are 
+        tagged with `_unc`.  If `bands` is not provided, then names of photometric
+        bandpasses will be determined by looking for columns tagged with `_mag`.
+
+    bands ; list(str)
+        List of photometric bandpasses in table.  If not provided, will be inferred.
+
+    props : list(str)
+        Names of other properties in table (e.g., `Teff`, `logg`, `parallax`, etc.).
+
     """
 
     def __init__(self, df, bands=None, props=None):

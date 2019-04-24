@@ -7,6 +7,20 @@ from .grid import Grid
 
 
 class BolometricCorrectionGrid(Grid):
+    """Bolometric corrections in different bands, as a function of stuff
+
+    Stores bolometric corrections computed on a grid of stellar atmospheric
+    parameters (Teff, logg, [Fe/H]), Av, and Rv.
+
+    Specific implementations of this grid should subclass this
+    (e.g., `MISTBolometricCorrectionGrid`).
+
+    Parameters
+    ----------
+    bands : list(str)
+        List of band names, each parsed with `get_band` method.
+        Tables are downloaded when requested.
+    """
 
     index_cols = ('Teff', 'logg', '[Fe/H]', 'Av', 'Rv')
     name = None
@@ -21,6 +35,9 @@ class BolometricCorrectionGrid(Grid):
 
         self._df = None
         self._interp = None
+
+    def get_band(self, *args, **kwargs):
+        return NotImplementedError
 
     def _make_band_map(self):
         phot_systems = set()

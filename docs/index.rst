@@ -20,6 +20,7 @@ YAPSI and PARSEC models as well.
 
    install.ipynb
    quickstart.ipynb
+   interpolate.ipynb
    modelgrids.ipynb
    bc.ipynb
    grid_interpolator.ipynb
