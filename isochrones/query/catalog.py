@@ -1,7 +1,9 @@
-import pandas as pd
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
+
+from .query import EmptyQueryError
+
 
 class Catalog(object):
     """ Base class for results from catalog queries
@@ -27,7 +29,6 @@ class Catalog(object):
             self._run_query()
         return self._coords
 
-
     @property
     def query_coords(self):
         if self._query_coords is None:
@@ -42,11 +43,16 @@ class Catalog(object):
     def table(self):
         if self._table is None:
             self._run_query()
+            self._table['is_good'] = self.is_good
         return self._table
 
     @property
     def df(self):
-        return pd.DataFrame(np.array(self.table))
+        df = self.table.to_pandas()
+        df = df.loc[df.is_good]
+        if len(df) == 0:
+            raise EmptyQueryError('No good sources found! ({})'.format(self.query))
+        return df
 
     @property
     def closest(self):
@@ -68,7 +74,7 @@ class Catalog(object):
         return row[self.id_column]
 
     def get_photometry(self, brightest=False,
-                    min_unc=0.02, convert=True):
+                       systematic_unc=0., convert=True):
         """Returns dictionary of photometry of closest match
 
         unless brightest is True, in which case the brightest match.
@@ -95,5 +101,11 @@ class Catalog(object):
                 key = self.bands[b]
                 mag, dmag = row[b], row['e_{}'.format(b)]
 
-            d[key] = mag, max(dmag, min_unc)
+            d[key] = mag, np.sqrt(dmag**2 + systematic_unc**2)
         return d
+
+    @property
+    def is_good(self):
+        """Returns boolean column computed from astropy table, implementing quality cuts
+        """
+        return self._table[self._distance_column] > 0
