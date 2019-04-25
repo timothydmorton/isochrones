@@ -15,8 +15,9 @@ conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
 source activate test
 
+# pip install pandoc=2.0.0
 conda install -c conda-forge numpy numba cython nose pytables pandas
-conda install -c pyviz pyviz
-conda install -c conda-forge nbsphinx
-pip install sphinx_rtd_theme
+# conda install -c pyviz pyviz
+# conda install -c conda-forge nbsphinx
+# pip install sphinx_rtd_theme
 python setup.py develop
