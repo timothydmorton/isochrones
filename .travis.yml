@@ -1,9 +1,9 @@
 sudo: false
 language: generic
 env:
-  global:
-    # Doctr deploy key for timothydmorton/isochrones
-    - secure: "bU318XPnZUbiGUlxl5UFunEh2fGiDVlN0vTG9GKIode0LAzeDSOU4QhWJcrrPu/YNXyNCk56MTPTBlzkiXzMYDGE7Zfiovazk7rcl8clZc98uR5idaaBLRuFxCTPvPhPb1hLarBpUPAqp24lwe9lRb6mDrZYvWmOBmWLkKfFbXw5y8pLr97p2DMt1qcZdvc+HjOBW7MIpcDlbuzUfVKLgeVfNuFRKKCYHcTqZ6++PQ8WZytLV/LcJOzgHUOwbFBCAS07G9LR8yGeuvLZLkTvoG00bIf9vpEBhNlFBOR03kN+H6Gw53brhyudYjnGp83gJI7nKLtVGRsjViTtuzEkV1lJ/e4Hd9xjbhn7adaFIiCaCaFO4RRCBVzh1DH2nZRJOmndSQ824iI5wz5Z+X2nvxbA19a1rqnyBMz4ZPqfR3SWzYE/R35Y4ybMsDqEGJlo8Ve6zUfI/YAvQvpDQ9/VR8J+NYUp05Ua1iN7j4rmvV5fVC1Zny4tVNXhI0witBIfnQWhLpRUP5qXIigWeQtPE0/1tt+ZAuROJ4vU8huSIK/950aDqBh2bU7GnX2a4++HwM+p6z/MGNtxpW8dFULj5obQjvpwelFyU7rQd3HVehPErgzJOUhZx+LW9jiAQl1Cmx4jlNsqxidKbAEmV2WtgjGXDPfLfCdTErbL8cswdJs="
+  # global:
+  #   # Doctr deploy key for timothydmorton/isochrones
+  #   - secure: "bU318XPnZUbiGUlxl5UFunEh2fGiDVlN0vTG9GKIode0LAzeDSOU4QhWJcrrPu/YNXyNCk56MTPTBlzkiXzMYDGE7Zfiovazk7rcl8clZc98uR5idaaBLRuFxCTPvPhPb1hLarBpUPAqp24lwe9lRb6mDrZYvWmOBmWLkKfFbXw5y8pLr97p2DMt1qcZdvc+HjOBW7MIpcDlbuzUfVKLgeVfNuFRKKCYHcTqZ6++PQ8WZytLV/LcJOzgHUOwbFBCAS07G9LR8yGeuvLZLkTvoG00bIf9vpEBhNlFBOR03kN+H6Gw53brhyudYjnGp83gJI7nKLtVGRsjViTtuzEkV1lJ/e4Hd9xjbhn7adaFIiCaCaFO4RRCBVzh1DH2nZRJOmndSQ824iI5wz5Z+X2nvxbA19a1rqnyBMz4ZPqfR3SWzYE/R35Y4ybMsDqEGJlo8Ve6zUfI/YAvQvpDQ9/VR8J+NYUp05Ua1iN7j4rmvV5fVC1Zny4tVNXhI0witBIfnQWhLpRUP5qXIigWeQtPE0/1tt+ZAuROJ4vU8huSIK/950aDqBh2bU7GnX2a4++HwM+p6z/MGNtxpW8dFULj5obQjvpwelFyU7rQd3HVehPErgzJOUhZx+LW9jiAQl1Cmx4jlNsqxidKbAEmV2WtgjGXDPfLfCdTErbL8cswdJs="
 
 matrix:
     include:
@@ -27,7 +27,7 @@ install:
 
 script:
     - nosetests -v isochrones
-    - set -e
-    - python3 -m sphinx docs docs/_build
-    - pip install doctr
-    - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
+    # - set -e
+    # - python3 -m sphinx docs docs/_build
+    # - pip install doctr
+    # - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
