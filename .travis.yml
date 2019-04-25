@@ -28,7 +28,6 @@ install:
 script:
     - nosetests -v isochrones
     - set -e
-    - cd docs
-    - make html
+    - python3 -m sphinx docs docs/_build
     - pip install doctr
-    - doctr deploy --built-docs _build/html . --branch-whitelist bolo
+    - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
