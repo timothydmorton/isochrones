@@ -1,0 +1,792 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>isochrones.isochrone &mdash; isochrones 1.0-alpha documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/scrolls.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0-alpha',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="isochrones 1.0-alpha documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body role="document">
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="../../index.html"
+          title="back to the documentation overview"><span>isochrones.isochrone</span></a></h1>
+      </div>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="#">isochrones.isochrone</a>
+      </div>
+      <div id="contentwrapper">
+        
+  <h1>Source code for isochrones.isochrone</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">LinearNDInterpolator</span> <span class="k">as</span> <span class="n">interpnd</span>
+<span class="kn">import</span> <span class="nn">numpy.random</span> <span class="kn">as</span> <span class="nn">rand</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">constants</span> <span class="k">as</span> <span class="n">const</span>
+
+    <span class="c">#Define useful constants</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">MSUN</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">M_sun</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">RSUN</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">R_sun</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="mf">6.67e-11</span>
+    <span class="n">MSUN</span> <span class="o">=</span> <span class="mf">1.99e33</span>
+    <span class="n">RSUN</span> <span class="o">=</span> <span class="mf">6.96e10</span>
+
+
+<span class="kn">from</span> <span class="nn">.extinction</span> <span class="kn">import</span> <span class="n">EXTINCTION</span><span class="p">,</span> <span class="n">LAMBDA_EFF</span><span class="p">,</span> <span class="n">extcurve</span><span class="p">,</span> <span class="n">extcurve_0</span>
+<span class="c">#from ..isochrone import Isochrone</span>
+<span class="kn">from</span> <span class="nn">.config</span> <span class="kn">import</span> <span class="n">ISOCHRONES</span>
+<span class="kn">from</span> <span class="nn">.interp</span> <span class="kn">import</span> <span class="n">interp_value</span><span class="p">,</span> <span class="n">interp_values</span>
+<span class="kn">from</span> <span class="nn">.grid</span> <span class="kn">import</span> <span class="n">ModelGrid</span>
+
+<span class="k">def</span> <span class="nf">get_ichrone</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gets Isochrone Object by name, or type, with the right bands</span>
+
+<span class="sd">    If `default` is `True`, then will set bands</span>
+<span class="sd">    to be the union of bands and default_bands</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">ictype</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">default</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">ictype</span><span class="o">.</span><span class="n">default_bands</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">bands</span><span class="p">)</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ictype</span><span class="o">.</span><span class="n">default_bands</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">bands</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">models</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">type</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">models</span><span class="p">(</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">models</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">models</span><span class="o">==</span><span class="s">&#39;dartmouth&#39;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">isochrones.dartmouth</span> <span class="kn">import</span> <span class="n">Dartmouth_Isochrone</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">Dartmouth_Isochrone</span><span class="p">(</span><span class="n">bands</span><span class="o">=</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">Dartmouth_Isochrone</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">models</span><span class="o">==</span><span class="s">&#39;dartmouthfast&#39;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">isochrones.dartmouth</span> <span class="kn">import</span> <span class="n">Dartmouth_FastIsochrone</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">Dartmouth_FastIsochrone</span><span class="p">(</span><span class="n">bands</span><span class="o">=</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">Dartmouth_FastIsochrone</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">models</span><span class="o">==</span><span class="s">&#39;mist&#39;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">isochrones.mist</span> <span class="kn">import</span> <span class="n">MIST_Isochrone</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">MIST_Isochrone</span><span class="p">(</span><span class="n">bands</span><span class="o">=</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">MIST_Isochrone</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">models</span><span class="o">==</span><span class="s">&#39;padova&#39;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">isochrones.padova</span> <span class="kn">import</span> <span class="n">Padova_Isochrone</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">Padova_Isochrone</span><span class="p">(</span><span class="n">bands</span><span class="o">=</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">Padova_Isochrone</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">models</span><span class="o">==</span><span class="s">&#39;basti&#39;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">isochrones.basti</span> <span class="kn">import</span> <span class="n">Basti_Isochrone</span>
+        <span class="n">ichrone</span> <span class="o">=</span> <span class="n">Basti_Isochrone</span><span class="p">(</span><span class="n">bands</span><span class="o">=</span><span class="n">actual</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">Basti_Isochrone</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unknown stellar models: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">models</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ichrone</span>
+
+
+<div class="viewcode-block" id="Isochrone"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone">[docs]</a><span class="k">class</span> <span class="nc">Isochrone</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic isochrone class. Everything is a function of mass, log(age), Fe/H.</span>
+
+<span class="sd">    Can be instantiated directly, but will typically be used with a pre-defined</span>
+<span class="sd">    subclass, such as :class:`dartmouth.Dartmouth_Isochrone`.  All parameters</span>
+<span class="sd">    must be array-like objects of the same length, with the exception of ``mags``,</span>
+<span class="sd">    which is a dictionary of such array-like objects.</span>
+
+<span class="sd">    :param m_ini:</span>
+<span class="sd">        Array of initial mass values [msun].</span>
+<span class="sd">    :type m_ini: array-like</span>
+
+<span class="sd">    :param age: </span>
+<span class="sd">        log10(age) [yr]</span>
+
+<span class="sd">    :param feh:</span>
+<span class="sd">        Metallicity [dex]</span>
+
+<span class="sd">    :param m_act: </span>
+<span class="sd">        Actual mass; same as m_ini if mass loss not implemented [msun]</span>
+
+<span class="sd">    :param logL:</span>
+<span class="sd">        log10(luminosity) [solar units]</span>
+
+<span class="sd">    :param Teff:</span>
+<span class="sd">        Effective temperature [K]</span>
+
+<span class="sd">    :param logg:</span>
+<span class="sd">        log10(surface gravity) [cgs]</span>
+
+<span class="sd">    :param mags: </span>
+<span class="sd">        Dictionary of absolute magnitudes in different bands</span>
+<span class="sd">    :type mags: ``dict``</span>
+<span class="sd">        </span>
+<span class="sd">    :param tri:</span>
+<span class="sd">        Triangulation object used</span>
+<span class="sd">        to initialize the interpolation functions.</span>
+<span class="sd">        If pre-computed triangulation not provided, then the constructor</span>
+<span class="sd">        will calculate one.  This might take several minutes, so be patient.</span>
+<span class="sd">        Much better to use pre-computed ones, as provided in, e.g.,</span>
+<span class="sd">        :class:`dartmouth.Dartmouth_Isochrone`.</span>
+<span class="sd">    :type tri: :class:`scipy.spatial.qhull.Delaunay`, optional</span>
+
+<span class="sd">    :param minage,maxage:</span>
+<span class="sd">        If desired, a minimum or maximum age can be manually entered.</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">m_ini</span><span class="p">,</span><span class="n">age</span><span class="p">,</span><span class="n">feh</span><span class="p">,</span><span class="n">m_act</span><span class="p">,</span><span class="n">logL</span><span class="p">,</span><span class="n">Teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">mags</span><span class="p">,</span><span class="n">tri</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">minage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">maxage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ext_table</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Warning: if tri object not provided, this will be very slow to be created.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">minage</span> <span class="o">=</span> <span class="n">age</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxage</span> <span class="o">=</span> <span class="n">age</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minmass</span> <span class="o">=</span> <span class="n">m_act</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxmass</span> <span class="o">=</span> <span class="n">m_act</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minfeh</span> <span class="o">=</span> <span class="n">feh</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxfeh</span> <span class="o">=</span> <span class="n">feh</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_table</span> <span class="o">=</span> <span class="n">ext_table</span>
+
+        <span class="k">if</span> <span class="n">minage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">minage</span> <span class="o">=</span> <span class="n">minage</span>
+        <span class="k">if</span> <span class="n">maxage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maxage</span> <span class="o">=</span> <span class="n">maxage</span>
+
+        <span class="n">L</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="n">logL</span>
+
+        <span class="k">if</span> <span class="n">tri</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">m_ini</span><span class="p">),</span><span class="mi">3</span><span class="p">))</span>
+            <span class="n">points</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_ini</span>
+            <span class="n">points</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">age</span>
+            <span class="n">points</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">feh</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">interpnd</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="n">m_act</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tri</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">tri</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tri</span> <span class="o">=</span> <span class="n">tri</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="n">interpnd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="p">,</span><span class="n">m_act</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;mass&#39;</span><span class="p">:</span><span class="n">m_act</span><span class="p">,</span>
+                    <span class="s">&#39;logL&#39;</span><span class="p">:</span><span class="n">logL</span><span class="p">,</span>
+                    <span class="s">&#39;logg&#39;</span><span class="p">:</span><span class="n">logg</span><span class="p">,</span>
+                    <span class="s">&#39;logTeff&#39;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">Teff</span><span class="p">),</span>
+                    <span class="s">&#39;mags&#39;</span><span class="p">:</span><span class="n">mags</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_props</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;mass&#39;</span><span class="p">,</span> <span class="s">&#39;logL&#39;</span><span class="p">,</span> <span class="s">&#39;logg&#39;</span><span class="p">,</span> <span class="s">&#39;logTeff&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bands</span> <span class="o">=</span> <span class="n">mags</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mag</span> <span class="o">=</span> <span class="p">{</span><span class="n">band</span><span class="p">:</span><span class="n">interpnd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="p">,</span><span class="n">mags</span><span class="p">[</span><span class="n">band</span><span class="p">])</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">}</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mag</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mag_fn</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mag</span> <span class="o">=</span> <span class="n">d</span>
+
+    <span class="k">def</span> <span class="nf">_prop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">prop</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_props</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Cannot call this function with {}.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prop</span><span class="p">))</span>
+        <span class="n">attr</span> <span class="o">=</span> <span class="s">&#39;_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prop</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">interpnd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">prop</span><span class="p">]))</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">mass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop</span><span class="p">(</span><span class="s">&#39;mass&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logL</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop</span><span class="p">(</span><span class="s">&#39;logL&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop</span><span class="p">(</span><span class="s">&#39;logg&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logTeff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop</span><span class="p">(</span><span class="s">&#39;logTeff&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">radius</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="n">MSUN</span><span class="o">/</span><span class="mi">10</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">logg</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span><span class="o">/</span><span class="n">RSUN</span>
+
+    <span class="k">def</span> <span class="nf">Teff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">logTeff</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Isochrone.density"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.density">[docs]</a>    <span class="k">def</span> <span class="nf">density</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Mean density in g/cc</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">*</span> <span class="n">MSUN</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="mf">4.</span><span class="o">/</span><span class="mi">3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">*</span> <span class="n">RSUN</span><span class="p">)</span><span class="o">**</span><span class="mi">3</span>
+        <span class="k">return</span>  <span class="n">M</span><span class="o">/</span><span class="n">V</span>
+</div>
+<div class="viewcode-block" id="Isochrone.delta_nu"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.delta_nu">[docs]</a>    <span class="k">def</span> <span class="nf">delta_nu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns asteroseismic delta_nu in uHz</span>
+
+<span class="sd">        reference: https://arxiv.org/pdf/1312.3853v1.pdf, Eq (2)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">134.88</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Isochrone.nu_max"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.nu_max">[docs]</a>    <span class="k">def</span> <span class="nf">nu_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns asteroseismic nu_max in uHz</span>
+
+<span class="sd">        reference: https://arxiv.org/pdf/1312.3853v1.pdf, Eq (3)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">3120.</span><span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">/</span> 
+                        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Teff</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">/</span><span class="mf">5777.</span><span class="p">)))</span>
+</div>
+    <span class="k">def</span> <span class="nf">_mag_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">fn</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">AV</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">x_ext</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">ext_table</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_table</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">x_ext</span><span class="o">==</span><span class="mf">0.</span><span class="p">:</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve_0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve</span><span class="p">(</span><span class="n">x_ext</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ext_table</span><span class="p">:</span>
+                <span class="n">A</span> <span class="o">=</span> <span class="n">AV</span><span class="o">*</span><span class="n">EXTINCTION</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">A</span> <span class="o">=</span> <span class="n">AV</span><span class="o">*</span><span class="n">ext</span><span class="p">(</span><span class="n">LAMBDA_EFF</span><span class="p">[</span><span class="n">band</span><span class="p">])</span>
+            <span class="n">dm</span> <span class="o">=</span> <span class="mi">5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="o">-</span> <span class="mi">5</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mag</span><span class="p">[</span><span class="n">band</span><span class="p">](</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">)</span> <span class="o">+</span> <span class="n">dm</span> <span class="o">+</span> <span class="n">A</span>
+        <span class="k">return</span> <span class="n">fn</span>
+
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> 
+                 <span class="n">distance</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">AV</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                 <span class="n">return_df</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns all properties (or arrays of properties) at given mass, age, feh</span>
+
+<span class="sd">        :param mass, age, feh:</span>
+<span class="sd">            Mass, log(age), metallicity.  Can be float or array_like.</span>
+
+<span class="sd">        :param distance:</span>
+<span class="sd">            Distance in pc.  If passed, then mags will be converted to</span>
+<span class="sd">            apparent mags based on distance (and ``AV``).</span>
+
+<span class="sd">        :param AV:</span>
+<span class="sd">            V-band extinction (magnitudes).</span>
+
+<span class="sd">        :param return_df: (optional)</span>
+<span class="sd">            If ``True``, return :class:``pandas.DataFrame`` containing all model</span>
+<span class="sd">            parameters at each input value; if ``False``, return dictionary</span>
+<span class="sd">            of the same.</span>
+
+<span class="sd">        :param bands: (optional)</span>
+<span class="sd">            List of photometric bands in which to return magnitudes.</span>
+<span class="sd">            Must be subset of ``self.bands``.  If not set, then will</span>
+<span class="sd">            default to returning all available bands. </span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            Either a :class:`pandas.DataFrame` or a dictionary containing</span>
+<span class="sd">            model values evaluated at input points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">)</span>
+        <span class="n">Ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span>
+        <span class="n">Rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span>
+        <span class="n">logLs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logL</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span>
+        <span class="n">loggs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logg</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span>
+        <span class="n">Teffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Teff</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">+=</span> <span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="p">)</span>
+        <span class="n">mags</span> <span class="o">=</span> <span class="p">{</span><span class="n">band</span><span class="p">:</span><span class="mi">1</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">mag</span><span class="p">[</span><span class="n">band</span><span class="p">](</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">}</span>
+        <span class="c"># if distance is not None:</span>
+        <span class="c">#     dm = 5*np.log10(distance) - 5</span>
+        <span class="c">#     for band in mags:</span>
+        <span class="c">#         A = AV*EXTINCTION[band]</span>
+        <span class="c">#         mags[band] = mags[band] + dm + A</span>
+                
+        
+        <span class="n">props</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;age&#39;</span><span class="p">:</span><span class="n">age</span><span class="p">,</span><span class="s">&#39;mass&#39;</span><span class="p">:</span><span class="n">Ms</span><span class="p">,</span><span class="s">&#39;radius&#39;</span><span class="p">:</span><span class="n">Rs</span><span class="p">,</span><span class="s">&#39;logL&#39;</span><span class="p">:</span><span class="n">logLs</span><span class="p">,</span>
+                <span class="s">&#39;logg&#39;</span><span class="p">:</span><span class="n">loggs</span><span class="p">,</span><span class="s">&#39;Teff&#39;</span><span class="p">:</span><span class="n">Teffs</span><span class="p">,</span><span class="s">&#39;mag&#39;</span><span class="p">:</span><span class="n">mags</span><span class="p">}</span>        
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">return_df</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">props</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">props</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span><span class="o">==</span><span class="s">&#39;mag&#39;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">d</span><span class="p">[</span><span class="s">&#39;{}_mag&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">m</span><span class="p">)]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">][</span><span class="n">m</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">df</span>
+
+<div class="viewcode-block" id="Isochrone.agerange"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.agerange">[docs]</a>    <span class="k">def</span> <span class="nf">agerange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">feh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For a given mass and feh, returns the min and max allowed ages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">minage</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxage</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ages</span><span class="p">,</span> <span class="n">feh</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">rs</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ages</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">ages</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+</div>
+<div class="viewcode-block" id="Isochrone.evtrack"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.evtrack">[docs]</a>    <span class="k">def</span> <span class="nf">evtrack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">m</span><span class="p">,</span><span class="n">feh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span><span class="n">minage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">maxage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">dage</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">return_df</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns evolution track for a single initial mass and feh.</span>
+
+<span class="sd">        :param m: </span>
+<span class="sd">            Initial mass of desired evolution track.</span>
+
+<span class="sd">        :param feh: (optional) </span>
+<span class="sd">            Metallicity of desired track.  Default = 0.0 (solar)</span>
+
+<span class="sd">        :param minage, maxage: (optional)</span>
+<span class="sd">            Minimum and maximum log(age) of desired track. Will default</span>
+<span class="sd">            to min and max age of model isochrones. </span>
+
+<span class="sd">        :param dage: (optional)</span>
+<span class="sd">            Spacing in log(age) at which to evaluate models.  Default = 0.02</span>
+
+<span class="sd">        :param return_df: (optional)</span>
+<span class="sd">            Whether to return a ``DataFrame`` or dicionary.  Default is ``True``.</span>
+<span class="sd">            </span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            Either a :class:`pandas.DataFrame` or dictionary</span>
+<span class="sd">            representing the evolution</span>
+<span class="sd">            track---fixed mass, sampled at chosen range of ages.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">minage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">minage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minage</span>
+        <span class="k">if</span> <span class="n">maxage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">maxage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxage</span>
+        <span class="n">ages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">minage</span><span class="p">,</span><span class="n">maxage</span><span class="p">,</span><span class="n">dage</span><span class="p">)</span>
+        <span class="n">Ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">Rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">logLs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logL</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">loggs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logg</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">Teffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Teff</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">mags</span> <span class="o">=</span> <span class="p">{</span><span class="n">band</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">mag</span><span class="p">[</span><span class="n">band</span><span class="p">](</span><span class="n">m</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">}</span>
+
+        <span class="n">props</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;age&#39;</span><span class="p">:</span><span class="n">ages</span><span class="p">,</span><span class="s">&#39;mass&#39;</span><span class="p">:</span><span class="n">Ms</span><span class="p">,</span><span class="s">&#39;radius&#39;</span><span class="p">:</span><span class="n">Rs</span><span class="p">,</span><span class="s">&#39;logL&#39;</span><span class="p">:</span><span class="n">logLs</span><span class="p">,</span>
+                <span class="s">&#39;logg&#39;</span><span class="p">:</span><span class="n">loggs</span><span class="p">,</span> <span class="s">&#39;Teff&#39;</span><span class="p">:</span><span class="n">Teffs</span><span class="p">,</span> <span class="s">&#39;mag&#39;</span><span class="p">:</span><span class="n">mags</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">return_df</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">props</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">props</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span><span class="o">==</span><span class="s">&#39;mag&#39;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">d</span><span class="p">[</span><span class="s">&#39;{}_mag&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">m</span><span class="p">)]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">][</span><span class="n">m</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">df</span>
+
+            </div>
+<div class="viewcode-block" id="Isochrone.isochrone"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.isochrone">[docs]</a>    <span class="k">def</span> <span class="nf">isochrone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">age</span><span class="p">,</span><span class="n">feh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span><span class="n">minm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">maxm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">dm</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                  <span class="n">return_df</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">distance</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">AV</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns stellar models at constant age and feh, for a range of masses</span>
+
+<span class="sd">        :param age: </span>
+<span class="sd">            log10(age) of desired isochrone.</span>
+
+<span class="sd">        :param feh: (optional)</span>
+<span class="sd">            Metallicity of desired isochrone (default = 0.0)</span>
+
+<span class="sd">        :param minm, maxm: (optional)</span>
+<span class="sd">            Mass range of desired isochrone (will default to max and min available)</span>
+
+<span class="sd">        :param dm: (optional)</span>
+<span class="sd">            Spacing in mass of desired isochrone.  Default = 0.02 Msun.</span>
+
+<span class="sd">        :param return_df: (optional)</span>
+<span class="sd">            Whether to return a :class:``pandas.DataFrame`` or dictionary.  Default is ``True``.</span>
+<span class="sd">        </span>
+<span class="sd">        :param distance:</span>
+<span class="sd">            Distance in pc.  If passed, then mags will be converted to</span>
+<span class="sd">            apparent mags based on distance (and ``AV``).</span>
+
+<span class="sd">        :param AV:</span>
+<span class="sd">            V-band extinction (magnitudes).            </span>
+<span class="sd">        </span>
+<span class="sd">        :return:</span>
+<span class="sd">            :class:`pandas.DataFrame` or dictionary containing results.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">minm</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">minm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minmass</span>
+        <span class="k">if</span> <span class="n">maxm</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">maxm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxmass</span>
+        <span class="n">ms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">minm</span><span class="p">,</span><span class="n">maxm</span><span class="p">,</span><span class="n">dm</span><span class="p">)</span>
+        <span class="n">ages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ms</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">*</span><span class="n">age</span>
+
+        <span class="n">Ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">Rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">logLs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logL</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">loggs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logg</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">Teffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Teff</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+        <span class="n">mags</span> <span class="o">=</span> <span class="p">{</span><span class="n">band</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">mag</span><span class="p">[</span><span class="n">band</span><span class="p">](</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">}</span>
+        <span class="c">#for band in self.bands:</span>
+        <span class="c">#    mags[band] = self.mag[band](ms,ages)</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">dm</span> <span class="o">=</span> <span class="mi">5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="o">-</span> <span class="mi">5</span>
+            <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">mags</span><span class="p">:</span>
+                <span class="n">A</span> <span class="o">=</span> <span class="n">AV</span><span class="o">*</span><span class="n">EXTINCTION</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+                <span class="n">mags</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="n">mags</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">+</span> <span class="n">dm</span> <span class="o">+</span> <span class="n">A</span>
+
+        <span class="n">props</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;M&#39;</span><span class="p">:</span><span class="n">Ms</span><span class="p">,</span><span class="s">&#39;R&#39;</span><span class="p">:</span><span class="n">Rs</span><span class="p">,</span><span class="s">&#39;logL&#39;</span><span class="p">:</span><span class="n">logLs</span><span class="p">,</span><span class="s">&#39;logg&#39;</span><span class="p">:</span><span class="n">loggs</span><span class="p">,</span>
+                <span class="s">&#39;Teff&#39;</span><span class="p">:</span><span class="n">Teffs</span><span class="p">,</span><span class="s">&#39;mag&#39;</span><span class="p">:</span><span class="n">mags</span><span class="p">}</span>        
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">return_df</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">props</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">props</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span><span class="o">==</span><span class="s">&#39;mag&#39;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">d</span><span class="p">[</span><span class="s">&#39;{}_mag&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">m</span><span class="p">)]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="s">&#39;mag&#39;</span><span class="p">][</span><span class="n">m</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">df</span>
+       </div>
+<div class="viewcode-block" id="Isochrone.random_points"><a class="viewcode-back" href="../../api.html#isochrones.Isochrone.random_points">[docs]</a>    <span class="k">def</span> <span class="nf">random_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n</span><span class="p">,</span><span class="n">minmass</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">maxmass</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                      <span class="n">minage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">maxage</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                      <span class="n">minfeh</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">maxfeh</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns n random mass, age, feh points, none of which are out of range.</span>
+
+<span class="sd">        :param n:</span>
+<span class="sd">            Number of desired points.</span>
+
+<span class="sd">        :param minmass, maxmass: (optional)</span>
+<span class="sd">            Desired allowed range.  Default is mass range of ``self``.</span>
+
+<span class="sd">        :param minage, maxage: (optional)</span>
+<span class="sd">            Desired allowed range.  Default is log10(age) range of</span>
+<span class="sd">            ``self``.</span>
+
+<span class="sd">        :param minfehs, maxfeh: (optional)</span>
+<span class="sd">            Desired allowed range.  Default is feh range of ``self``.</span>
+<span class="sd">                        </span>
+<span class="sd">        :return:</span>
+<span class="sd">            :class:`np.ndarray` arrays of randomly selected mass, log10(age),</span>
+<span class="sd">            and feh values</span>
+<span class="sd">            within allowed ranges.  Used, e.g., to initialize random walkers for</span>
+<span class="sd">            :class:`StarModel` fits.</span>
+
+<span class="sd">        .. todo::</span>
+
+<span class="sd">            Should change this to drawing from priors!  Current implementation</span>
+<span class="sd">            is a bit outdated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">minmass</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">minmass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minmass</span>
+        <span class="k">if</span> <span class="n">maxmass</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">maxmass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxmass</span>
+        <span class="k">if</span> <span class="n">minage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">minage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minage</span>
+        <span class="k">if</span> <span class="n">maxage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">maxage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxage</span>
+        <span class="k">if</span> <span class="n">minfeh</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">minfeh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minfeh</span>
+        <span class="k">if</span> <span class="n">maxfeh</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">maxfeh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxfeh</span>
+
+        <span class="n">ms</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minmass</span><span class="p">,</span><span class="n">maxmass</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">ages</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minage</span><span class="p">,</span><span class="n">maxage</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">fehs</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minage</span><span class="p">,</span><span class="n">maxage</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="n">Rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">fehs</span><span class="p">)</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Rs</span><span class="p">)</span>
+        <span class="n">nbad</span> <span class="o">=</span> <span class="n">bad</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">nbad</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ms</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minmass</span><span class="p">,</span><span class="n">maxmass</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">nbad</span><span class="p">)</span>
+            <span class="n">ages</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minage</span><span class="p">,</span><span class="n">maxage</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">nbad</span><span class="p">)</span>
+            <span class="n">fehs</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="n">rand</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">minfeh</span><span class="p">,</span><span class="n">maxfeh</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">nbad</span><span class="p">)</span>
+            <span class="n">Rs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">fehs</span><span class="p">)</span>
+            <span class="n">bad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Rs</span><span class="p">)</span>
+            <span class="n">nbad</span> <span class="o">=</span> <span class="n">bad</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ms</span><span class="p">,</span><span class="n">ages</span><span class="p">,</span><span class="n">fehs</span>
+
+</div></div>
+<span class="k">class</span> <span class="nc">MagFunction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ic</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">icol</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ic</span> <span class="o">=</span> <span class="n">ic</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">band</span> <span class="o">=</span> <span class="n">band</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">icol</span> <span class="o">=</span> <span class="n">icol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_ext</span> <span class="o">=</span> <span class="n">ic</span><span class="o">.</span><span class="n">x_ext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_table</span> <span class="o">=</span> <span class="n">ic</span><span class="o">.</span><span class="n">ext_table</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_ext</span><span class="o">==</span><span class="mf">0.</span><span class="p">:</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve_0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve</span><span class="p">(</span><span class="n">x_ext</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_table</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AAV</span> <span class="o">=</span> <span class="n">EXTINCTION</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AAV</span> <span class="o">=</span> <span class="n">ext</span><span class="p">(</span><span class="n">LAMBDA_EFF</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">])</span>        
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">AV</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">x_ext</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ext_table</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">x_ext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x_ext</span><span class="o">==</span><span class="mf">0.</span><span class="p">:</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve_0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="n">extcurve</span><span class="p">(</span><span class="n">x_ext</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">ext_table</span><span class="p">:</span>
+                <span class="n">AAV</span> <span class="o">=</span> <span class="n">EXTINCTION</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">AAV</span> <span class="o">=</span> <span class="n">ext</span><span class="p">(</span><span class="n">LAMBDA_EFF</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">])</span>        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">AAV</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">AAV</span>
+
+        <span class="n">A</span> <span class="o">=</span> <span class="n">AV</span><span class="o">*</span><span class="n">AAV</span>
+        <span class="n">dm</span> <span class="o">=</span> <span class="mi">5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="o">-</span> <span class="mi">5</span>
+        <span class="n">mag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ic</span><span class="o">.</span><span class="n">interp_value</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">icol</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mag</span> <span class="o">+</span> <span class="n">dm</span> <span class="o">+</span> <span class="n">A</span>
+
+<span class="k">class</span> <span class="nc">FastIsochrone</span><span class="p">(</span><span class="n">Isochrone</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Alternative isochrone implementation for large grids, faster likelihoods</span>
+
+<span class="sd">    This implementation allows faster point interpolations than </span>
+<span class="sd">    the triangulation method in the base :class:`Isochrone` class;</span>
+<span class="sd">    however, for simulating large populations (passing arrays of parameters</span>
+<span class="sd">    at a time), the base :class:`Isochrone` is still faster.  This is </span>
+<span class="sd">    also the go-to implementation for grids that are too large to make the </span>
+<span class="sd">    Delaunay method feasible (e.g., significantly over 100,000 points in the grid.)</span>
+
+<span class="sd">    However, edge effects might be a bit more problematic here than in the base class,</span>
+<span class="sd">    meaning fitting very evolved stars might be an issue. Also, don&#39;t trust this subclass </span>
+<span class="sd">    for the :function:`Isochrone.agerange` function, for the same reason.</span>
+
+<span class="sd">    Subclasses must set the appropriate attributes, and then things should work.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;default&#39;</span>
+    <span class="n">modelgrid</span> <span class="o">=</span> <span class="n">ModelGrid</span>
+    <span class="n">age_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">feh_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">mass_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">loggTeff_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">logg_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">logL_col</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">default_bands</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">x_ext</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">ext_table</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="c"># df should be indexed by [feh, age]</span>
+
+        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">bands</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_bands</span><span class="p">)</span>
+        <span class="n">bands</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bands</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bands</span> <span class="o">=</span> <span class="n">bands</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_df</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_ext</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_table</span> <span class="o">=</span> <span class="n">ext_table</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
+
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fehs</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ages</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_Nfeh</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_Nage</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minage</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maxage</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minmass</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maxmass</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minfeh</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maxfeh</span> <span class="o">=</span> <span class="bp">None</span>
+    
+        <span class="n">n_common_cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelgrid</span><span class="o">.</span><span class="n">common_columns</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mag_cols</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span><span class="n">n_common_cols</span><span class="o">+</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mag</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span> <span class="n">MagFunction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="n">b</span><span class="p">,</span><span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mag_cols</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="c">#organized array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_Ns</span> <span class="o">=</span> <span class="bp">None</span>
+    
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;df&#39;</span><span class="p">,</span><span class="s">&#39;Ncols&#39;</span><span class="p">,</span><span class="s">&#39;fehs&#39;</span><span class="p">,</span><span class="s">&#39;ages&#39;</span><span class="p">,</span><span class="s">&#39;Nfeh&#39;</span><span class="p">,</span><span class="s">&#39;Nage&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;minage&#39;</span><span class="p">,</span><span class="s">&#39;maxage&#39;</span><span class="p">,</span><span class="s">&#39;minfeh&#39;</span><span class="p">,</span><span class="s">&#39;maxfeh&#39;</span><span class="p">,</span><span class="s">&#39;minmass&#39;</span><span class="p">,</span><span class="s">&#39;maxmass&#39;</span><span class="p">]:</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">df</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_df</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelgrid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">)</span><span class="o">.</span><span class="n">df</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_df</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">fehs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fehs</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fehs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">feh_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fehs</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ages</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ages</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">age_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ages</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Nfeh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Nfeh</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_Nfeh</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Nfeh</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Nage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Nage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_Nage</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Nage</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">minage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_minage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minage</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">maxage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxage</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_maxage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxage</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">minfeh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minfeh</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_minfeh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minfeh</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">maxfeh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxfeh</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_maxfeh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxfeh</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">minmass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minmass</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_minmass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minmass</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">maxmass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxmass</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_maxmass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxmass</span>    
+
+    <span class="k">def</span> <span class="nf">logTeff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_value</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loggTeff_col</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_value</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logg_col</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logL</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_value</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logL_col</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">mass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_make_grid</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">grid_Ns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_Ns</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_make_grid</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_Ns</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_npz_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ISOCHRONES</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s">&#39;{}.npz&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">)))</span>   
+
+    <span class="k">def</span> <span class="nf">_make_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recalc</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="c"># Read from file if available.</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_npz_filename</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">recalc</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_npz_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s">&#39;grid&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_grid_Ns</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s">&#39;grid_Ns&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df_list</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">f</span><span class="p">,</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="p">]</span>
+            <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="nb">len</span><span class="p">(</span><span class="n">df_list</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">])</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Nfeh</span><span class="p">)]</span> 
+                             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Nage</span><span class="p">)])</span><span class="o">.</span><span class="n">T</span> <span class="c">#just because</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">Nfeh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nage</span><span class="p">,</span> <span class="n">lens</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ncols</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Nage</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Nfeh</span><span class="p">):</span>
+                    <span class="n">N</span> <span class="o">=</span> <span class="n">lens</span><span class="p">[</span><span class="n">j</span><span class="p">,</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="n">N</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">df_list</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">N</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_npz_filename</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">grid_Ns</span><span class="o">=</span><span class="n">lens</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span> <span class="o">=</span> <span class="n">data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_grid_Ns</span> <span class="o">=</span> <span class="n">lens</span>
+                
+    <span class="k">def</span> <span class="nf">interp_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">icol</span><span class="p">):</span> <span class="c"># 4 is log_g</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ages</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">interp_value</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">mass</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">age</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">feh</span><span class="p">),</span> <span class="n">icol</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_col</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_Ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c"># First, broadcast to common shape.</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">)</span>
+            <span class="n">mass</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">age</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">age</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">feh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">feh</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+            <span class="c"># Then pass to helper function</span>
+            <span class="k">return</span> <span class="n">interp_values</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">icol</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_col</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">ages</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fehs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_Ns</span><span class="p">)</span>
+</pre></div>
+
+      </div>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Timothy Morton.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>

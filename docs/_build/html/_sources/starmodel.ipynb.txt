@@ -1,0 +1,452 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Fitting stellar parameters\n",
+    "\n",
+    "The central purpose of **isochrones** is to infer the physical properties of stars given arbitrary observations. This is accomplished via the `StarModel` object.  For simplest usage, a `StarModel` is initialized with a `ModelGridInterpolator` and observed properties, provided as `(value, uncertainty)` pairs.  Also, while the vanilla `StarModel` object (which is mostly the same as the **isochrones** v1 `StarModel` object) can still be used to fit a single star, **isochrones** v2 has a new `SingleStarModel` available, that has a more optimized likelihood implementation, for significantly faster inference.\n",
+    "\n",
+    "## Defining a star model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, let's generate some \"observed\" properties according to the model grids themselves.  Remember that `.generate()` only works with the evolution track interpolator."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.mist import MIST_EvolutionTrack, MIST_Isochrone\n",
+    "\n",
+    "track = MIST_EvolutionTrack()\n",
+    "\n",
+    "mass, age, feh, distance, AV = 1.0, 9.74, -0.05, 100, 0.02\n",
+    "\n",
+    "# Using return_dict here rather than return_df, because we just want scalar values\n",
+    "true_props = track.generate(mass, age, feh, distance=distance, AV=AV, return_dict=True)\n",
+    "true_props"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, we can define a starmodel with these \"observations\", this time using the isochrone grid interpolator.  We use the optimized `SingleStarModel` object."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import SingleStarModel, get_ichrone\n",
+    "\n",
+    "mist = get_ichrone('mist')\n",
+    "\n",
+    "uncs = dict(Teff=80, logg=0.1, feh=0.1, phot=0.02)\n",
+    "props = {p: (true_props[p], uncs[p]) for p in ['Teff', 'logg', 'feh']}\n",
+    "props.update({b: (true_props[b], uncs['phot']) for b in 'JHK'})\n",
+    "\n",
+    "# Let's also give an appropriate parallax, in mas\n",
+    "props.update({'parallax': (1000./distance, 0.1)})\n",
+    "\n",
+    "mod = SingleStarModel(mist, name='demo', **props)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "And we can see the prior, likelihood, and posterior at the true parameters:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "eep = mist.get_eep(mass, age, feh, accurate=True)\n",
+    "pars = [eep, age, feh, distance, AV]\n",
+    "\n",
+    "mod.lnprior(pars), mod.lnlike(pars), mod.lnpost(pars)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "If we stray from these parameters, we can see the likelihood decrease:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pars2 = [eep + 3, age - 0.05, feh + 0.02, distance, AV]\n",
+    "mod.lnprior(pars2), mod.lnlike(pars2), mod.lnpost(pars2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "How long does a posterior evaluation take?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%timeit mod.lnpost(pars)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import BinaryStarModel\n",
+    "\n",
+    "mod2 = BinaryStarModel(mist, **props)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pars2 = [eep, eep - 20, age, feh, distance, AV]\n",
+    "%timeit mod2.lnpost(pars2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import TripleStarModel\n",
+    "mod3 = TripleStarModel(mist, **props)\n",
+    "pars3 = [eep, eep-20, eep-40, age, feh, distance, AV]\n",
+    "%timeit mod3.lnpost(pars3)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Priors\n",
+    "\n",
+    "As you may have noticed, we have not explictly defined any priors on our parameters.  They were defined for you, but you may wish to know what they are, and/or to change them.  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod._priors"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "You can sample from these priors:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "samples = mod.sample_from_prior(1000)\n",
+    "samples"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Remember, these are the fit parameters:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.param_names"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's turn this into a dataframe, and visualize it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import holoviews as hv\n",
+    "import hvplot.pandas\n",
+    "hv.extension('bokeh')\n",
+    "\n",
+    "def plot_samples(samples):\n",
+    "    df = pd.DataFrame(samples, columns=['eep', 'age', 'feh', 'distance', 'AV'])\n",
+    "    df['mass'] = mod.ic.interp_value([df.eep, df.age, df.feh], ['mass'])\n",
+    "    return hv.Layout([df.hvplot.hist(c).options(width=300) for c in df.columns]).cols(3)\n",
+    "\n",
+    "plot_samples(samples)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Note that there are some built-in defaults here to be aware of.  The metallicity distribution is based on a local metallicity prior from SDSS, the distance prior has a maximum distance of 10kpc, and AV is flat from 0 to 1.  Now, let's change our distance prior to only go out to 1000pc, and our metallicity distribution to be flat between -2 and 0.5."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.priors import FlatPrior, DistancePrior\n",
+    "mod.set_prior(feh=FlatPrior((-2, 0.5)), distance=DistancePrior(1000))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plot_samples(mod.sample_from_prior(1000))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Also note that the default mass prior is the Chabrier broken powerlaw, which is nifty:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pd.Series(mod._priors['mass'].sample(10000), name='mass').hvplot.hist(bins=100, bin_range=(0, 5))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "You can also define a metallicity prior to have a different mix of halo and (local) disk:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.priors import FehPrior\n",
+    "\n",
+    "pd.Series(FehPrior(halo_fraction=0.5).sample(10000), name='feh').hvplot.hist()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Sampling the posterior\n",
+    "\n",
+    "Once you have defined your stellar model and are happy with your priors, you may either execute your optimization/sampling method of choice using the `.lnpost()` method as your posterior, or you may use the built-in **MultiNest** fitting routine with `.fit()`.  One thing to note especially is that the **MultiNest** chains get automatically created in a `chains` subdirectory from wherever you execute `.fit()`, with a basename for the files that you can access with:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.mnest_basename"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This can be changed or overwritten in two ways, which is often a good idea to avoid clashes between different fits with the same default basename.  You can either by pass an explicit `basename` keyword to `.fit()`, or you can set a name attribute, as we did when initializing this model.  OK, now we will run the fit.  This will typically take a few minutes (unless the chains for the fit have already completed, in which case it will be read in and finish quickly)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.fit()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The posterior samples of the sampling parameters are available in the `.samples` attribute.  Note that this is different from the original vanilla `StarModel` object (the one fully backward-compatible with **isochrones** v1), which contained both sampling parameters and derived parameters at the values of those samples. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.samples.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.samples.describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The derived parameters are available in `.derived_samples` (`StarModel` on its own does not have this attribute):"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.derived_samples.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "You can make a corner plot of the fit parameters as follows:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%matplotlib inline\n",
+    "\n",
+    "mod.corner_params();  # Note, this is also new in v2.0, for the SingleStarModel object"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "There is also a convenience method to select the parameters of physical interest."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.corner_physical();"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "It can also be instructive to see how the derived samples of the observed parameters compare to the observations themselves; the shortcut to this is with the `.corner_observed()` convenience method:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.corner_observed();"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This looks good, because we generated the synthetic observations directly from the same stellar model grids that we used to fit.  For real data, this is an important figure to look at to see if any of the observations appear to be inconsistent with the others, and to see if the model is a good fit to the observations.\n",
+    "\n",
+    "Generically, you can also make a corner plot of arbitrary derived parameters as follows:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.corner_derived(['nu_max', 'delta_nu', 'density']);"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

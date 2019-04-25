@@ -1,0 +1,195 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.tests.test_likelihood import test_compare_starmodels"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "> /Users/tdm/repositories/isochrones-dev/isochrones/tests/test_likelihood.py(27)test_compare_starmodels()\n",
+      "-> assert np.isclose(m1.lnlike(pars), m2.lnlike(pars))\n"
+     ]
+    },
+    {
+     "name": "stdin",
+     "output_type": "stream",
+     "text": [
+      "(Pdb)  m1.lnlike(pars)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "-430852.362217815\n"
+     ]
+    },
+    {
+     "name": "stdin",
+     "output_type": "stream",
+     "text": [
+      "(Pdb)  m2.lnlike(pars)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "-430852.36221781495\n"
+     ]
+    }
+   ],
+   "source": [
+    "test_compare_starmodels()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.tests.test_fits import MIST_Isochrone, props, StarModel, _fit_emcee"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod = StarModel(MIST_Isochrone, **props)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_fit_emcee(mod)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "p0 = mod.emcee_p0(200)\n",
+    "\n",
+    "import numpy as np\n",
+    "\n",
+    "for p in p0:\n",
+    "    if not np.isfinite(mod.lnpost(p)):\n",
+    "        print(p)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "nan"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "mod.lnprior([1.63413161e+02, 1.00413623e+01, 3.28578858e-01, 8.95712102e+03,\n",
+    " 4.29326563e-01])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "NaN value of lnprob for parameters: \n",
+      "[1.63413161e+02 1.00413623e+01 3.28578858e-01 8.95712102e+03\n",
+      " 4.29326563e-01]\n",
+      "[ 1.62914374e+02  8.81633932e+00 -3.68181084e-01  9.74744374e+03\n",
+      "  5.18136617e-01]\n",
+      "[ 1.91780789e+02  9.86701587e+00 -3.50789121e-01  5.54303776e+03\n",
+      "  1.90309071e-01]\n",
+      "[2.24273572e+02 9.72830993e+00 4.71864634e-01 6.37320410e+03\n",
+      " 5.97744344e-02]\n",
+      "[2.37401540e+02 9.83123593e+00 2.07502213e-02 9.26374647e+03\n",
+      " 4.77507785e-01]\n"
+     ]
+    },
+    {
+     "ename": "ValueError",
+     "evalue": "lnprob returned NaN.",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mValueError\u001b[0m                                Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-6-ccd0138f23ae>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0m_fit_emcee\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmod\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+      "\u001b[0;32m/Users/tdm/repositories/isochrones-dev/isochrones/tests/test_fits.py\u001b[0m in \u001b[0;36m_fit_emcee\u001b[0;34m(mod)\u001b[0m\n\u001b[1;32m     82\u001b[0m \u001b[0;32mdef\u001b[0m \u001b[0m_fit_emcee\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmod\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     83\u001b[0m     \u001b[0mmod\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0muse_emcee\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;32mTrue\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 84\u001b[0;31m     \u001b[0mmod\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfit_mcmc\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mnburn\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m20\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mniter\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m20\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mninitial\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m20\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     85\u001b[0m     \u001b[0mmod\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msamples\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m/Users/tdm/repositories/isochrones-dev/isochrones/starmodel.py\u001b[0m in \u001b[0;36mfit_mcmc\u001b[0;34m(self, **kwargs)\u001b[0m\n\u001b[1;32m    851\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    852\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mfit_mcmc\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 853\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfit_mcmc_old\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m**\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    854\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    855\u001b[0m     def fit_mcmc_old(self, nwalkers=300, nburn=200, niter=100,\n",
+      "\u001b[0;32m/Users/tdm/repositories/isochrones-dev/isochrones/starmodel.py\u001b[0m in \u001b[0;36mfit_mcmc_old\u001b[0;34m(self, nwalkers, nburn, niter, p0, initial_burn, ninitial, loglike_kwargs, **kwargs)\u001b[0m\n\u001b[1;32m    926\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    927\u001b[0m         \u001b[0msampler\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0memcee\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mEnsembleSampler\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mnwalkers\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0mnpars\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlnpost\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 928\u001b[0;31m         \u001b[0mpos\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mprob\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mstate\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0msampler\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrun_mcmc\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mp0\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mnburn\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    929\u001b[0m         \u001b[0msampler\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    930\u001b[0m         \u001b[0msampler\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrun_mcmc\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mpos\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mniter\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mrstate0\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mstate\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/sampler.py\u001b[0m in \u001b[0;36mrun_mcmc\u001b[0;34m(self, pos0, N, rstate0, lnprob0, **kwargs)\u001b[0m\n\u001b[1;32m    170\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    171\u001b[0m         for results in self.sample(pos0, lnprob0, rstate0, iterations=N,\n\u001b[0;32m--> 172\u001b[0;31m                                    **kwargs):\n\u001b[0m\u001b[1;32m    173\u001b[0m             \u001b[0;32mpass\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    174\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py\u001b[0m in \u001b[0;36msample\u001b[0;34m(self, p0, lnprob0, rstate0, blobs0, iterations, thin, storechain, mh_proposal)\u001b[0m\n\u001b[1;32m    257\u001b[0m                 \u001b[0;32mfor\u001b[0m \u001b[0mS0\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mS1\u001b[0m \u001b[0;32min\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mfirst\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msecond\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0msecond\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mfirst\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    258\u001b[0m                     q, newlnp, acc, blob = self._propose_stretch(p[S0], p[S1],\n\u001b[0;32m--> 259\u001b[0;31m                                                                  lnprob[S0])\n\u001b[0m\u001b[1;32m    260\u001b[0m                     \u001b[0;32mif\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0many\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0macc\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    261\u001b[0m                         \u001b[0;31m# Update the positions, log probabilities and\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py\u001b[0m in \u001b[0;36m_propose_stretch\u001b[0;34m(self, p0, p1, lnprob0)\u001b[0m\n\u001b[1;32m    330\u001b[0m         \u001b[0;31m# Calculate the proposed positions and the log-probability there.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    331\u001b[0m         \u001b[0mq\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mc\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mrint\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m-\u001b[0m \u001b[0mzz\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnewaxis\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m*\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0mc\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mrint\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m-\u001b[0m \u001b[0ms\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 332\u001b[0;31m         \u001b[0mnewlnprob\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mblob\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_get_lnprob\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mq\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    333\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    334\u001b[0m         \u001b[0;31m# Decide whether or not the proposals should be accepted.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py\u001b[0m in \u001b[0;36m_get_lnprob\u001b[0;34m(self, pos)\u001b[0m\n\u001b[1;32m    406\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    407\u001b[0m             \u001b[0;31m# Finally raise exception.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 408\u001b[0;31m             \u001b[0;32mraise\u001b[0m \u001b[0mValueError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"lnprob returned NaN.\"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    409\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    410\u001b[0m         \u001b[0;32mreturn\u001b[0m \u001b[0mlnprob\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mblob\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mValueError\u001b[0m: lnprob returned NaN."
+     ]
+    }
+   ],
+   "source": [
+    "_fit_emcee(mod)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

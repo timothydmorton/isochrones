@@ -1,0 +1,640 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>&lt;no title&gt; &mdash; isochrones 2.0dev documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> isochrones
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2.0dev
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpolate.html">Interpolation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modelgrids.html">Stellar model grids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bc.html">Bolometric correction grids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="grid_interpolator.html">ModelGridInterpolator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="starmodel.html">Fitting stellar parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiple.html">Multiple star systems</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">isochrones</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>&lt;no title&gt;</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/Untitled.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 5ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    background: #f5f5f5;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones.tests.test_likelihood</span> <span class="k">import</span> <span class="n">test_compare_starmodels</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">test_compare_starmodels</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&gt; /Users/tdm/repositories/isochrones-dev/isochrones/tests/test_likelihood.py(27)test_compare_starmodels()
+-&gt; assert np.isclose(m1.lnlike(pars), m2.lnlike(pars))
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(Pdb)  m1.lnlike(pars)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-430852.362217815
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(Pdb)  m2.lnlike(pars)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-430852.36221781495
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones.tests.test_fits</span> <span class="k">import</span> <span class="n">MIST_Isochrone</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">StarModel</span><span class="p">,</span> <span class="n">_fit_emcee</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod</span> <span class="o">=</span> <span class="n">StarModel</span><span class="p">(</span><span class="n">MIST_Isochrone</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">_fit_emcee</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">p0</span> <span class="o">=</span> <span class="n">mod</span><span class="o">.</span><span class="n">emcee_p0</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">p0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">mod</span><span class="o">.</span><span class="n">lnpost</span><span class="p">(</span><span class="n">p</span><span class="p">)):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod</span><span class="o">.</span><span class="n">lnprior</span><span class="p">([</span><span class="mf">1.63413161e+02</span><span class="p">,</span> <span class="mf">1.00413623e+01</span><span class="p">,</span> <span class="mf">3.28578858e-01</span><span class="p">,</span> <span class="mf">8.95712102e+03</span><span class="p">,</span>
+ <span class="mf">4.29326563e-01</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area highlight-none notranslate"><div class="highlight"><pre>
+<span></span>nan
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">_fit_emcee</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+NaN value of lnprob for parameters:
+[1.63413161e+02 1.00413623e+01 3.28578858e-01 8.95712102e+03
+ 4.29326563e-01]
+[ 1.62914374e+02  8.81633932e+00 -3.68181084e-01  9.74744374e+03
+  5.18136617e-01]
+[ 1.91780789e+02  9.86701587e+00 -3.50789121e-01  5.54303776e+03
+  1.90309071e-01]
+[2.24273572e+02 9.72830993e+00 4.71864634e-01 6.37320410e+03
+ 5.97744344e-02]
+[2.37401540e+02 9.83123593e+00 2.07502213e-02 9.26374647e+03
+ 4.77507785e-01]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">ValueError</span>                                Traceback (most recent call last)
+<span class="ansi-green-fg">&lt;ipython-input-6-ccd0138f23ae&gt;</span> in <span class="ansi-cyan-fg">&lt;module&gt;</span><span class="ansi-blue-fg">()</span>
+<span class="ansi-green-fg">----&gt; 1</span><span class="ansi-red-fg"> </span>_fit_emcee<span class="ansi-blue-fg">(</span>mod<span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">/Users/tdm/repositories/isochrones-dev/isochrones/tests/test_fits.py</span> in <span class="ansi-cyan-fg">_fit_emcee</span><span class="ansi-blue-fg">(mod)</span>
+<span class="ansi-green-intense-fg ansi-bold">     82</span> <span class="ansi-green-fg">def</span> _fit_emcee<span class="ansi-blue-fg">(</span>mod<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-intense-fg ansi-bold">     83</span>     mod<span class="ansi-blue-fg">.</span>use_emcee <span class="ansi-blue-fg">=</span> <span class="ansi-green-fg">True</span>
+<span class="ansi-green-fg">---&gt; 84</span><span class="ansi-red-fg">     </span>mod<span class="ansi-blue-fg">.</span>fit_mcmc<span class="ansi-blue-fg">(</span>nburn<span class="ansi-blue-fg">=</span><span class="ansi-cyan-fg">20</span><span class="ansi-blue-fg">,</span> niter<span class="ansi-blue-fg">=</span><span class="ansi-cyan-fg">20</span><span class="ansi-blue-fg">,</span> ninitial<span class="ansi-blue-fg">=</span><span class="ansi-cyan-fg">20</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">     85</span>     mod<span class="ansi-blue-fg">.</span>samples
+
+<span class="ansi-green-fg">/Users/tdm/repositories/isochrones-dev/isochrones/starmodel.py</span> in <span class="ansi-cyan-fg">fit_mcmc</span><span class="ansi-blue-fg">(self, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    851</span>
+<span class="ansi-green-intense-fg ansi-bold">    852</span>     <span class="ansi-green-fg">def</span> fit_mcmc<span class="ansi-blue-fg">(</span>self<span class="ansi-blue-fg">,</span> <span class="ansi-blue-fg">**</span>kwargs<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-fg">--&gt; 853</span><span class="ansi-red-fg">         </span><span class="ansi-green-fg">return</span> self<span class="ansi-blue-fg">.</span>fit_mcmc_old<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">**</span>kwargs<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    854</span>
+<span class="ansi-green-intense-fg ansi-bold">    855</span>     def fit_mcmc_old(self, nwalkers=300, nburn=200, niter=100,
+
+<span class="ansi-green-fg">/Users/tdm/repositories/isochrones-dev/isochrones/starmodel.py</span> in <span class="ansi-cyan-fg">fit_mcmc_old</span><span class="ansi-blue-fg">(self, nwalkers, nburn, niter, p0, initial_burn, ninitial, loglike_kwargs, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    926</span>
+<span class="ansi-green-intense-fg ansi-bold">    927</span>         sampler <span class="ansi-blue-fg">=</span> emcee<span class="ansi-blue-fg">.</span>EnsembleSampler<span class="ansi-blue-fg">(</span>nwalkers<span class="ansi-blue-fg">,</span>npars<span class="ansi-blue-fg">,</span>self<span class="ansi-blue-fg">.</span>lnpost<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-fg">--&gt; 928</span><span class="ansi-red-fg">         </span>pos<span class="ansi-blue-fg">,</span> prob<span class="ansi-blue-fg">,</span> state <span class="ansi-blue-fg">=</span> sampler<span class="ansi-blue-fg">.</span>run_mcmc<span class="ansi-blue-fg">(</span>p0<span class="ansi-blue-fg">,</span> nburn<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    929</span>         sampler<span class="ansi-blue-fg">.</span>reset<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    930</span>         sampler<span class="ansi-blue-fg">.</span>run_mcmc<span class="ansi-blue-fg">(</span>pos<span class="ansi-blue-fg">,</span> niter<span class="ansi-blue-fg">,</span> rstate0<span class="ansi-blue-fg">=</span>state<span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/sampler.py</span> in <span class="ansi-cyan-fg">run_mcmc</span><span class="ansi-blue-fg">(self, pos0, N, rstate0, lnprob0, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    170</span>
+<span class="ansi-green-intense-fg ansi-bold">    171</span>         for results in self.sample(pos0, lnprob0, rstate0, iterations=N,
+<span class="ansi-green-fg">--&gt; 172</span><span class="ansi-red-fg">                                    **kwargs):
+</span><span class="ansi-green-intense-fg ansi-bold">    173</span>             <span class="ansi-green-fg">pass</span>
+<span class="ansi-green-intense-fg ansi-bold">    174</span>
+
+<span class="ansi-green-fg">/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py</span> in <span class="ansi-cyan-fg">sample</span><span class="ansi-blue-fg">(self, p0, lnprob0, rstate0, blobs0, iterations, thin, storechain, mh_proposal)</span>
+<span class="ansi-green-intense-fg ansi-bold">    257</span>                 <span class="ansi-green-fg">for</span> S0<span class="ansi-blue-fg">,</span> S1 <span class="ansi-green-fg">in</span> <span class="ansi-blue-fg">[</span><span class="ansi-blue-fg">(</span>first<span class="ansi-blue-fg">,</span> second<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">,</span> <span class="ansi-blue-fg">(</span>second<span class="ansi-blue-fg">,</span> first<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">]</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-intense-fg ansi-bold">    258</span>                     q, newlnp, acc, blob = self._propose_stretch(p[S0], p[S1],
+<span class="ansi-green-fg">--&gt; 259</span><span class="ansi-red-fg">                                                                  lnprob[S0])
+</span><span class="ansi-green-intense-fg ansi-bold">    260</span>                     <span class="ansi-green-fg">if</span> np<span class="ansi-blue-fg">.</span>any<span class="ansi-blue-fg">(</span>acc<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-intense-fg ansi-bold">    261</span>                         <span class="ansi-red-fg"># Update the positions, log probabilities and</span>
+
+<span class="ansi-green-fg">/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py</span> in <span class="ansi-cyan-fg">_propose_stretch</span><span class="ansi-blue-fg">(self, p0, p1, lnprob0)</span>
+<span class="ansi-green-intense-fg ansi-bold">    330</span>         <span class="ansi-red-fg"># Calculate the proposed positions and the log-probability there.</span>
+<span class="ansi-green-intense-fg ansi-bold">    331</span>         q <span class="ansi-blue-fg">=</span> c<span class="ansi-blue-fg">[</span>rint<span class="ansi-blue-fg">]</span> <span class="ansi-blue-fg">-</span> zz<span class="ansi-blue-fg">[</span><span class="ansi-blue-fg">:</span><span class="ansi-blue-fg">,</span> np<span class="ansi-blue-fg">.</span>newaxis<span class="ansi-blue-fg">]</span> <span class="ansi-blue-fg">*</span> <span class="ansi-blue-fg">(</span>c<span class="ansi-blue-fg">[</span>rint<span class="ansi-blue-fg">]</span> <span class="ansi-blue-fg">-</span> s<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-fg">--&gt; 332</span><span class="ansi-red-fg">         </span>newlnprob<span class="ansi-blue-fg">,</span> blob <span class="ansi-blue-fg">=</span> self<span class="ansi-blue-fg">.</span>_get_lnprob<span class="ansi-blue-fg">(</span>q<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    333</span>
+<span class="ansi-green-intense-fg ansi-bold">    334</span>         <span class="ansi-red-fg"># Decide whether or not the proposals should be accepted.</span>
+
+<span class="ansi-green-fg">/Users/tdm/miniconda3/envs/isochrones/lib/python3.6/site-packages/emcee/ensemble.py</span> in <span class="ansi-cyan-fg">_get_lnprob</span><span class="ansi-blue-fg">(self, pos)</span>
+<span class="ansi-green-intense-fg ansi-bold">    406</span>
+<span class="ansi-green-intense-fg ansi-bold">    407</span>             <span class="ansi-red-fg"># Finally raise exception.</span>
+<span class="ansi-green-fg">--&gt; 408</span><span class="ansi-red-fg">             </span><span class="ansi-green-fg">raise</span> ValueError<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">&#34;lnprob returned NaN.&#34;</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    409</span>
+<span class="ansi-green-intense-fg ansi-bold">    410</span>         <span class="ansi-green-fg">return</span> lnprob<span class="ansi-blue-fg">,</span> blob
+
+<span class="ansi-red-fg">ValueError</span>: lnprob returned NaN.
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Timothy Morton
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

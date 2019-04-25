@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>isochrones.dartmouth.isochrone &mdash; isochrones 1.0-alpha documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/scrolls.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0-alpha',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/theme_extras.js"></script>
+    <link rel="top" title="isochrones 1.0-alpha documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="../../../index.html"
+          title="back to the documentation overview"><span>isochrones.dartmouth.isochrone</span></a></h1>
+      </div>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="#">isochrones.dartmouth.isochrone</a>
+      </div>
+      <div id="contentwrapper">
+        
+  <h1>Source code for isochrones.dartmouth.isochrone</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span><span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">os.path</span><span class="o">,</span> <span class="nn">glob</span><span class="o">,</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="kn">import</span> <span class="n">resource_filename</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">LinearNDInterpolator</span> <span class="k">as</span> <span class="n">interpnd</span>
+
+<span class="c"># Check to see if building on ReadTheDocs</span>
+<span class="n">on_rtd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;READTHEDOCS&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;True&#39;</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">on_rtd</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">pd</span> <span class="o">=</span> <span class="bp">None</span>
+    
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="kn">from</span> <span class="nn">..isochrone</span> <span class="kn">import</span> <span class="n">Isochrone</span><span class="p">,</span> <span class="n">FastIsochrone</span>
+<span class="kn">from</span> <span class="nn">..config</span> <span class="kn">import</span> <span class="n">ISOCHRONES</span>
+
+<span class="n">TRI_FILE</span> <span class="o">=</span> <span class="s">&#39;{}/dartmouth.tri&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ISOCHRONES</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">on_rtd</span><span class="p">:</span>
+    <span class="n">MAXAGES</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">resource_filename</span><span class="p">(</span><span class="s">&#39;isochrones&#39;</span><span class="p">,</span><span class="s">&#39;data/dartmouth_maxages.npz&#39;</span><span class="p">))</span>
+    <span class="n">MAXAGE</span> <span class="o">=</span> <span class="n">interpnd</span><span class="p">(</span><span class="n">MAXAGES</span><span class="p">[</span><span class="s">&#39;points&#39;</span><span class="p">],</span> <span class="n">MAXAGES</span><span class="p">[</span><span class="s">&#39;maxages&#39;</span><span class="p">])</span>
+
+    <span class="c"># Download data if you need to.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">TRI_FILE</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.grid</span> <span class="kn">import</span> <span class="n">DartmouthModelGrid</span>
+        <span class="n">DartmouthModelGrid</span><span class="o">.</span><span class="n">download_grids</span><span class="p">()</span>
+
+    <span class="c">#Check to see if you have the right tri file</span>
+    <span class="kn">import</span> <span class="nn">hashlib</span>
+    <span class="c"># tri_hash = &#39;477f5b835c0e805810a3154922eeb3d6&#39; # currently on zenodo</span>
+    <span class="n">tri_hash</span> <span class="o">=</span> <span class="s">&#39;ebc01b529c50fe6c8145c92160e0a53e&#39;</span> <span class="c"># current one</span>
+    <span class="k">if</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">TRI_FILE</span><span class="p">,</span><span class="s">&#39;rb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span> <span class="o">!=</span> <span class="n">tri_hash</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s">&#39;You have a wrong/corrupted/outdated Dartmouth triangulation!&#39;</span> <span class="o">+</span> 
+                          <span class="s">&#39; Delete {} and try re-importing to download afresh.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">TRI_FILE</span><span class="p">))</span>
+
+
+<span class="kn">from</span> <span class="nn">.grid</span> <span class="kn">import</span> <span class="n">DartmouthModelGrid</span>
+
+<span class="n">TRI</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="n">DEFAULT_BANDS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;B&#39;</span><span class="p">,</span><span class="s">&#39;V&#39;</span><span class="p">,</span><span class="s">&#39;g&#39;</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">,</span><span class="s">&#39;i&#39;</span><span class="p">,</span><span class="s">&#39;z&#39;</span><span class="p">,</span>
+                             <span class="s">&#39;J&#39;</span><span class="p">,</span><span class="s">&#39;H&#39;</span><span class="p">,</span><span class="s">&#39;K&#39;</span><span class="p">,</span>
+                             <span class="s">&#39;W1&#39;</span><span class="p">,</span><span class="s">&#39;W2&#39;</span><span class="p">,</span><span class="s">&#39;W3&#39;</span><span class="p">,</span><span class="s">&#39;Kepler&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="Dartmouth_Isochrone"><a class="viewcode-back" href="../../../api.html#isochrones.dartmouth.Dartmouth_Isochrone">[docs]</a><span class="k">class</span> <span class="nc">Dartmouth_Isochrone</span><span class="p">(</span><span class="n">Isochrone</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Dotter (2008) Stellar Models, at solar a/Fe and He abundances.</span>
+
+<span class="sd">    :param bands: (optional)</span>
+<span class="sd">        List of desired photometric bands.  Default list of bands is</span>
+<span class="sd">        ``[&#39;B&#39;,&#39;V&#39;,&#39;g&#39;,&#39;r&#39;,&#39;i&#39;,&#39;z&#39;,&#39;J&#39;,&#39;H&#39;,&#39;K&#39;,&#39;W1&#39;,&#39;W2&#39;,&#39;W3&#39;,&#39;Kepler&#39;]``.</span>
+
+<span class="sd">    Model grids are obtained from `here &lt;http://stellar.dartmouth.edu/models/&gt;`_</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;dartmouth&#39;</span>
+    <span class="n">default_bands</span> <span class="o">=</span> <span class="n">DEFAULT_BANDS</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">bands</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+                 <span class="n">afe</span><span class="o">=</span><span class="s">&#39;afep0&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span> <span class="c"># minage=9 removed</span>
+        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">bands</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_bands</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">afe</span> <span class="o">!=</span> <span class="s">&#39;afep0&#39;</span> <span class="ow">and</span> <span class="n">y</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Model grids not prepared for non-solar [alpha/Fe] or y&#39;</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">DartmouthModelGrid</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">afe</span><span class="o">=</span><span class="n">afe</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">df</span>
+        <span class="c"># df = get_grid(bands, afe=afe, y=y)</span>
+
+        <span class="k">global</span> <span class="n">TRI</span>
+
+        <span class="k">if</span> <span class="n">TRI</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">TRI_FILE</span><span class="p">,</span><span class="s">&#39;rb&#39;</span><span class="p">)</span>
+                <span class="n">TRI</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">TRI_FILE</span><span class="p">,</span><span class="s">&#39;rb&#39;</span><span class="p">)</span>
+                <span class="n">TRI</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">encoding</span><span class="o">=</span><span class="s">&#39;latin-1&#39;</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        
+        <span class="n">mags</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span><span class="n">df</span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">}</span>
+
+        <span class="n">Isochrone</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">df</span><span class="p">[</span><span class="s">&#39;MMo&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="s">&#39;age&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                           <span class="n">df</span><span class="p">[</span><span class="s">&#39;feh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span><span class="n">df</span><span class="p">[</span><span class="s">&#39;MMo&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="s">&#39;LogLLo&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                           <span class="mi">10</span><span class="o">**</span><span class="n">df</span><span class="p">[</span><span class="s">&#39;LogTeff&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span><span class="n">df</span><span class="p">[</span><span class="s">&#39;LogG&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span><span class="n">mags</span><span class="p">,</span><span class="n">tri</span><span class="o">=</span><span class="n">TRI</span><span class="p">,</span> 
+                           <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">agerange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">feh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="n">minage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minage</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="n">maxage</span> <span class="o">=</span> <span class="n">MAXAGE</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">feh</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">minage</span><span class="p">,</span><span class="n">maxage</span>
+        
+</div>
+<span class="k">class</span> <span class="nc">Dartmouth_FastIsochrone</span><span class="p">(</span><span class="n">FastIsochrone</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;dartmouth&#39;</span>
+    <span class="n">age_col</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">feh_col</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">mass_col</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">loggTeff_col</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">logg_col</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">logL_col</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">modelgrid</span> <span class="o">=</span> <span class="n">DartmouthModelGrid</span>
+    <span class="n">default_bands</span> <span class="o">=</span> <span class="n">DEFAULT_BANDS</span>
+
+<span class="c">#### Old utility function.  this needs to be updated.</span>
+
+<span class="k">def</span> <span class="nf">write_maxages</span><span class="p">(</span><span class="n">fehs</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+                  <span class="n">afe</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">phot_system</span><span class="o">=</span><span class="s">&#39;sdss&#39;</span><span class="p">,</span> <span class="n">savefile</span><span class="o">=</span><span class="s">&#39;maxages.npz&#39;</span><span class="p">):</span>
+    <span class="n">m_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">feh_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">maxage_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">feh</span> <span class="ow">in</span> <span class="n">fehs</span><span class="p">:</span>
+        <span class="n">feh_sign</span> <span class="o">=</span> <span class="s">&#39;p&#39;</span> <span class="k">if</span> <span class="n">feh</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s">&#39;m&#39;</span>
+        <span class="n">afe_sign</span> <span class="o">=</span> <span class="s">&#39;p&#39;</span> <span class="k">if</span> <span class="n">afe</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s">&#39;m&#39;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;feh{}{:02.0f}afe{}{:01.0f}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">feh_sign</span><span class="p">,</span><span class="nb">abs</span><span class="p">(</span><span class="n">feh</span><span class="o">*</span><span class="mi">10</span><span class="p">),</span>
+                                                            <span class="n">afe_sign</span><span class="p">,</span><span class="nb">abs</span><span class="p">(</span><span class="n">afe</span><span class="o">*</span><span class="mi">10</span><span class="p">))</span>
+                                
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATADIR</span><span class="p">,</span><span class="s">&#39;dartmouth&#39;</span><span class="p">,</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s">&#39;{}/m*&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">folder</span><span class="p">))</span>
+        <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;m(\d\d\d)feh&#39;</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                <span class="n">mass</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">/</span><span class="mf">100.</span>
+            <span class="n">ages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+            <span class="n">feh_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feh</span><span class="p">)</span>
+            <span class="n">m_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass</span><span class="p">)</span>
+            <span class="n">maxage_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">ages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m_list</span><span class="p">,</span> <span class="n">feh_list</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">maxages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">maxage_list</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">savefile</span><span class="p">,</span> <span class="n">points</span><span class="o">=</span><span class="n">points</span><span class="p">,</span> <span class="n">maxages</span><span class="o">=</span><span class="n">maxages</span><span class="p">)</span>
+</pre></div>
+
+      </div>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Timothy Morton.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>

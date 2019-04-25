@@ -1,0 +1,776 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Multiple star systems &mdash; isochrones 2.0dev documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Fitting stellar parameters" href="starmodel.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> isochrones
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2.0dev
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpolate.html">Interpolation: the <code class="docutils literal notranslate"><span class="pre">DFInterpolator</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="modelgrids.html">Stellar model grids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bc.html">Bolometric correction grids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="grid_interpolator.html">ModelGridInterpolator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="starmodel.html">Fitting stellar parameters</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Multiple star systems</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#Unresolved-multiple-systems">Unresolved multiple systems</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Resolved-multiple-system">Resolved multiple system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Unassociated-companions">Unassociated companions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#More-complex-models">More complex models</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">isochrones</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Multiple star systems</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/multiple.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 5ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    background: #f5f5f5;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="Multiple-star-systems">
+<h1>Multiple star systems<a class="headerlink" href="#Multiple-star-systems" title="Permalink to this headline">¶</a></h1>
+<p>One of the signature capabilities of <strong>isochrones</strong> is the ability to fit multiple star systems to observational data. This works by providing a <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> with more detailed information about the observational data, and about how many stars you wish to fit. There are several layers of potential intricacy here, which we will walk through in stages.</p>
+<div class="section" id="Unresolved-multiple-systems">
+<h2>Unresolved multiple systems<a class="headerlink" href="#Unresolved-multiple-systems" title="Permalink to this headline">¶</a></h2>
+<p>Often it is of interest to know what potential binary star configurations are consistent with observations of a star. For most stars the best available observational data is a combination of broadband magnitudes from various all-sky catalogs and parallax measurements from <em>Gaia</em>. Let’s first generate synthetic observations of such a star, and then see what we can recover with a binary or triple star model, and also what inference of this system under a single star model would tell us.</p>
+<p>Note here that for this simplest of multiple star scenarios—unresolved, physically associated, binary or triple-star systems—there are special <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> objects available that have more highly optimized likelihood calculations, analogous to the <code class="docutils literal notranslate"><span class="pre">SingleStarModel</span></code> that is available for a simple single-star fit. <code class="docutils literal notranslate"><span class="pre">BinaryStarModel</span></code> and <code class="docutils literal notranslate"><span class="pre">TripleStarModel</span></code> are these special objects. In order to accommodate more complex scenarios, such as fitting resolved steller companions, it is necessary to
+use the vanilla <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> object.</p>
+<p>First, we will initialize the isochrone interpolator. Note that we actually <em>require</em> the isochrone interpolator here, rather than the evolution track interpolator, because the model requires the primary and secondary components to have the same age, so that age must be a sampling paramter.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones</span> <span class="k">import</span> <span class="n">get_ichrone</span>
+
+<span class="n">mist</span> <span class="o">=</span> <span class="n">get_ichrone</span><span class="p">(</span><span class="s1">&#39;mist&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now, define the “true” system parameters and initialize the <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> accordingly, with two model stars. Remember that even though we need to use an isochrone interpolator to fit the model, we have to use the evolution tracks to generate synthetic data; this here shows that you can actually do this by using the <code class="docutils literal notranslate"><span class="pre">.track</span></code> complementary attribute. Note also the use of the utility function <code class="docutils literal notranslate"><span class="pre">addmags</span></code> to combine the magnitudes of the two stars.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones</span> <span class="k">import</span> <span class="n">BinaryStarModel</span>
+<span class="kn">from</span> <span class="nn">isochrones.utils</span> <span class="k">import</span> <span class="n">addmags</span>
+
+<span class="n">distance</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># pc</span>
+<span class="n">AV</span> <span class="o">=</span> <span class="mf">0.2</span>
+<span class="n">mass_A</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">mass_B</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">age</span> <span class="o">=</span> <span class="mf">9.6</span>
+<span class="n">feh</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<span class="c1"># Synthetic 2MASS and Gaia magnitudes</span>
+<span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;J&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="s1">&#39;BP&#39;</span><span class="p">,</span> <span class="s1">&#39;RP&#39;</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">]</span>
+<span class="n">props_A</span> <span class="o">=</span> <span class="n">mist</span><span class="o">.</span><span class="n">track</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">mass_A</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="o">=</span><span class="n">AV</span><span class="p">,</span>
+                              <span class="n">bands</span><span class="o">=</span><span class="n">bands</span><span class="p">,</span> <span class="n">return_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">accurate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">props_B</span> <span class="o">=</span> <span class="n">mist</span><span class="o">.</span><span class="n">track</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">mass_B</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="o">=</span><span class="n">AV</span><span class="p">,</span>
+                              <span class="n">bands</span><span class="o">=</span><span class="n">bands</span><span class="p">,</span> <span class="n">return_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">accurate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">unc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">J</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">BP</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span> <span class="n">RP</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span> <span class="n">G</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="n">mags_tot</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span> <span class="p">(</span><span class="n">addmags</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">props_B</span><span class="p">[</span><span class="n">b</span><span class="p">]),</span> <span class="n">unc</span><span class="p">[</span><span class="n">b</span><span class="p">])</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">}</span>
+
+<span class="c1"># Gaia parallax in mas for a system at 500 pc</span>
+<span class="n">parallax</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+
+<span class="n">mod_binary</span> <span class="o">=</span> <span class="n">BinaryStarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="o">**</span><span class="n">mags_tot</span><span class="p">,</span> <span class="n">parallax</span><span class="o">=</span><span class="n">parallax</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;demo_binary&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>This model has the following parameters; <code class="docutils literal notranslate"><span class="pre">eep_0</span></code> and <code class="docutils literal notranslate"><span class="pre">eep_1</span></code> correspond to the primary and secondary components, respectively. All the other parameters are assumed to be the same between the two components; that is, they are assumed to be co-eval and co-located.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary</span><span class="o">.</span><span class="n">param_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area highlight-none notranslate"><div class="highlight"><pre>
+<span></span>(&#39;eep_0&#39;, &#39;eep_1&#39;, &#39;age&#39;, &#39;feh&#39;, &#39;distance&#39;, &#39;AV&#39;)
+</pre></div>
+</div>
+</div>
+<p>Let’s also restrict the prior ranges for the parameters, to help with convergence.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">(</span><span class="n">eep</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">600</span><span class="p">),</span> <span class="n">age</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s test out the posterior computation, and then run a fit to see if we can recover the true parameters.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">350.</span><span class="p">,</span> <span class="mf">300.</span><span class="p">,</span> <span class="mf">9.7</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">300.</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mod_binary</span><span class="o">.</span><span class="n">lnpost</span><span class="p">(</span><span class="n">pars</span><span class="p">))</span>
+<span class="o">%</span><span class="k">timeit</span> mod_binary.lnpost(pars)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-645802.2025506602
+1000 loops, best of 3: 339 µs per loop
+</pre></div></div>
+</div>
+<p>For a binary fit, it is often desirable to run with more than the default number of live points; here we double from 1000 to 2000.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">n_live_points</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>  <span class="c1"># takes about 14 minutes on my laptop</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+
+<span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mass_0&#39;</span><span class="p">,</span> <span class="s1">&#39;mass_1&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">,</span> <span class="s1">&#39;feh&#39;</span><span class="p">,</span> <span class="s1">&#39;distance&#39;</span><span class="p">,</span> <span class="s1">&#39;AV&#39;</span><span class="p">]</span>
+<span class="n">truths</span> <span class="o">=</span> <span class="p">[</span><span class="n">mass_A</span><span class="p">,</span> <span class="n">mass_B</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="p">]</span>
+<span class="n">mod_binary</span><span class="o">.</span><span class="n">corner_derived</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">truths</span><span class="o">=</span><span class="n">truths</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/multiple_12_0.png" src="_images/multiple_12_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary</span><span class="o">.</span><span class="n">corner_observed</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<p>Looks like this recovers the injected parameters pretty well, though not exactly. It looks like the flat-linear age prior (which weights the fit significantly to older ages) is biasing the masses somewhat low. Let’s explore what happens if we change the prior and try again, imagining we have some other indicaton the log(age) should be around 9.6.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones.priors</span> <span class="k">import</span> <span class="n">GaussianPrior</span>
+
+<span class="n">mod_binary_2</span> <span class="o">=</span> <span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="o">**</span><span class="n">mags_tot</span><span class="p">,</span> <span class="n">parallax</span><span class="o">=</span><span class="n">parallax</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;demo_binary_2&#39;</span><span class="p">)</span>
+<span class="n">mod_binary_2</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">(</span><span class="n">eep</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">600</span><span class="p">))</span>
+<span class="n">mod_binary_2</span><span class="o">.</span><span class="n">set_prior</span><span class="p">(</span><span class="n">age</span><span class="o">=</span><span class="n">GaussianPrior</span><span class="p">(</span><span class="mf">9.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">10</span><span class="p">)))</span>
+<span class="n">mod_binary_2</span><span class="o">.</span><span class="n">lnpost</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary_2</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">n_live_points</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_binary_2</span><span class="o">.</span><span class="n">corner_derived</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">truths</span><span class="o">=</span><span class="n">truths</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<p>Hmm, doesn’t seem to be much different. Looks like this needs more exploration!</p>
+</div>
+<div class="section" id="Resolved-multiple-system">
+<h2>Resolved multiple system<a class="headerlink" href="#Resolved-multiple-system" title="Permalink to this headline">¶</a></h2>
+<p>Another useful capability of <strong>isochrones</strong> is the ability to fit binary (or higher-order multiple) systems that are resolved in high-resolution imaging but blended in catalog photometry. This is done by using the <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> object directly (instead of the optimized models) and explicitly passing the observations.</p>
+<p>As before, let’s begin by using simulating data. Let’s pretend that the same binary system from above is resolved in AO <span class="math notranslate nohighlight">\(K\)</span>-band imaging, but blended in <em>2MASS</em> catalog data. Let’s say this time that we also have spectroscopic constraints of the primary properties.</p>
+<p>Inspecting this tree to make sure it accurately represents the desired model becomes more important if the model is more complicated, but this simple case is a good example to review. Each node named with a bandpass represents an observation, with some magnitude and uncertainty (at some separatrion and position angle—irrelevant for the unresolved case). The model nodes here are named <code class="docutils literal notranslate"><span class="pre">0_0</span></code> and <code class="docutils literal notranslate"><span class="pre">0_1</span></code>, with the first index representing the system, and the second index the star number within
+that system. All stars in the same system share the same age, metallicity, distance, and extinction. In the computation of the likelihood, the apparent magnitude in each observed node is compared with a model-based magnitude that is computed from the <em>sum of the fluxes of all model nodes underneath that observed node in the tree</em>. In the unresolved case, this is trivial, but this structure becomes important when a binary is resolved. This model, because the two model stars share all attributes
+except mass, has the following parameters:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">isochrones.observation</span> <span class="k">import</span> <span class="n">ObservationTree</span><span class="p">,</span> <span class="n">Observation</span><span class="p">,</span> <span class="n">Source</span>
+
+<span class="k">def</span> <span class="nf">build_obstree</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">ObservationTree</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="s1">&#39;JHK&#39;</span><span class="p">:</span>
+        <span class="n">o</span> <span class="o">=</span> <span class="n">Observation</span><span class="p">(</span><span class="s1">&#39;2MASS&#39;</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># Name, band, resolution (in arcsec)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Source</span><span class="p">(</span><span class="n">addmags</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="n">band</span><span class="p">],</span> <span class="n">props_B</span><span class="p">[</span><span class="n">band</span><span class="p">]),</span> <span class="mf">0.02</span><span class="p">)</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">add_observation</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+
+    <span class="n">o</span> <span class="o">=</span> <span class="n">Observation</span><span class="p">(</span><span class="s1">&#39;AO&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">s_A</span> <span class="o">=</span> <span class="n">Source</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">separation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pa</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">relative</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_reference</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">s_B</span> <span class="o">=</span> <span class="n">Source</span><span class="p">(</span><span class="n">props_B</span><span class="p">[</span><span class="s1">&#39;K&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;K&#39;</span><span class="p">],</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">separation</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">pa</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                 <span class="n">relative</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_reference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="n">s_A</span><span class="p">)</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="n">s_B</span><span class="p">)</span>
+
+    <span class="n">obs</span><span class="o">.</span><span class="n">add_observation</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">obs</span>
+
+<span class="n">obs</span> <span class="o">=</span> <span class="n">build_obstree</span><span class="p">(</span><span class="s1">&#39;demo_resolved&#39;</span><span class="p">)</span>
+<span class="n">mod_resolved</span> <span class="o">=</span> <span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span>
+                         <span class="n">parallax</span><span class="o">=</span><span class="n">parallax</span><span class="p">,</span> <span class="n">Teff</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;Teff&#39;</span><span class="p">],</span> <span class="mi">100</span><span class="p">),</span>
+                         <span class="n">logg</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;logg&#39;</span><span class="p">],</span> <span class="mf">0.15</span><span class="p">),</span> <span class="n">feh</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;feh&#39;</span><span class="p">],</span> <span class="mf">0.1</span><span class="p">))</span>
+<span class="n">mod_resolved</span><span class="o">.</span><span class="n">print_ascii</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pars</span> <span class="o">=</span> <span class="p">[</span><span class="mi">300</span><span class="p">,</span> <span class="mi">280</span><span class="p">,</span> <span class="mf">9.6</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]</span>
+<span class="n">mod_resolved</span><span class="o">.</span><span class="n">lnpost</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="o">%</span><span class="k">timeit</span> mod_resolved.lnpost(pars)
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_resolved</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+
+<span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mass_0_0&#39;</span><span class="p">,</span> <span class="s1">&#39;mass_0_1&#39;</span><span class="p">,</span> <span class="s1">&#39;age_0&#39;</span><span class="p">,</span> <span class="s1">&#39;feh_0&#39;</span><span class="p">,</span> <span class="s1">&#39;distance_0&#39;</span><span class="p">,</span> <span class="s1">&#39;AV_0&#39;</span><span class="p">]</span>
+<span class="n">truths</span> <span class="o">=</span> <span class="p">[</span><span class="n">mass_A</span><span class="p">,</span> <span class="n">mass_B</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="p">]</span>
+<span class="n">mod_resolved</span><span class="o">.</span><span class="n">corner</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">truths</span><span class="o">=</span><span class="n">truths</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<p>Nailed it! Looks like the spectroscopy was very helpful in getting the fit correct (age in particular).</p>
+</div>
+<div class="section" id="Unassociated-companions">
+<h2>Unassociated companions<a class="headerlink" href="#Unassociated-companions" title="Permalink to this headline">¶</a></h2>
+<p>The previous two examples model a binary star system in which the two components are co-located and co-eval; that is, they have the same age, metallicity, distance, and extinction.</p>
+<p>One can imagine, however, wanting to model a scenario in which the two components are <em>not</em> physically associated, but rather just chance-aligned in the plane of the sky. In this case, you can set up the <code class="docutils literal notranslate"><span class="pre">StarModel</span></code> with just a small difference:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">obs</span> <span class="o">=</span> <span class="n">build_obstree</span><span class="p">(</span><span class="s1">&#39;demo_resolved_unassoc&#39;</span><span class="p">)</span>  <span class="c1"># N.B., running this again, because the old &quot;obs&quot; was changed by the previous model</span>
+<span class="n">mod_resolved_unassoc</span> <span class="o">=</span> <span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span>
+                         <span class="n">parallax</span><span class="o">=</span><span class="n">parallax</span><span class="p">,</span> <span class="n">Teff</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;Teff&#39;</span><span class="p">],</span> <span class="mi">100</span><span class="p">),</span>
+                         <span class="n">logg</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;logg&#39;</span><span class="p">],</span> <span class="mf">0.15</span><span class="p">),</span> <span class="n">feh</span><span class="o">=</span><span class="p">(</span><span class="n">props_A</span><span class="p">[</span><span class="s1">&#39;feh&#39;</span><span class="p">],</span> <span class="mf">0.1</span><span class="p">),</span>
+                         <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">mod_resolved_unassoc</span><span class="o">.</span><span class="n">print_ascii</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Note that this model now has ten parameters, since the two systems are now decoupled, so we will not run the fit for this example, but it is in principle possible. (Note that you would probably want to run this with MPI for this number of parameters.)</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">mod_resolved_unassoc</span><span class="o">.</span><span class="n">param_names</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="More-complex-models">
+<h2>More complex models<a class="headerlink" href="#More-complex-models" title="Permalink to this headline">¶</a></h2>
+<p>You can define arbitrarily complex models, by explicitly defining the model nodes by hand, using the <code class="docutils literal notranslate"><span class="pre">N</span></code> and <code class="docutils literal notranslate"><span class="pre">index</span></code> keywords. Below are some examples.</p>
+<p>This is a physically associated hierarchical triple, where the bright star from AO is an unresolved binary:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">obs</span> <span class="o">=</span> <span class="n">build_obstree</span><span class="p">(</span><span class="s1">&#39;triple1&#39;</span><span class="p">)</span>
+<span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">print_ascii</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Here is a situation where the faint visual binary is an unrelated binary star:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">obs</span> <span class="o">=</span> <span class="n">build_obstree</span><span class="p">(</span><span class="s1">&#39;triple2&#39;</span><span class="p">)</span>
+<span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">print_ascii</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Here, both AO stars are unresolved binaries:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">obs</span> <span class="o">=</span> <span class="n">build_obstree</span><span class="p">(</span><span class="s1">&#39;double_binary&#39;</span><span class="p">)</span>
+<span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">print_ascii</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>You can in principle create even more crazy models, but I don’t recommend it…</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="starmodel.html" class="btn btn-neutral float-left" title="Fitting stellar parameters" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Timothy Morton
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

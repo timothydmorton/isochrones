@@ -1,0 +1,232 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>isochrones &#8212; isochrones 2.0dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/scrolls.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/print.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <script type="text/javascript" src="_static/theme_extras.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="index.html"
+          title="back to the documentation overview"><span>isochrones</span></a></h1>
+      </div>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="#">isochrones</a>
+      </div>
+      <div id="contentwrapper">
+        <div id="toc" role="navigation" aria-label="table of contents navigation">
+          <h3>Table of Contents</h3>
+          <ul>
+<li><a class="reference internal" href="#">isochrones</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#fitting-stellar-properties">Fitting Stellar Properties</a></li>
+<li><a class="reference internal" href="#api-documentation">API Documentation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+        
+  <div class="section" id="isochrones">
+<h1>isochrones<a class="headerlink" href="#isochrones" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> Python package aims to provide a
+simple common interface to different stellar model grids, and to
+simplify the task of inferring model-based physical stellar properties
+given arbitrary observations of a star (or multiple stars).</p>
+<p>The package is built around three basic objects: <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelGrid</span></code>,
+which takes care of the bookkeeping aspects of storing and parsing
+a given grid of stellar models; <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code>, which
+takes care of the grid interpolation; and <code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code>,
+which is the top-level interface for fitting stellar properties.</p>
+<p>While <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> comes packaged with two different model grids
+(<a class="reference external" href="http://waps.cfa.harvard.edu/MIST/">MIST</a> and
+<a class="reference external" href="http://stellar.dartmouth.edu/models/">Dartmouth</a>),
+it can be easily extended to other
+model grids.  Of these two grid choices
+(accessible through the <code class="xref py py-class docutils literal notranslate"><span class="pre">MIST_Isochrone</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">Dartmouth_Isochrone</span></code>
+objects), MIST may be preferred because it covers a broader
+range of age, mass, and metallicity than the Dartmouth Models.</p>
+<p>For posterior sampling, <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> defaults to MultiNest/PyMultiNest for sampling (see <a class="reference external" href="http://astrobetter.com/wiki/MultiNest+Installation+Notes">here</a> for installation instructions), but will fall back on <a class="reference external" href="http://dan.iel.fm/emcee/current/">emcee</a> if (Py)MultiNest
+is not installed.</p>
+<p>Note that the first time you import any of the pre-packaged model
+grids, it will download the required data for you.  If you like, you can
+also download the data files directly and save them to <code class="docutils literal notranslate"><span class="pre">~/.isochrones</span></code>
+(or to a location defined by an <code class="docutils literal notranslate"><span class="pre">$ISOCHRONES</span></code> environment variable.)</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The downloaded &amp; unpacked data files, as well as some ancillary data
+created for convenience by the package, will take up about 10 Gb
+of disk space.  So if you’re planning to use <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> on a system
+on which you have a home directory quota, you may wish to explicitly
+define an <code class="docutils literal notranslate"><span class="pre">$ISOCHRONES</span></code> environment variable somewhere where you have
+more storage space.</p>
+</div>
+<p>I welcome community feedback to help improve this tool.  The code is
+hosted at <a class="reference external" href="http://github.com/timothydmorton/isochrones">GitHub</a>;
+please feel free to contribute.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If you have been a user of <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> prior to v1.0, you will need
+to download the new grid data.  There has also been significant change
+to the code base.  Most backward compatibility should be preserved, but
+<a class="reference external" href="http://github.com/timothydmorton/isochrones/issures">raise an issue</a>
+if you have problems with the transition.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>To install, you can get the most recently released version from PyPI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">isochrones</span>
+</pre></div>
+</div>
+<p>Or you can clone from github:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">timothydmorton</span><span class="o">/</span><span class="n">isochrones</span><span class="o">.</span><span class="n">git</span>
+<span class="n">cd</span> <span class="n">isochrones</span>
+<span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>The last command may require <code class="docutils literal notranslate"><span class="pre">--user</span></code> if you don’t have root privileges.</p>
+<p>After installation, run the test suite to check if everything works:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nosetests</span> <span class="n">isochrones</span>
+</pre></div>
+</div>
+<p>Be patient the first time you do this, as it will have to download ~1.5 Gb
+of stellar grid data if you have not already done so.
+If there is a problem with the automated downloading,
+you can also directly download the necessary files from
+<a class="reference external" href="https://zenodo.org/record/161241">here</a> and put them in <code class="docutils literal notranslate"><span class="pre">~/.isochrones</span></code>
+(or <code class="docutils literal notranslate"><span class="pre">$ISOCHRONES</span></code>).</p>
+</div>
+<div class="section" id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this headline">¶</a></h2>
+<p>To find, for example, what a stellar model grid predicts for stellar
+radius at a given mass, log(age), and metallicity:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">isochrones.mist</span> <span class="k">import</span> <span class="n">MIST_Isochrone</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mist</span> <span class="o">=</span> <span class="n">MIST_Isochrone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mist</span><span class="o">.</span><span class="n">radius</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">9.7</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="c1">#M/Msun, log10(age), Fe/H</span>
+<span class="go">    1.0429784536817184</span>
+</pre></div>
+</div>
+<p>Importantly (for purposes of synthesizing populations of stars, e.g.),
+you can pass array-like values, rather than single values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mist</span><span class="o">.</span><span class="n">radius</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">],</span> <span class="mf">9.7</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+<span class="go">    array([ 0.75965718,  1.04297845,  1.96445299])</span>
+</pre></div>
+</div>
+<p>You can also interpolate broadband magnitudes, at a given
+distance and A_V extinction, as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">AV</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.95</span><span class="p">,</span> <span class="mf">9.61</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mist</span><span class="o">.</span><span class="n">mag</span><span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">](</span><span class="n">mass</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">feh</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">AV</span><span class="p">)</span>
+<span class="go">    11.788065261437591</span>
+</pre></div>
+</div>
+<p>You can see what bands are available to an <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> object
+by checking the <code class="docutils literal notranslate"><span class="pre">bands</span></code> attribute:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mist</span><span class="o">.</span><span class="n">bands</span>
+<span class="go">    [&#39;B&#39;, &#39;G&#39;, &#39;H&#39;, &#39;J&#39;, &#39;K&#39;, &#39;Kepler&#39;, &#39;V&#39;, &#39;W1&#39;, &#39;W2&#39;, &#39;W3&#39;, &#39;g&#39;, &#39;i&#39;, &#39;r&#39;, &#39;z&#39;]</span>
+</pre></div>
+</div>
+<p>If you wish to use a different set of photometric bands, you may initialize the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> with a <code class="docutils literal notranslate"><span class="pre">bands</span></code> keyword argument.  However, the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ModelGrid</span></code> object used by the <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> must know how to
+interpret that band name, and where to get that data, via the <code class="xref py py-func docutils literal notranslate"><span class="pre">get_band()</span></code>
+method.</p>
+</div>
+<div class="section" id="fitting-stellar-properties">
+<h2>Fitting Stellar Properties<a class="headerlink" href="#fitting-stellar-properties" title="Permalink to this headline">¶</a></h2>
+<p>If you want to estimate physical parameters for a star for which you
+have measured spectroscopic properties, you would do something like
+the following:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">isochrones</span> <span class="kn">import</span> <span class="n">StarModel</span>
+<span class="kn">from</span> <span class="nn">isochrones.mist</span> <span class="kn">import</span> <span class="n">MIST_Isochrone</span>
+
+<span class="c1">#spectroscopic properties (value, uncertainty)</span>
+<span class="n">Teff</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5770</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span>
+<span class="n">logg</span> <span class="o">=</span> <span class="p">(</span><span class="mf">4.44</span><span class="p">,</span> <span class="mf">0.08</span><span class="p">)</span>
+<span class="n">feh</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.00</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">)</span>
+
+<span class="n">mist</span> <span class="o">=</span> <span class="n">MIST_Isochrone</span><span class="p">()</span>
+
+<span class="n">model</span>  <span class="o">=</span> <span class="n">StarModel</span><span class="p">(</span><span class="n">mist</span><span class="p">,</span> <span class="n">Teff</span><span class="o">=</span><span class="n">Teff</span><span class="p">,</span> <span class="n">logg</span><span class="o">=</span><span class="n">logg</span><span class="p">,</span> <span class="n">feh</span><span class="o">=</span><span class="n">feh</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The model now has a <code class="docutils literal notranslate"><span class="pre">samples</span></code> property that contains all of the
+samples generated by the MultiNest/MCMC chain in a <code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>
+object—or more specifically, it contains both the samples generated
+directly from the chain and the corresponding values of all the model
+properties (e.g. radius, synthetic photometry, etc.) evaluated at each
+chain link.  You can also visualize the results using:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">corner_physical</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Note that a <a class="reference internal" href="api.html#isochrones.StarModel" title="isochrones.StarModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">isochrones.StarModel</span></code></a> can be initialized with any arguments
+that correspond to properties predicted by the model grids—that is,
+in addition to spectroscopic properties, apparent magnitudes (and
+errors) may also be included among the keyword arguments, as well as parallax
+(in miliarcseconds) and asteroseismic properties (<code class="docutils literal notranslate"><span class="pre">nu_max</span></code> or <code class="docutils literal notranslate"><span class="pre">delta_nu</span></code>).</p>
+<p>After running the MultiNest/MCMC chain, you can save the results:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">save_hdf</span><span class="p">(</span><span class="s1">&#39;starmodel.h5&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Which you can then read back in later as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">StarModel</span><span class="o">.</span><span class="n">load_hdf</span><span class="p">(</span><span class="s1">&#39;starmodel.h5&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In addition, if you would like to entertain the possibility of a star
+having light from more than one component, you can also fit a binary
+or triple star model by providing the additional keyword argument <code class="docutils literal notranslate"><span class="pre">N=2</span></code>
+or <code class="docutils literal notranslate"><span class="pre">N=3</span></code> to the <code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code> initialization.  You can also set up
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code> that allows for light from multiple stars to be blended
+in some bandpasses but resolved in others.  See the
+<a class="reference external" href="https://github.com/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb">demo notebook</a> for more details on how to do this.</p>
+<p>The easiest way to initialize and fit a <code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code> is to create a
+<code class="docutils literal notranslate"><span class="pre">star.ini</span></code> file in a directory called <code class="docutils literal notranslate"><span class="pre">mystar</span></code> (for example), and then
+run the <code class="docutils literal notranslate"><span class="pre">starfit</span></code> command-line script that gets installed with <code class="docutils literal notranslate"><span class="pre">isochrones</span></code>.
+Again, see the <a class="reference external" href="https://github.com/timothydmorton/isochrones/blob/master/notebooks/demo.ipynb">demo notebook</a> for more details.</p>
+</div>
+<div class="section" id="api-documentation">
+<h2>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#modelgrid">ModelGrid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#isochrone">Isochrone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#mist">MIST</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#dartmouth">Dartmouth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#starmodel">StarModel</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+      </div>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Timothy Morton.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

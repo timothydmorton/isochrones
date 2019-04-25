@@ -1,0 +1,215 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Stellar model grids \n",
+    "\n",
+    "## Background and EEPs\n",
+    "\n",
+    "Stellar model grids are typically constructed as a set of evolutionary tracks, where models of stellar evolution are run on grids of initial mass and metallicity, often with some other physical parameter varied as well (e.g., rotation, helium fraction, $\\alpha$-abundance, etc.).  Each of these evolutionary tracks predicts various physical properties (temperature, luminosity, etc.) of a star with given initial mass and metallicity, as a function of age.  \n",
+    "\n",
+    "It is also often of interest to re-organize these evolution track grids into \"isochrones\"---sets of stars at a range of masses, all with the same age.  As described in [this reference](https://iopscience.iop.org/article/10.3847/0067-0049/222/1/8/pdf), in order to construct these isochrones, the time axis of each evolution track gets mapped into a new coordinate, called \"equivalent evolutionary phase,\" or EEP.  The principle of the EEPs is to first identify physically significant stages in stellar evolution, and then subdivide each of these stages into a number of equal steps. This adaptive sampling enables accurate interpolation between evolution tracks even at ages when stars are evolving quickly, in the post-main sequence phases.  \n",
+    "\n",
+    "Previous versions of **isochrones** relied directly on these precomputed isochrone grids and interpolated between grid points in `(mass, age, feh)` space.  This returned [inaccurate results](https://github.com/timothydmorton/isochrones/issues/63) for post-MS stages of stellar evolution, and thus was not reliable for modeling evolved stars.  However, beginning with v2.0, **isochrones** now implements all interpolation using EEPs.  In addition, it provides direct access to the evolution track grids, in addition to precomputed isochrone grids.  Note that version 2.0 includes only the [MIST](http://waps.cfa.harvard.edu/MIST/index.html) models; future updates will include more (e.g. PARSEC, YAPSI)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Model Grid Objects and Interpolation\n",
+    "\n",
+    "**Isochrones** provides a simple and direct interface to full grids of stellar models.  Upon first access, the grids are downloaded in original form, reorganized, and written to disk in binary format in order to load quickly with subsequent access.  The grids are loaded as pandas dataframes with multi-level indexing that reflects the structure of the grids: evolution track grids are indexed by metallicity, initial mass, and EEP; and isochone grids by metallicity, age, and EEP. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.mist import MISTEvolutionTrackGrid, MISTIsochroneGrid\n",
+    "\n",
+    "track_grid = MISTEvolutionTrackGrid()\n",
+    "track_grid.df.head()  # just show first few rows"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "iso_grid = MISTIsochroneGrid()\n",
+    "iso_grid.df.head()  # just show first few rows"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This generally contains only a subset of the original columns provided by the underlying grid, with standardized names. There are also additional computed columns, such as stellar radius and density.  The full, original grids, can be found with the `.df_orig` attribute if desired:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "iso_grid.df_orig.head()  # just show first few rows"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "iso_grid.df_orig.columns"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Any property (or properties) of these grids can be interpolated to any value of the index parameters via the `.interp` method: "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "track_grid.interp([-0.12, 1.01, 353.1], ['mass', 'radius', 'logg', 'Teff'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Similarly, the `.interp_orig` method interpolates any of the original columns by name:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "track_grid.interp_orig([-0.12, 1.01, 353.1], ['v_wind_Km_per_s']) "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Note that these interpolations are fast---30-40x faster than the equivalent interpolation in scipy, for evaluating at a single point:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from scipy.interpolate import RegularGridInterpolator\n",
+    "\n",
+    "grid = track_grid.interp.grid[:, :, :, 4]  # subgrid corresponding to radius \n",
+    "interp = RegularGridInterpolator(track_grid.interp.index_columns, grid)\n",
+    "assert track_grid.interp([-0.12, 1.01, 353.1], ['radius']) == interp([-0.12, 1.01, 353.1])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%timeit interp([-0.12, 1.01, 353.1])\n",
+    "%timeit track_grid.interp([-0.12, 1.01, 353.1], ['radius'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In order to select a subset of these grids, you can use pandas multi-index magic:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "iso_grid.df.xs((9.0, 0.0), level=(0, 1)).head()  # just show first few rows"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Example visualization"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Just for fun, let's plot a few isochrones:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import hvplot.pandas\n",
+    "\n",
+    "# Select two isochrones from the grid\n",
+    "iso_df1 = iso_grid.df.xs((9.0, 0.0), level=(0, 1))\n",
+    "iso_df2 = iso_grid.df.xs((9.5, 0.0), level=(0, 1))\n",
+    "\n",
+    "options = dict(invert_xaxis=True, legend_position='bottom_left')\n",
+    "\n",
+    "# Isn't hvplot/holoviews great?\n",
+    "plot1 = iso_df1.hvplot.line('logTeff', 'logL', label='Log(age) = 9.0')\n",
+    "plot2 = iso_df2.hvplot.line('logTeff', 'logL', label='Log(age) = 9.5')\n",
+    "(plot1 * plot2).options(**options)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

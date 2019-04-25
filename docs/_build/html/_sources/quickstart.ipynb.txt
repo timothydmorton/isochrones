@@ -1,0 +1,296 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Quick Start"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Access stellar model grid data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.mist import MISTIsochroneGrid\n",
+    "\n",
+    "grid = MISTIsochroneGrid()\n",
+    "print(len(grid.df))\n",
+    "grid.df.head()  # Just the first few rows"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.mist import MISTEvolutionTrackGrid\n",
+    "\n",
+    "grid_tracks = MISTEvolutionTrackGrid()\n",
+    "print(len(grid_tracks.df))\n",
+    "grid_tracks.df.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Interpolate stellar properites"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import get_ichrone\n",
+    "mist = get_ichrone('mist')\n",
+    "eep = mist.get_eep(1.01, 9.76, 0.03, accurate=True)\n",
+    "mist.interp_value([eep, 9.76, 0.03], ['Teff', 'logg', 'radius', 'density'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mist.interp_mag([eep, 9.76, 0.03, 200, 0.1], bands=['G', 'BP', 'RP'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Generate synthetic properties of stars "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import get_ichrone\n",
+    "tracks = get_ichrone('mist', tracks=True)\n",
+    "\n",
+    "mass, age, feh = (1.03, 9.72, -0.11)\n",
+    "\n",
+    "tracks.generate(mass, age, feh, return_dict=True)  # \"accurate=True\" makes more accurate, but slower"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones.priors import ChabrierPrior\n",
+    "import numpy as np\n",
+    "\n",
+    "# Simulate a 1000-star cluster at 8kpc\n",
+    "\n",
+    "N = 1000\n",
+    "masses = ChabrierPrior().sample(N)\n",
+    "feh = -1.8\n",
+    "age = np.log10(6e9)  # 6 Gyr\n",
+    "distance = 8000.  # 8 kpc \n",
+    "AV = 0.15\n",
+    "\n",
+    "# By default this will return a dataframe\n",
+    "%timeit tracks.generate(masses, age, feh, distance=distance, AV=AV)\n",
+    "df = tracks.generate(masses, age, feh, distance=distance, AV=AV)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df = df.dropna()\n",
+    "print(len(df)) # about half of the original simulated stars are nans\n",
+    "df.head()  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import holoviews as hv\n",
+    "hv.extension('bokeh')\n",
+    "import hvplot.pandas\n",
+    "\n",
+    "df['BP-RP'] = df.BP - df.RP\n",
+    "df.hvplot.scatter('BP-RP', 'G', hover_cols=['mass', 'radius', 'Teff', 'logg', 'eep']).options(invert_yaxis=True, width=600)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Fit physical parameters of a star to observed data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import get_ichrone, SingleStarModel\n",
+    "\n",
+    "mist = get_ichrone('mist', bands=['BP', 'RP'])\n",
+    "params = {'Teff': (5700, 100), 'logg': (4.5, 0.1), 'feh': (0.0, 0.15), \n",
+    "          'BP': (10.42, 0.01), 'RP': (9.54, 0.01), \n",
+    "          'parallax': (10, 0.5)}  # mas\n",
+    "mod = SingleStarModel(mist, **params)\n",
+    "mod.fit()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%matplotlib inline\n",
+    "\n",
+    "mod.corner_physical();"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Check out the numerical sampling results:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.samples.describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "And the derived parameters at those samples:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.derived_samples.describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Eyeball your posterior predictive with:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod.corner_observed();"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Fit a binary star model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from isochrones import BinaryStarModel\n",
+    "mod2 = BinaryStarModel(mist, **params)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod2.fit()\n",
+    "mod2.corner_physical();"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod2.derived_samples.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mod2.corner_observed();"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

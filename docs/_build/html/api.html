@@ -1,0 +1,415 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>API &#8212; isochrones 2.0dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/scrolls.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/print.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <script type="text/javascript" src="_static/theme_extras.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="index.html"
+          title="back to the documentation overview"><span>API</span></a></h1>
+      </div>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="#">API</a>
+      </div>
+      <div id="contentwrapper">
+        <div id="toc" role="navigation" aria-label="table of contents navigation">
+          <h3>Table of Contents</h3>
+          <ul>
+<li><a class="reference internal" href="#">API</a><ul>
+<li><a class="reference internal" href="#modelgrid">ModelGrid</a></li>
+<li><a class="reference internal" href="#isochrone">Isochrone</a></li>
+<li><a class="reference internal" href="#mist">MIST</a></li>
+<li><a class="reference internal" href="#dartmouth">Dartmouth</a></li>
+<li><a class="reference internal" href="#starmodel">StarModel</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+        
+  <div class="section" id="api">
+<span id="id1"></span><h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-isochrones"></span><p>This page details the methods and classes provided by the
+<code class="docutils literal notranslate"><span class="pre">isochrones</span></code> package.  The <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelGrid</span></code> object handles
+the book-keeping aspects of loading a given grid into a <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>
+object.  However, <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelGrid</span></code> works behind the scenes; you should
+usually only work directly through the <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> object, which handles the grid interpolation. Finally, the <a class="reference internal" href="#isochrones.StarModel" title="isochrones.StarModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code></a> object is used to fit the stellar models constrained by observed data.</p>
+<div class="section" id="modelgrid">
+<h2>ModelGrid<a class="headerlink" href="#modelgrid" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="isochrone">
+<h2>Isochrone<a class="headerlink" href="#isochrone" title="Permalink to this headline">¶</a></h2>
+<p>Any usage of <code class="docutils literal notranslate"><span class="pre">isochrones</span></code> involves instantiating an
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code>, usually through a specific subclass such as
+<a class="reference internal" href="#isochrones.mist.MIST_Isochrone" title="isochrones.mist.MIST_Isochrone"><code class="xref py py-class docutils literal notranslate"><span class="pre">mist.MIST_Isochrone</span></code></a>.</p>
+</div>
+<div class="section" id="mist">
+<h2>MIST<a class="headerlink" href="#mist" title="Permalink to this headline">¶</a></h2>
+<p>Stellar model grids from the <a class="reference external" href="http://waps.cfa.harvard.edu/MIST/">MESA Isochrones and Stellar Tracks</a>.  These grids cover a larger range in mass,
+age, and [Fe/H], compared to the Dartmouth grids, and are thus preferred.
+Because this is a larger grid, interpolation here is implemented via the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">FastIsochrone</span></code> implementation, rather than the standard Delaunay
+triangulation-based <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> implementation.</p>
+<dl class="class">
+<dt id="isochrones.mist.MIST_Isochrone">
+<em class="property">class </em><code class="descclassname">isochrones.mist.</code><code class="descname">MIST_Isochrone</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/mist/isochrone.html#MIST_Isochrone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.mist.MIST_Isochrone" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="dartmouth">
+<h2>Dartmouth<a class="headerlink" href="#dartmouth" title="Permalink to this headline">¶</a></h2>
+<p>Stellar model grids from the <a class="reference external" href="http://stellar.dartmouth.edu/models/">Dartmouth Stellar Evolution Database</a>.  Because these grids contain
+fewer points, both interpolation options are available: <code class="xref py py-class docutils literal notranslate"><span class="pre">Dartmouth_Isochrone</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">Dartmouth_FastIsochrone</span></code>.</p>
+</div>
+<div class="section" id="starmodel">
+<h2>StarModel<a class="headerlink" href="#starmodel" title="Permalink to this headline">¶</a></h2>
+<p>Estimating a star’s physical properties based on a set of observed
+properties involves instantiating a <a class="reference internal" href="#isochrones.StarModel" title="isochrones.StarModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code></a>.</p>
+<dl class="class">
+<dt id="isochrones.StarModel">
+<em class="property">class </em><code class="descclassname">isochrones.</code><code class="descname">StarModel</code><span class="sig-paren">(</span><em>ic</em>, <em>obs=None</em>, <em>N=1</em>, <em>index=0</em>, <em>name=''</em>, <em>use_emcee=False</em>, <em>RA=None</em>, <em>dec=None</em>, <em>coords=None</em>, <em>eep_bounds=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ic</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> object used to model star.</li>
+<li><strong>obs</strong> – (optional)
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTree</span></code> object containing photometry information.
+If not provided, then one will be constructed from the provided
+keyword arguments (which must include at least one photometric
+bandpass).  This should only happen in the simplest case
+of a single star system—if multiple stars are detected
+in any of the observations being used, an <code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTree</span></code>
+should be passed.  If <cite>obs</cite> is a string, then it is assumed
+to be a filename of an obs summary DataFrame.</li>
+<li><strong>N</strong> – Number of model stars to assign to each “leaf node” of the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTree</span></code>.  If you want to model a binary star,
+provide <code class="docutils literal notranslate"><span class="pre">N=2</span></code>.</li>
+<li><strong>**kwargs</strong> – <p>Keyword arguments must be properties of given isochrone, e.g., logg,
+feh, Teff, and/or magnitudes.  The values represent measurements of
+the star, and must be in (value,error) format. All such keyword
+arguments will be held in <code class="docutils literal notranslate"><span class="pre">self.properties</span></code>.  <code class="docutils literal notranslate"><span class="pre">parallax</span></code> is
+also a valid property, and should be provided in miliarcseconds,
+as is <code class="docutils literal notranslate"><span class="pre">density</span></code> [g/cc], and <code class="docutils literal notranslate"><span class="pre">nu_max</span></code> and <code class="docutils literal notranslate"><span class="pre">delta_nu</span></code>
+(asteroseismic parameters in uHz.)</p>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="isochrones.StarModel.convert_pars_to_eep">
+<code class="descname">convert_pars_to_eep</code><span class="sig-paren">(</span><em>pars</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.convert_pars_to_eep"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.convert_pars_to_eep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replaces old parameter vectors containing mass with the closest EEP equivalent</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.corner_observed">
+<code class="descname">corner_observed</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.corner_observed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.corner_observed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes corner plot for each observed node magnitude</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="isochrones.StarModel.evidence">
+<code class="descname">evidence</code><a class="headerlink" href="#isochrones.StarModel.evidence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log(evidence) from multinest fit</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.fit_mcmc_old">
+<code class="descname">fit_mcmc_old</code><span class="sig-paren">(</span><em>nwalkers=300</em>, <em>nburn=200</em>, <em>niter=100</em>, <em>p0=None</em>, <em>initial_burn=None</em>, <em>ninitial=50</em>, <em>loglike_kwargs=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.fit_mcmc_old"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.fit_mcmc_old" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits stellar model using MCMC.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>nwalkers</strong> – (optional)
+Number of walkers to pass to <code class="xref py py-class docutils literal notranslate"><span class="pre">emcee.EnsembleSampler</span></code>.
+Default is 200.</li>
+<li><strong>nburn</strong> – (optional)
+Number of iterations for “burn-in.”  Default is 100.</li>
+<li><strong>niter</strong> – (optional)
+Number of for-keeps iterations for MCMC chain.
+Default is 200.</li>
+<li><strong>p0</strong> – (optional)
+Initial parameters for emcee.  If not provided, then chains
+will behave according to whether inital_burn is set.</li>
+<li><strong>initial_burn</strong> – (optional)
+If <cite>True</cite>, then initialize walkers first with a random initialization,
+then cull the walkers, keeping only those with &gt; 15% acceptance
+rate, then reinitialize sampling.  If <cite>False</cite>, then just do
+normal burn-in.  Default is <cite>None</cite>, which will be set to <cite>True</cite> if
+fitting for distance (i.e., if there are apparent magnitudes as
+properties of the model), and <cite>False</cite> if not.</li>
+<li><strong>ninitial</strong> – (optional)
+Number of iterations to test walkers for acceptance rate before
+re-initializing.</li>
+<li><strong>loglike_args</strong> – Any arguments to pass to <code class="xref py py-func docutils literal notranslate"><span class="pre">StarModel.loglike()</span></code>, such
+as what priors to use.</li>
+<li><strong>**kwargs</strong> – <p>Additional keyword arguments passed to <code class="xref py py-class docutils literal notranslate"><span class="pre">emcee.EnsembleSampler</span></code>
+constructor.</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><code class="xref py py-class docutils literal notranslate"><span class="pre">emcee.EnsembleSampler</span></code> object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.fit_multinest">
+<code class="descname">fit_multinest</code><span class="sig-paren">(</span><em>n_live_points=1000</em>, <em>basename=None</em>, <em>verbose=True</em>, <em>refit=False</em>, <em>overwrite=False</em>, <em>test=False</em>, <em>force_no_MPI=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.fit_multinest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.fit_multinest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits model using MultiNest, via pymultinest.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>n_live_points</strong> – Number of live points to use for MultiNest fit.</li>
+<li><strong>basename</strong> – Where the MulitNest-generated files will live.
+By default this will be in a folder named <cite>chains</cite>
+in the current working directory.  Calling this
+will define a <cite>_mnest_basename</cite> attribute for
+this object.</li>
+<li><strong>verbose</strong> – Whether you want MultiNest to talk to you.</li>
+<li><strong>overwrite</strong> (<em>refit</em><em>,</em>) – Set either of these to true if you want to
+delete the MultiNest files associated with the
+given basename and start over.</li>
+<li><strong>**kwargs</strong> – <p>Additional keyword arguments will be passed to
+<code class="xref py py-func docutils literal notranslate"><span class="pre">pymultinest.run()</span></code>.</p>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="isochrones.StarModel.from_ini">
+<em class="property">classmethod </em><code class="descname">from_ini</code><span class="sig-paren">(</span><em>ic</em>, <em>folder='.'</em>, <em>ini_file='star.ini'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.from_ini"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.from_ini" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a StarModel from a .ini file</p>
+<p>The “classic” format (version &lt;= 0.9) should still work for a single star,
+where all properties are just listed in the file; e.g.,</p>
+<blockquote>
+<div>J = 10, 0.05
+H = 9.5, 0.05
+K = 9.0, 0.05
+Teff = 5000, 150</div></blockquote>
+<p>If there are multiple stars observed, you can either define them in
+the ini file, or use the <cite>obsfile</cite> keyword, pointing to a file with
+the summarized photometric observations.  In this case, spectroscopic/parallax
+info should still be included in the .ini file; e.g.,</p>
+<blockquote>
+<div>obsfile = obs.csv
+Teff = 5000, 150</div></blockquote>
+<p>The obsfile should be a comma-separated table with the following columns:
+<cite>[name, band, resolution, mag, e_mag, separation, pa, relative]</cite>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><cite>name</cite> is the name of instrument</li>
+<li><cite>band</cite> is the photometric bandpass</li>
+<li><cite>resolution</cite> is the approximate spatial resolution of instrument</li>
+<li><cite>mag</cite>, <cite>e_mag</cite> describe magnitude of source (absolute or relative)</li>
+<li><cite>separation</cite>, <cite>pa</cite> describe position of source</li>
+<li><cite>relative</cite>: single-bit flag; if 1 then magnitudes taken with this
+instrument are assumed to be relative rather than absolute.</li>
+</ul>
+</div></blockquote>
+<p>If an obsfile is not provided, you can also define all the same information
+in the ini file, following these rules:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Every instrument/survey gets its own [section].  Sections are only</li>
+</ul>
+</div></blockquote>
+<p>created for different photometric observations.</p>
+<blockquote>
+<div><ul class="simple">
+<li>if photometry relates to <em>all</em> stars in aperture,
+there is no extra info in the section, just the photometry.  In this case, it is
+also assumed that the photometry is absolute. (<cite>relative=False</cite>)</li>
+<li>If ‘resolution’ is an attribute under a particular survey section (and</li>
+</ul>
+</div></blockquote>
+<p>‘relative’ is not explicitly stated), then the survey is assumed to have relative
+photometry, and to be listing
+information about companion stars.  In this case, there must be “separation”
+and “PA” included for each companion.  If there is more than one companion star,
+they must be identifed by tag, e.g., separation_1, PA_1, Ks_1, J_1, etc.  The
+tag can be anything alphanumeric, but it must be consistent within a particular
+section (instrument).  If there
+is no tag, there is assumed to be only one companion detected.</p>
+<blockquote>
+<div><ul class="simple">
+<li>If there are no sections, then bands will be interpreted at face value</li>
+</ul>
+</div></blockquote>
+<p>and will all be assumed to apply to all stars modeled.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Default is to model each star in the highest-resolution observation as a</li>
+</ul>
+</div></blockquote>
+<p>single star, at the same distance/age/feh/AV.</p>
+<p>The <cite>N</cite> and <cite>index</cite>
+parameters may also be provided, to specify the relations between the
+model stars.  If these are not provided, then <cite>N</cite> will default to <cite>1</cite>
+(one model star per star observed in highest-resolution observation)
+and <cite>index</cite> will default to all <cite>0</cite> (all stars physically associated).</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="isochrones.StarModel.load_hdf">
+<em class="property">classmethod </em><code class="descname">load_hdf</code><span class="sig-paren">(</span><em>filename</em>, <em>path=''</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.load_hdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.load_hdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class method to load a saved StarModel from an HDF5 file.</p>
+<p>File must have been created by a call to <a class="reference internal" href="#isochrones.StarModel.save_hdf" title="isochrones.StarModel.save_hdf"><code class="xref py py-func docutils literal notranslate"><span class="pre">StarModel.save_hdf()</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filename</strong> – H5 file to load.</li>
+<li><strong>path</strong> – (optional)
+Path within HDF file.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#isochrones.StarModel" title="isochrones.StarModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">StarModel</span></code></a> object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.maxlike">
+<code class="descname">maxlike</code><span class="sig-paren">(</span><em>p0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.maxlike"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.maxlike" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds (local) optimum in parameter space.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="isochrones.StarModel.mnest_analyzer">
+<code class="descname">mnest_analyzer</code><a class="headerlink" href="#isochrones.StarModel.mnest_analyzer" title="Permalink to this definition">¶</a></dt>
+<dd><p>PyMultiNest Analyzer object associated with fit.</p>
+<p>See PyMultiNest documentation for more.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="isochrones.StarModel.mnest_basename">
+<code class="descname">mnest_basename</code><a class="headerlink" href="#isochrones.StarModel.mnest_basename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Full path to basename</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.mnest_loglike">
+<code class="descname">mnest_loglike</code><span class="sig-paren">(</span><em>cube</em>, <em>ndim</em>, <em>nparams</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.mnest_loglike"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.mnest_loglike" title="Permalink to this definition">¶</a></dt>
+<dd><p>loglikelihood function for multinest</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.print_ascii">
+<code class="descname">print_ascii</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.print_ascii"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.print_ascii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints an ascii representation of the observation tree structure.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.random_samples">
+<code class="descname">random_samples</code><span class="sig-paren">(</span><em>n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.random_samples"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.random_samples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a random sampling of given size from the existing samples.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>n</strong> – Number of samples</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code> of length <code class="docutils literal notranslate"><span class="pre">n</span></code> with random samples.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="isochrones.StarModel.sampler">
+<code class="descname">sampler</code><a class="headerlink" href="#isochrones.StarModel.sampler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sampler object from MCMC run.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="isochrones.StarModel.samples">
+<code class="descname">samples</code><a class="headerlink" href="#isochrones.StarModel.samples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dataframe with samples drawn from isochrone according to posterior</p>
+<p>Columns include both the sampling parameters from the MCMC
+fit (mass, age, Fe/H, [distance, A_V]), and also evaluation
+of the <code class="xref py py-class docutils literal notranslate"><span class="pre">Isochrone</span></code> at each of these sample points—this
+is how chains of physical/observable parameters get produced.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="isochrones.StarModel.save_hdf">
+<code class="descname">save_hdf</code><span class="sig-paren">(</span><em>filename</em>, <em>path=''</em>, <em>overwrite=False</em>, <em>append=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/isochrones/starmodel.html#StarModel.save_hdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#isochrones.StarModel.save_hdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves object data to HDF file (only works if MCMC is run)</p>
+<p>Samples are saved to /samples location under given path,
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTree</span></code> is saved to /obs location under given path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> – Name of file to save to.  Should be .h5 file.</li>
+<li><strong>path</strong> – (optional)
+Path within HDF file structure to save to.</li>
+<li><strong>overwrite</strong> – (optional)
+If <code class="docutils literal notranslate"><span class="pre">True</span></code>, delete any existing file by the same name
+before writing.</li>
+<li><strong>append</strong> – (optional)
+If <code class="docutils literal notranslate"><span class="pre">True</span></code>, then if a file exists, then just the path
+within the file will be updated.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+      </div>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Timothy Morton.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

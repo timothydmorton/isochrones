@@ -1,0 +1,70 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Install\n",
+    "\n",
+    "## Conda environment and testing\n",
+    "\n",
+    "**Isochrones** requires python 3.  I also recommend using **isochrones** in its own conda environment, to help manage dependencies. For example:\n",
+    "\n",
+    "    conda create -n isochrones numpy numba nose pytables pandas\n",
+    "\n",
+    "Then\n",
+    "\n",
+    "    pip install isochrones\n",
+    "    \n",
+    "To make sure everything is working, run\n",
+    "\n",
+    "    nosetests isochrones\n",
+    "    \n",
+    "And if anything breaks, please [raise an issue](https://github.com/timothydmorton/isochrones/issues).  \n",
+    "\n",
+    "## Installing MultiNest\n",
+    "\n",
+    "It is highly recommended to install **MultiNest**/**PyMultiNest** for model fitting.  First, install/build multinest with\n",
+    "\n",
+    "    git clone https://github.com/johannesBuchner/MultiNest\n",
+    "    cd MultiNest/build\n",
+    "    cmake -DCMAKE_INSTALL_PREFIX=~ ..  # or just \"cmake ..\" if you have root permissions\n",
+    "    make\n",
+    "    make install\n",
+    "        \n",
+    "(Note that if you don't have `cmake` available on your system, that you can install it in your environment with `conda install -c conda-forge cmake`.)\n",
+    "\n",
+    "If you do not have root permissions and thus installed the **MultiNest** libraries to your home directory, you will also need to make sure that `~/lib` is in your `LD_LIBRARY_PATH` environment variable; e.g., you can include the following line in your `~/.bash_profile` file:\n",
+    "\n",
+    "    export LD_LIBRARY_PATH=$HOME/lib\n",
+    "    \n",
+    "Then you can install pymultinest with\n",
+    "\n",
+    "    pip install pymultinest\n",
+    "    \n",
+    "(And run `nosetests isochrones` again, for good measure, to confirm that **MultiNest** works.)\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
