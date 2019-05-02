@@ -7,6 +7,12 @@ from math import sqrt
 import numpy as np
 import pandas as pd
 
+from .config import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
+
 
 @jit(nopython=True)
 def searchsorted(arr, x, N=-1):
