@@ -54,6 +54,7 @@ autodoc_mock_imports = [
     'tables',
     'tqdm',
     'numba',
+    'jit',
 ]
 
 # Convert the documentation notebooks
