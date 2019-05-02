@@ -11,7 +11,7 @@ def gauss_lnprob(val, unc, model_val):
     return LOG_ONE_OVER_ROOT_2PI + log(unc) - 0.5 * resid * resid / (unc * unc)
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def star_lnlike(pars, index_order,
                 spec_vals, spec_uncs,
                 mag_vals, mag_uncs, i_mags,

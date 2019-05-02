@@ -90,7 +90,8 @@ class StarModel(object):
     # These are allowable parameters that are not photometric bands
     _not_a_band = ('RA','dec','ra','Dec','maxAV','parallax','AV',
                   'logg','Teff','feh','density', 'separation',
-                 'PA','resolution','relative','N','index', 'id')
+                 'PA','resolution','relative','N','index', 'id',
+                 'nu_max', 'delta_nu')
 
     def __init__(self, ic, obs=None, N=1, index=0,
                  name='', use_emcee=False,
@@ -1450,10 +1451,13 @@ class BasicStarModel(StarModel):
     def lnlike(self, pars):
         if self.N == 1:
             pars = np.array([pars[0], pars[1], pars[2], pars[3], pars[4]], dtype=float)
+            primary_pars = pars
         elif self.N == 2:
+            primary_pars = np.array([pars[0], pars[2], pars[3], pars[4], pars[5]])
             pars = np.array([pars[0], pars[1], pars[2],
                              pars[3], pars[4], pars[5]], dtype=float)
         elif self.N == 3:
+            primary_pars = np.array([pars[0], pars[3], pars[4], pars[5], pars[6]])
             pars = np.array([pars[0], pars[1], pars[2],
                              pars[3], pars[4], pars[5], pars[6]], dtype=float)
 
@@ -1479,6 +1483,17 @@ class BasicStarModel(StarModel):
         if 'parallax' in self.kwargs:
             plax, plax_unc = self.kwargs['parallax']
             lnlike += gauss_lnprob(plax, plax_unc, 1000./pars[self.distance_index])
+
+        # Asteroseismology
+        if 'nu_max' in self.kwargs:
+            model_nu_max, model_delta_nu = self.ic.interp_value(primary_pars, ['nu_max', 'delta_nu'])
+
+            nu_max, nu_max_unc = self.kwargs['nu_max']
+            lnlike += gauss_lnprob(nu_max, nu_max_unc, model_nu_max)
+
+            if 'delta_nu' in self.kwargs:
+                delta_nu, delta_nu_unc = self.kwargs['delta_nu']
+                lnlike += gauss_lnprob(delta_nu, delta_nu, model_delta_nu)
 
         return lnlike
 

@@ -14,6 +14,8 @@
 
 import sys
 import os, os.path
+import glob
+import subprocess
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -38,6 +40,30 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
 ]
+
+nbsphinx_execute = 'never'
+
+autodoc_mock_imports = [
+    'numpy',
+    'pandas',
+    'scipy',
+    'scipy.stats',
+    'emcee',
+    'corner',
+    'astropy',
+    'tables',
+    'tqdm',
+    'numba',
+]
+
+# Convert the documentation notebooks
+# for fn in glob.glob('*.ipynb'):
+#     name = os.path.splitext(os.path.split(fn)[1])[0]
+#     outfn = os.path.join("tutorials", name + ".rst")
+#     print("Building {0}...".format(name))
+#     subprocess.check_call(
+#         "jupyter nbconvert --template nbsphinx-rst --to rst " + fn + " --output-dir . ", shell=True)
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
