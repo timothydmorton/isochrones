@@ -4,15 +4,10 @@ import requests
 import os
 import logging
 
-from numba import jit
 import numpy as np
+import numba as nb
 from math import log10
 
-from .config import on_rtd
-
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
 
 def band_pairs(bands):
     return [(bands[i], bands[-1]) for i in range(len(bands)-1)]
@@ -66,7 +61,7 @@ def addmags(*mags):
     else:
         return totmag
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def fast_addmags(mags):
     """
     mags is list of magnitudes
@@ -95,7 +90,7 @@ def distance(pos0, pos1):
     return np.sqrt(dra**2 + ddec**2)
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def trapz(y, x):
     n = len(y)
     tot = 0
@@ -107,7 +102,7 @@ def trapz(y, x):
     return tot
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def polyval(p, x):
     N = len(p)
     result = 0

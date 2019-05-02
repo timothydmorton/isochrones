@@ -9,14 +9,8 @@ from scipy.integrate import quad
 from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
 
 import matplotlib.pyplot as plt
-from numba import jit
+import numba as nb
 from math import log, log10
-
-from .config import on_rtd
-
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
 
 
 _norm_pdf_C = np.sqrt(2*np.pi)
@@ -24,14 +18,11 @@ ONE_OVER_ROOT_2PI = 1./_norm_pdf_C
 _norm_pdf_logC = np.log(_norm_pdf_C)
 LOG_ONE_OVER_ROOT_2PI = np.log(ONE_OVER_ROOT_2PI)
 
-
 def _norm_pdf(x):
     return np.exp(-x**2/2.0) / _norm_pdf_C
 
-
 def _norm_logpdf(x):
     return -x**2 / 2.0 - _norm_pdf_logC
-
 
 class Prior(object):
 
@@ -455,13 +446,13 @@ class EEP_prior(BoundedPrior):
         pass
 
 # Utility numba PDFs for speed!
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def powerlaw_pdf(x, alpha, lo, hi):
     alpha_plus_one = alpha + 1
     C = alpha_plus_one/(hi**alpha_plus_one - lo**alpha_plus_one)
     return C * x**alpha
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def powerlaw_lnpdf(x, alpha, lo, hi):
     alpha_plus_one = alpha + 1
     C = alpha_plus_one/(hi**alpha_plus_one - lo**alpha_plus_one)

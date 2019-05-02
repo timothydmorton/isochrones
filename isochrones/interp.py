@@ -2,19 +2,14 @@ import os
 import itertools
 import logging
 
+import numba as nb
 from numba import jit, float64, uint32, TypingError, typeof, prange
 from math import sqrt
 import numpy as np
 import pandas as pd
 
-from .config import on_rtd
 
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
-
-
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def searchsorted(arr, x, N=-1):
     """N is length of arr
     """
@@ -42,12 +37,12 @@ def searchsorted(arr, x, N=-1):
     return L, eq
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def find_indices(point, iis):
     ndim = len(point)
 
-    indices = np.zeros(ndim, dtype=uint32)
-    norm_distances = np.zeros(ndim, dtype=float64)
+    indices = np.zeros(ndim, dtype=nb.uint32)
+    norm_distances = np.zeros(ndim, dtype=nb.float64)
     out_of_bounds = False
     for i in range(ndim):
         ii = iis[i]
@@ -66,15 +61,15 @@ def find_indices(point, iis):
 
     return indices, norm_distances, out_of_bounds
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def find_indices_2d(x0, x1,
                     ii0, ii1):
 
     n0 = len(ii0)
     n1 = len(ii1)
 
-    indices = np.empty(2, dtype=uint32)
-    norm_distances = np.empty(2, dtype=float64)
+    indices = np.empty(2, dtype=nb.uint32)
+    norm_distances = np.empty(2, dtype=nb.float64)
 
     if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
             (x1 < ii1[0]) or (x1 > ii1[n1 - 1])):
@@ -101,7 +96,7 @@ def find_indices_2d(x0, x1,
     return indices, norm_distances, False
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def find_indices_3d(x0, x1, x2,
                     ii0, ii1, ii2):
 
@@ -109,8 +104,8 @@ def find_indices_3d(x0, x1, x2,
     n1 = len(ii1)
     n2 = len(ii2)
 
-    indices = np.empty(3, dtype=uint32)
-    norm_distances = np.empty(3, dtype=float64)
+    indices = np.empty(3, dtype=nb.uint32)
+    norm_distances = np.empty(3, dtype=nb.float64)
 
     if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
             (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
@@ -147,7 +142,7 @@ def find_indices_3d(x0, x1, x2,
     return indices, norm_distances, False
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def find_indices_4d(x0, x1, x2, x3,
                     ii0, ii1, ii2, ii3):
 
@@ -156,8 +151,8 @@ def find_indices_4d(x0, x1, x2, x3,
     n2 = len(ii2)
     n3 = len(ii3)
 
-    indices = np.empty(4, dtype=uint32)
-    norm_distances = np.empty(4, dtype=float64)
+    indices = np.empty(4, dtype=nb.uint32)
+    norm_distances = np.empty(4, dtype=nb.float64)
 
     if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
             (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
@@ -203,7 +198,7 @@ def find_indices_4d(x0, x1, x2, x3,
 
     return indices, norm_distances, False
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_value_2d(x0, x1,
                     grid, icols,
                     ii0, ii1):
@@ -220,15 +215,15 @@ def interp_value_2d(x0, x1,
     ndim = 2
     n_edges = 2**ndim
     edges = np.zeros((n_edges, ndim))
-    for i in range(n_edges):
+    for i in range(n_edges):nb.
         for j in range(ndim):
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
     n_values = len(icols)
-    values = np.zeros(n_values, dtype=float64)
+    values = np.zeros(n_values, dtype=nb.float64)
 
     for j in range(n_edges):
-        edge_indices = np.zeros(ndim, dtype=uint32)
+        edge_indices = np.zeros(ndim, dtype=nb.uint32)
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
@@ -248,7 +243,7 @@ def interp_value_2d(x0, x1,
 
     return values
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_value_3d(x0, x1, x2,
                     grid, icols,
                     ii0, ii1, ii2):
@@ -270,11 +265,11 @@ def interp_value_3d(x0, x1, x2,
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
     n_values = len(icols)
-    values = np.zeros(n_values, dtype=float64)
+    values = np.zeros(n_values, dtype=nb.float64)
 
     for j in range(n_edges):
-        edge_indices = np.zeros(ndim, dtype=uint32)
-        for k in range(ndim):
+        edge_indices = np.zeros(ndim, dtype=nb.uint32)
+        for k in range(ndim):nb.
             edge_indices[k] = edges[j, k]
 
         weight = 1.
@@ -294,7 +289,7 @@ def interp_value_3d(x0, x1, x2,
     return values
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_value_4d(x0, x1, x2, x3,
                     grid, icols,
                     ii0, ii1, ii2, ii3):
@@ -318,10 +313,10 @@ def interp_value_4d(x0, x1, x2, x3,
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
     n_values = len(icols)
-    values = np.zeros(n_values, dtype=float64)
+    values = np.zeros(n_values, dtype=nb.float64)
 
     for j in range(n_edges):
-        edge_indices = np.zeros(ndim, dtype=uint32)
+        edge_indices = np.zeros(ndim, dtype=nb.uint32)
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
@@ -342,7 +337,7 @@ def interp_value_4d(x0, x1, x2, x3,
 
     return values
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_values_2d(xx0, xx1,
                      grid, icols,
                      ii0, ii1):
@@ -353,7 +348,7 @@ def interp_values_2d(xx0, xx1,
 
     N = len(xx0)
     ncols = len(icols)
-    results = np.empty((N, ncols), dtype=float64)
+    results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
         res = interp_value_2d(xx0[i], xx1[i],
                               grid, icols,
@@ -364,7 +359,7 @@ def interp_values_2d(xx0, xx1,
     return results
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_values_3d(xx0, xx1, xx2,
                      grid, icols,
                      ii0, ii1, ii2):
@@ -375,7 +370,7 @@ def interp_values_3d(xx0, xx1, xx2,
 
     N = len(xx0)
     ncols = len(icols)
-    results = np.empty((N, ncols), dtype=float64)
+    results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
         res = interp_value_3d(xx0[i], xx1[i], xx2[i],
                               grid, icols,
@@ -386,7 +381,7 @@ def interp_values_3d(xx0, xx1, xx2,
     return results
 
 
-# @jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_values_4d(xx0, xx1, xx2, xx3,
                      grid, icols,
                      ii0, ii1, ii2, ii3):
@@ -397,7 +392,7 @@ def interp_values_4d(xx0, xx1, xx2, xx3,
 
     N = len(xx0)
     ncols = len(icols)
-    results = np.empty((N, ncols), dtype=float)
+    results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
         res = interp_value_4d(xx0[i], xx1[i], xx2[i], xx3[i],
                               grid, icols,
@@ -408,7 +403,7 @@ def interp_values_4d(xx0, xx1, xx2, xx3,
     return results
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def sign(x):
     if x < 0:
         return -1
@@ -504,10 +499,10 @@ def find_closest3(val, a, b,
     return x1
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_eeps(xs, x0s, x1s, ii0, ii1, n1, arrays, weight_arrays, lengths):
     n = len(xs)
-    results = np.empty(n, dtype=float64)
+    results = np.empty(n, dtype=nb.float64)
 
     for i in range(n):
         x = xs[i]
@@ -518,7 +513,7 @@ def interp_eeps(xs, x0s, x1s, ii0, ii1, n1, arrays, weight_arrays, lengths):
     return results
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     """
     """

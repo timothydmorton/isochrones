@@ -1,14 +1,8 @@
-from numba import jit, vectorize, float64
+import numba as nb
 import numpy as np
 
-from .config import on_rtd
 
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
-
-
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def eep_fn(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
     """Polynomial + exponential to approximate eep(age) for given track
     """
@@ -23,14 +17,8 @@ def eep_fn(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
 
     return p5*x**5 + p4*x**4 + p3*x**3 + p2*x**2 + p1*x + p0 + A*np.exp((x - x0)/tau)
 
-# @vectorize([float64(*[float64]*10)])
-# def eep_fn(x, p5, p4, p3, p2, p1, p0, A, x0, tau):
-#     """Polynomial + exponential to approximate eep(age) for given track
-#     """
-#     return p5*x**5 + p4*x**4 + p3*x**3 + p2*x**2 + p1*x + p0 + A*np.exp((x - x0)/tau)
 
-
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def eep_jac(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
     """Jacobian of eep_fn
     """
@@ -45,7 +33,7 @@ def eep_jac(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
 
     n = len(x)
 
-    result = np.empty((n, 9), dtype=float64)
+    result = np.empty((n, 9), dtype=nb.float64)
     for i in range(n):
         xi = x[i]
         result[i, 0] = xi*xi*xi*xi*xi

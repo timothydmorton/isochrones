@@ -44,7 +44,6 @@ autodoc_mock_imports = [
     'numpy',
     'pandas',
     'scipy',
-    'scipy.stats',
     'emcee',
     'corner',
     'astropy',

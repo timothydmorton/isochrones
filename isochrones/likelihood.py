@@ -1,25 +1,19 @@
 from isochrones.mags import interp_mag
 from .utils import fast_addmags
-from numba import jit
+import numba as nb
 from math import pi, log, sqrt
-
-from .config import on_rtd
-
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
 
 
 LOG_ONE_OVER_ROOT_2PI = log(1./sqrt(2*pi))
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def gauss_lnprob(val, unc, model_val):
     resid = val - model_val
     return LOG_ONE_OVER_ROOT_2PI + log(unc) - 0.5 * resid * resid / (unc * unc)
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def star_lnlike(pars, index_order,
                 spec_vals, spec_uncs,
                 mag_vals, mag_uncs, i_mags,
@@ -42,7 +36,6 @@ def star_lnlike(pars, index_order,
         triple_pars = [pars[2], pars[3], pars[4], pars[5], pars[6]]
         has_binary = True
         has_triple = True
-
 
     Teff, logg, feh, mags = interp_mag(single_pars, index_order, model_grid,
                                        i_Teff, i_logg, i_feh, i_Mbol,

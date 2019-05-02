@@ -1,23 +1,18 @@
 from math import log10, log, exp
-from numba import jit, prange
+import numba as nb
 import numpy as np
 
 from .utils import trapz
 from .priors import powerlaw_lnpdf
-from .utils import on_rtd
-
-if on_rtd:
-    def jit(*args, **kwargs):
-        pass
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def logaddexp(x1, x2):
     xmax = max(x1, x2)
     return xmax + log(exp(x1 - xmax) + exp(x2 - xmax))
 
 
-@jit(nopython=True)
+@nb.jit(nopython=True)
 def logsumexp(xx):
     xmax = xx[0]
     n = len(xx)
@@ -32,7 +27,7 @@ def logsumexp(xx):
     return xmax + log(expsum)
 
 
-@jit(nopython=True, parallel=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, parallel=True, nogil=True, fastmath=True)
 def calc_lnlike_grid(lnlike_prop,
                      model_mags, Nbands,
                      masses, ln_dm_deeps, eeps,
@@ -59,7 +54,7 @@ def calc_lnlike_grid(lnlike_prop,
 
     lnlikes = np.zeros((n_stars, n, n))
 
-    for i in prange(n_stars):
+    for i in nb.prange(n_stars):
         for j in range(n):
             for k in range(j+1):
                 if masses[k] / masses[j] < q_lo:
@@ -99,12 +94,12 @@ def calc_lnlike_grid(lnlike_prop,
     return lnlikes
 
 
-@jit(nopython=True, parallel=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, parallel=True, nogil=True, fastmath=True)
 def integrate_over_eeps(lnlike_grid, eeps, Nstars):
 
     likes_marginalized = np.zeros(Nstars)
     n = len(eeps)
-    for i in prange(Nstars):
+    for i in nb.prange(Nstars):
         row = np.zeros(n)
         for j in range(n):
             tot = 0
