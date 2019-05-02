@@ -1,4 +1,4 @@
-__version__ = '2.0dev'
+from .version import __version__
 
 try:
     __ISOCHRONES_SETUP__
