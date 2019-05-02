@@ -3,7 +3,6 @@ import itertools
 import logging
 
 import numba as nb
-from numba import jit, float64, uint32, TypingError, typeof, prange
 from math import sqrt
 import numpy as np
 import pandas as pd
@@ -269,7 +268,7 @@ def interp_value_3d(x0, x1, x2,
 
     for j in range(n_edges):
         edge_indices = np.zeros(ndim, dtype=nb.uint32)
-        for k in range(ndim):nb.
+        for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
         weight = 1.
@@ -336,6 +335,7 @@ def interp_value_4d(x0, x1, x2, x3,
             values[i_icol] += grid[grid_indices] * weight
 
     return values
+
 
 @nb.jit(nopython=True)
 def interp_values_2d(xx0, xx1,
