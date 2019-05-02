@@ -28,9 +28,11 @@ else:
     class LeftAligned(object):
         pass
 
-
 from .isochrone import get_ichrone
-from .utils import addmags, distance
+from .utils import addmags, distance, fast_addmags
+
+LOG_ONE_OVER_ROOT_2PI = np.log(1./np.sqrt(2*np.pi))
+
 
 class NodeTraversal(Traversal):
     """
@@ -74,6 +76,14 @@ class NodeTraversal(Traversal):
                         modval = node.evaluate(self.pars[node.label], 'parallax')
                         lnl = -0.5*(modval - plx)**2/u_plx**2
                         text += '; model={} ({})'.format(modval, lnl)
+                if hasattr(root, 'AV'):
+                    if node.index in root.AV:
+                        # Warning, this not tested; may break ->
+                        AV, u_AV = root.AV[node.index]
+                        text += ', AV={}'.format((AV, u_AV))
+                        modval = node.evaluate(self.pars[node.label], 'AV')
+                        lnl = -0.5*(modval - plx)**2/u_AV**2
+                        text += '; model={} ({})'.format(modval, lnl)
 
                 text += ': {}'.format(self.pars[node.label])
 
@@ -86,6 +96,8 @@ class NodeTraversal(Traversal):
                             text += ', {}={}'.format(k,v)
                     if node.index in root.parallax:
                         text += ', parallax={}'.format(root.parallax[node.index])
+                    if node.index in root.AV:
+                        text += ', AV={}'.format(root.AV[node.index])
                     if node.label in root.limits:
                         for k,v in root.limits[node.label].items():
                             text += ', {} limits={}'.format(k,v)
@@ -436,38 +448,21 @@ class ObsNode(Node):
             tag = len(existing)
             self.add_child(ModelNode(ic, index=idx, tag=tag))
 
-    def model_mag(self, pardict, use_cache=True):
+    def model_mag(self, model_values, use_cache=True):
         """
         pardict is a dictionary of parameters for all leaves
         gets converted back to traditional parameter vector
         """
-        if pardict == self._cache_key and use_cache:
-            #print('{}: using cached'.format(self))
-            return self._cache_val
+        # if pardict == self._cache_key and use_cache:
+        #     #print('{}: using cached'.format(self))
+        #     return self._cache_val
 
-        #print('{}: calculating'.format(self))
-        self._cache_key = pardict
+        # #print('{}: calculating'.format(self))
+        # self._cache_key = pardict
 
+        return addmags(*[model_values[n.label][self.band] for n in self.leaves])
 
-        # Generate appropriate parameter vector from dictionary
-        p = []
-        for l in self.leaf_labels:
-            p.extend(pardict[l])
-
-        assert len(p) == self.n_params
-
-        tot = np.inf
-        #print('Building {} mag for {}:'.format(self.band, self))
-        for i,m in enumerate(self.leaves):
-            mag = m.evaluate(p[i*5:(i+1)*5], self.band)
-            # logging.debug('{}: mag={}'.format(self,mag))
-            #print('{}: {}({}) = {}'.format(m,self.band,p[i*5:(i+1)*5],mag))
-            tot = addmags(tot, mag)
-
-        self._cache_val = tot
-        return tot
-
-    def lnlike(self, pardict, use_cache=True):
+    def lnlike(self, model_values, use_cache=True):
         """
         returns log-likelihood of this observation
 
@@ -482,13 +477,14 @@ class ObsNode(Node):
             # If this *is* the reference, just return
             if self.reference is None:
                 return 0
-            mod = (self.model_mag(pardict, use_cache=use_cache) -
-                   self.reference.model_mag(pardict, use_cache=use_cache))
+            mod = (self.model_mag(model_values, use_cache=use_cache) -
+                   self.reference.model_mag(model_values, use_cache=use_cache))
             mag -= self.reference.value[0]
         else:
-            mod = self.model_mag(pardict, use_cache=use_cache)
+            mod = self.model_mag(model_values, use_cache=use_cache)
 
-        lnl = -0.5*(mag - mod)**2 / dmag**2
+        lnl = -0.5*(mag - mod)**2 / dmag**2 + LOG_ONE_OVER_ROOT_2PI + np.log(dmag)
+
 
         # logging.debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
         #                                                         self.band,
@@ -751,6 +747,9 @@ class ObservationTree(Node):
         # Parallax measurements
         self.parallax = {}
 
+        # AV priors
+        self.AV = {}
+
         # This will be calculated and set at first access
         self._Nstars = None
 
@@ -845,12 +844,13 @@ class ObservationTree(Node):
                 store.close()
 
         df = self.to_df()
-        df.to_hdf(filename, path+'/df')
+        df.to_hdf(filename, path+'/df', format='table')
         with pd.HDFStore(filename) as store:
             # store = pd.HDFStore(filename)
             attrs = store.get_storer(path+'/df').attrs
             attrs.spectroscopy = self.spectroscopy
             attrs.parallax = self.parallax
+            attrs.AV = self.AV
             attrs.N = self._N
             attrs.index = self._index
             store.close()
@@ -880,6 +880,7 @@ class ObservationTree(Node):
         new.define_models(ic, N=attrs.N, index=attrs.index)
         new.spectroscopy = attrs.spectroscopy
         new.parallax = attrs.parallax
+        new.AV = attrs.AV
         store.close()
         return new
 
@@ -965,6 +966,16 @@ class ObservationTree(Node):
 
         self.parallax[system] = plax
         self._clear_cache()
+
+    def add_AV(self, AV, system=0):
+        if len(AV)!=2:
+            raise ValueError('Must enter (value,uncertainty).')
+        if system not in self.systems:
+            raise ValueError('{} not in systems ({}).'.format(system,self.systems))
+
+        self.AV[system] = AV
+        self._clear_cache()
+
 
     def define_models(self, ic, leaves=None, N=1, index=0):
         """
@@ -1104,13 +1115,26 @@ class ObservationTree(Node):
             i += N[s] + 4
         return d
 
+    def pardict2p(self, pardict):
+        """Convert from dictionary back to flat parameter vector
+        """
+        pars = []
+        N = self.Nstars
+        for s in self.systems:
+            for i in range(N[s]):
+                star = '{}_{}'.format(s,i)
+                pars.append(pardict[star][0])
+            pars += pardict['{}_0'.format(s)][1:]
+
+        return pars
+
     @property
     def param_description(self):
         N = self.Nstars
         pars = []
         for s in self.systems:
             for j in xrange(N[s]):
-                pars.append('mass_{}_{}'.format(s,j))
+                pars.append('eep_{}_{}'.format(s,j))
             for p in ['age', 'feh', 'distance', 'AV']:
                 pars.append('{}_{}'.format(p,s))
         return pars
@@ -1140,21 +1164,22 @@ class ObservationTree(Node):
             pardict = self.p2pardict(p)
         super(ObservationTree, self).print_ascii(fout, pardict)
 
-    def lnlike(self, p, use_cache=True):
+    def lnlike(self, p, model_values, use_cache=True):
         """
         takes parameter vector, constructs pardict, returns sum of lnlikes of non-leaf nodes
         """
-        if use_cache and self._cache_key is not None and np.all(p==self._cache_key):
-            return self._cache_val
-        self._cache_key = p
+        pardict = self.p2pardict(p) if type(p) is not dict else p
 
-        pardict = self.p2pardict(p)
+        # TODO: do we still want caching?
+        # if use_cache and self._cache_key is not None and np.all(p==self._cache_key):
+        #     return self._cache_val
+        # self._cache_key = p
 
         # lnlike from photometry
         lnl = 0
         for n in self:
             if n is not self:
-                lnl += n.lnlike(pardict, use_cache=use_cache)
+                lnl += n.lnlike(model_values, use_cache=use_cache)
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
                 return -np.inf
@@ -1162,8 +1187,8 @@ class ObservationTree(Node):
         # lnlike from spectroscopy
         for l in self.spectroscopy:
             for prop,(val,err) in self.spectroscopy[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
-                lnl += -0.5*(val - mod)**2/err**2
+                mod = model_values[l][prop]
+                lnl += -0.5*(val - mod)**2/err**2 + LOG_ONE_OVER_ROOT_2PI + np.log(err)
             if not np.isfinite(lnl):
                 self._cache_val = -np.inf
                 return -np.inf
@@ -1171,7 +1196,7 @@ class ObservationTree(Node):
         # enforce limits
         for l in self.limits:
             for prop,(vmin,vmax) in self.limits[l].items():
-                mod = self.get_leaf(l).evaluate(pardict[l], prop)
+                mod = model_values[l][prop]
                 if mod < vmin or mod > vmax or not np.isfinite(mod):
                     self._cache_val = -np.inf
                     return -np.inf
@@ -1180,7 +1205,12 @@ class ObservationTree(Node):
         for s,(val,err) in self.parallax.items():
             dist = pardict['{}_0'.format(s)][3]
             mod = 1./dist * 1000.
-            lnl += -0.5*(val-mod)**2/err**2
+            lnl += -0.5*(val-mod)**2/err**2 + LOG_ONE_OVER_ROOT_2PI + np.log(err)
+
+        # lnlike from AV
+        for s,(val,err) in self.AV.items():
+            AV = pardict['{}_0'.format(s)][4]
+            lnl += -0.5*(val-AV)**2/err**2 + LOG_ONE_OVER_ROOT_2PI + np.log(err)
 
         if not np.isfinite(lnl):
             self._cache_val = -np.inf

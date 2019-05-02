@@ -9,7 +9,7 @@ if not on_rtd:
     import matplotlib.pyplot as plt
 
 from configobj import ConfigObj
-from .starmodel import StarModel
+from .starmodel import StarModel, BasicStarModel
 from .isochrone import get_ichrone
 
 def initLogging(filename, logger):
@@ -41,7 +41,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
               'triple':3}
 
     if starmodel_type is None:
-        Mod = StarModel
+        Mod = BasicStarModel
     else:
         Mod = starmodel_type
 

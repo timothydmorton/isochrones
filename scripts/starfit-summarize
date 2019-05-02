@@ -19,6 +19,9 @@ import argparse
 #from isochrones.starmodel import StarModel, BinaryStarModel, TripleStarModel
 import pandas as pd
 
+import schwimmbad
+from isochrones.summary import get_summary_df
+
 PROPS = ['mass', 'radius', 'Teff', 'logg', 'feh', 'age', 'distance', 'AV']
 
 if __name__=='__main__':
@@ -29,10 +32,34 @@ if __name__=='__main__':
     parser.add_argument('--binary', action='store_true')
     parser.add_argument('--triple', action='store_true')
     parser.add_argument('--all', action='store_true')
-    parser.add_argument('--models', default='dartmouth')
+    parser.add_argument('--models', default='mist')
+    parser.add_argument('-f', '--filename', default=None)
+    parser.add_argument('--modelname', default='mist_starmodel_single')
+    parser.add_argument('-o', '--outfile', default='summary.h5')
+    parser.add_argument('--rootdir', default='.')
+    parser.add_argument('-p', '--processes', default=1, type=int)
 
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--ncores", dest="n_cores", default=1,
+                       type=int, help="Number of processes (uses multiprocessing).")
+    group.add_argument("--mpi", dest="mpi", default=False,
+                       action="store_true", help="Run with MPI.")
     args = parser.parse_args()
 
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
+
+    # Generate and write summary dataframe
+    if args.filename is not None:
+        with open(args.filename, 'r') as fin:
+            names = fin.read().splitlines()
+
+        df = get_summary_df(names, rootdir=args.rootdir, modelname=args.modelname,
+                            pool=pool)
+        df.to_hdf(os.path.join(args.rootdir, args.outfile), 'df')
+        sys.exit(0)
+
+
+    # Old thing, just write results.txt files for each star
     if args.all:
         multiplicities = ['single', 'binary', 'triple']
     elif args.binary:
@@ -41,7 +68,7 @@ if __name__=='__main__':
         multiplicities = ['triple']
     else:
         multiplicities = ['single']
-    
+
     #Models = {'single':StarModel,
     #          'binary':BinaryStarModel,
     #          'triple':TripleStarModel}
@@ -51,12 +78,12 @@ if __name__=='__main__':
             #Model = Models[mult]
             model_filename = '{}/{}_starmodel_{}.h5'.format(folder,
                                                             args.models, mult)
-            
+
             try:
                 samples = pd.read_hdf(model_filename, 'samples')
                 #mod = Model.load_hdf('{}/{}'.format(folder,model_filename))
-                results_file = '{}/{}_{}_results.txt'.format(folder, 
-                                                             args.models, 
+                results_file = '{}/{}_{}_results.txt'.format(folder,
+                                                             args.models,
                                                              mult)
                 fout = open(results_file, 'w')
                 for prop in PROPS:
@@ -67,7 +94,7 @@ if __name__=='__main__':
                         df_prop = prop + '_0_0'
                     else:
                         df_prop = prop + '_0'
-                    med, lo, hi = samples[df_prop].quantile([0.5, 
+                    med, lo, hi = samples[df_prop].quantile([0.5,
                                                           0.1585,
                                                           0.8415])
                     fout.write('{:.3f} {:.3f} {:.3f} '.format(med, lo, hi))
@@ -79,5 +106,3 @@ if __name__=='__main__':
                 logging.error('failed to write starfit summary '
                              'file for {}.'.format(mult,folder),
                              exc_info=True)
-
-

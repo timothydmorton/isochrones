@@ -1,0 +1,6 @@
+numpy
+numba
+nose
+pytables
+pandas
+pyviz

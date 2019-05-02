@@ -7,12 +7,22 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.6
 
+        - os: linux
+          env: PYTHON_VERSION=3.7
+
         # OSX
         - os: osx
           env: PYTHON_VERSION=3.6 MPLBACKEND=Agg
+
+        - os: osx
+          env: PYTHON_VERSION=3.7 MPLBACKEND=Agg
 
 install:
     - source .ci/travis.sh
 
 script:
     - nosetests -v isochrones
+    # - set -e
+    # - python3 -m sphinx docs docs/_build
+    # - pip install doctr
+    # - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
