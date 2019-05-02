@@ -1,6 +1,11 @@
 from numba import jit, vectorize, float64
 import numpy as np
 
+from .config import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
 
 
 @jit(nopython=True)

@@ -3,6 +3,11 @@ from numba import jit, float64
 from math import log10
 
 from .interp import interp_value_3d, interp_value_4d
+from .config import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
 
 
 @jit(nopython=True)

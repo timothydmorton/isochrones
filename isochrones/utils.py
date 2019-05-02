@@ -1,14 +1,18 @@
 from __future__ import print_function, division
 
-from .config import on_rtd
 import requests
 import os
 import logging
 
-if not on_rtd:
-    from numba import jit
-    import numpy as np
-    from math import log10
+from numba import jit
+import numpy as np
+from math import log10
+
+from .config import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
 
 def band_pairs(bands):
     return [(bands[i], bands[-1]) for i in range(len(bands)-1)]

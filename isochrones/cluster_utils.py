@@ -4,6 +4,11 @@ import numpy as np
 
 from .utils import trapz
 from .priors import powerlaw_lnpdf
+from .utils import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
 
 
 @jit(nopython=True)

@@ -1,19 +1,22 @@
 from __future__ import print_function, division
 import logging
 
+import numpy as np
+import pandas as pd
+import scipy.stats
+from scipy.stats import uniform, lognorm
+from scipy.integrate import quad
+from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
+
+import matplotlib.pyplot as plt
+from numba import jit
+from math import log, log10
+
 from .config import on_rtd
 
-if not on_rtd:
-    import numpy as np
-    import pandas as pd
-    import scipy.stats
-    from scipy.stats import uniform, lognorm
-    from scipy.integrate import quad
-    from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
-
-    import matplotlib.pyplot as plt
-    from numba import jit
-    from math import log, log10
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
 
 
 _norm_pdf_C = np.sqrt(2*np.pi)

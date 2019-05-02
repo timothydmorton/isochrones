@@ -2,6 +2,14 @@ from isochrones.mags import interp_mag
 from .utils import fast_addmags
 from numba import jit
 from math import pi, log, sqrt
+
+from .config import on_rtd
+
+if on_rtd:
+    def jit(*args, **kwargs):
+        pass
+
+
 LOG_ONE_OVER_ROOT_2PI = log(1./sqrt(2*pi))
 
 
