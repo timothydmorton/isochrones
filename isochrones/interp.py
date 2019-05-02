@@ -215,7 +215,7 @@ def interp_value_2d(x0, x1,
     ndim = 2
     n_edges = 2**ndim
     edges = np.zeros((n_edges, ndim))
-    for i in range(n_edges):nb.
+    for i in range(n_edges):
         for j in range(ndim):
             edges[i, j] = indices[j] + ((i >> (ndim - 1 - j)) & 1)  # woohoo!
 
