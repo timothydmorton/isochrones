@@ -15,6 +15,7 @@ RSUN = const.R_sun.cgs.value
 from .config import ISOCHRONES
 from .interp import DFInterpolator, interp_eep, interp_eeps
 from .mags import interp_mag, interp_mags
+from .utils import addmags
 from .grid import Grid
 
 
@@ -522,12 +523,35 @@ class ModelGridInterpolator(object):
 
         if return_dict:
             if props == 'all':
-                props = self.model_grid.interp.columns + bands
+                props = self.model_grid.interp.columns + ['{}_mag'.format(b) for b in bands]
             values = dict(zip(props, values))
         elif return_df:
             if props == 'all':
                 props = self.model_grid.interp.columns
-            values = pd.DataFrame(np.atleast_2d(values), columns=props + bands)
+            values = pd.DataFrame(np.atleast_2d(values),
+                                  columns=props + ['{}_mag'.format(b) for b in bands])
+
+        return values
+
+
+    def generate_binary(self, mass_A, mass_B, age, feh, **kwargs):
+        bands = kwargs.get('bands', None)
+        if bands is None:
+            bands = self.bands
+
+        values_A = self.generate(mass_A, age, feh, **kwargs)
+        values_B = self.generate(mass_B, age, feh, **kwargs)
+
+        if isinstance(values_A, pd.DataFrame):
+            column_map_A = {c: '{}_0'.format(c) for c in values_A.columns}
+            column_map_B = {c: '{}_1'.format(c) for c in values_B.columns}
+
+            values = pd.concat([values_A.rename(columns=column_map_A),
+                                values_B.rename(columns=column_map_B)], axis=1)
+
+            for b in bands:
+                values['{}_mag'.format(b)] = addmags(values_A['{}_mag'.format(b)],
+                                                     values_B['{}_mag'.format(b)])
 
         return values
 
@@ -584,3 +608,6 @@ class IsochroneInterpolator(ModelGridInterpolator):
         # age_interp = self.track.interp_value([mass, eep, feh], ['age'])
         # return (mass - mass_interp)**2 + (age - age_interp)**2
         return (mass - mass_interp)**2
+
+    def generate(self, *args, **kwargs):
+        return self.track.generate(*args, **kwargs)
