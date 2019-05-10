@@ -94,7 +94,7 @@ class Prior(object):
             plt.plot(c, h, '_')
             plt.plot(c, pdf, 'x')
         else:
-            assert max((resid / sigma)[hn > 50]) < 4
+            assert max((resid / sigma)[hn > 50]) < 6
 
 
 class BoundedPrior(Prior):
