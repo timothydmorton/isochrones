@@ -1401,8 +1401,6 @@ class BasicStarModel(StarModel):
             os.makedirs(path)
 
         c = configobj.ConfigObj(os.path.join(path, 'star.ini'))
-        # c['name'] = self.name
-        c['N'] = self.N
         if self.ra is not None and self.dec is not None:
             c['ra'] = self.ra
             c['dec'] = self.dec
@@ -1578,14 +1576,14 @@ class BasicStarModel(StarModel):
             primary_params = ['eep_0', 'age', 'feh', 'distance', 'AV']
             primary_df = self.ic(*[df[c].values for c in primary_params])
             column_map = {c: '{}_0'.format(c) for c in primary_df.columns
-                          if c not in ['eep_0', 'age', 'distance', 'AV']}
-            primary_df = primary_df.rename(columns=column_map).drop(['age'], axis=1)
+                          if c not in ['eep', 'eep_0', 'age', 'distance', 'AV']}
+            primary_df = primary_df.rename(columns=column_map).drop(['age', 'eep'], axis=1)
 
             secondary_params = ['eep_1', 'age', 'feh', 'distance', 'AV']
             secondary_df = self.ic(*[df[c].values for c in secondary_params])
             column_map = {c: '{}_1'.format(c) for c in secondary_df.columns
-                          if c not in ['eep_1', 'age', 'distance', 'AV']}
-            secondary_df = secondary_df.rename(columns=column_map).drop(['age'], axis=1)
+                          if c not in ['eep', 'eep_1', 'age', 'distance', 'AV']}
+            secondary_df = secondary_df.rename(columns=column_map).drop(['age', 'eep'], axis=1)
 
             self._derived_samples = pd.concat([self._derived_samples,
                                                primary_df, secondary_df], axis=1)
@@ -1600,8 +1598,8 @@ class BasicStarModel(StarModel):
             tertiary_params = ['eep_2', 'age', 'feh', 'distance', 'AV']
             tertiary_df = self.ic(*[df[c].values for c in tertiary_params])
             column_map = {c: '{}_2'.format(c) for c in tertiary_df.columns
-                          if c not in ['eep_2', 'age', 'distance', 'AV']}
-            tertiary_df = tertiary_df.rename(columns=column_map).drop(['age'], axis=1)
+                          if c not in ['eep', 'eep_2', 'age', 'distance', 'AV']}
+            tertiary_df = tertiary_df.rename(columns=column_map).drop(['eep', 'age'], axis=1)
 
             self._derived_samples = pd.concat([self._derived_samples, tertiary_df], axis=1)
 

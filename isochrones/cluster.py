@@ -154,11 +154,11 @@ class StarCatalog(object):
             yield mod_type[N](ic, **mags, **props, name=row.name)
             i += 1
 
-    def write_ini(self, ic=None, N=1, root='.'):
+    def write_ini(self, ic=None, root='.'):
         if ic is None:
             ic = get_ichrone('mist', bands=self.bands)
 
-        for mod in self.iter_models(ic, N=N):
+        for mod in self.iter_models(ic):
             mod.write_ini(root)
 
 class SimulatedCluster(StarCatalog):

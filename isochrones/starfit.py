@@ -30,15 +30,16 @@ def initLogging(filename, logger):
     logger.addHandler(sh)
     return logger
 
+
 def starfit(folder, multiplicities=['single'], models='mist',
             use_emcee=False, plot_only=False, overwrite=False, verbose=False,
             logger=None, starmodel_type=None, ini_file='star.ini',
             no_plots=False, bands=None, **kwargs):
     """ Runs starfit routine for a given folder.
     """
-    nstars = {'single':1,
-              'binary':2,
-              'triple':3}
+    nstars = {'single': 1,
+              'binary': 2,
+              'triple': 3}
 
     if starmodel_type is None:
         Mod = BasicStarModel
@@ -52,7 +53,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
         print('{} starfit...'.format(mult))
         model_filename = '{}_starmodel_{}.h5'.format(models, mult)
 
-        #initialize logger for folder
+        # initialize logger for folder
         logfile = os.path.join(folder, 'starfit.log')
         logger = initLogging(logfile, logger)
 
@@ -62,8 +63,8 @@ def starfit(folder, multiplicities=['single'], models='mist',
             start = time.time()
             if plot_only:
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
-                                           name=name)
+                    mod = Mod.load_hdf('{}/{}'.format(folder, model_filename),
+                                       name=name)
                 except:
                     pass
             else:
@@ -71,11 +72,11 @@ def starfit(folder, multiplicities=['single'], models='mist',
                 fit_model = True
 
                 try:
-                    mod = Mod.load_hdf('{}/{}'.format(folder,model_filename),
-                                         name=name)
+                    mod = Mod.load_hdf('{}/{}'.format(folder, model_filename),
+                                       name=name)
                     fit_model = False
                 except:
-                    filename = '{}/{}'.format(folder,model_filename)
+                    filename = '{}/{}'.format(folder, model_filename)
                     if os.path.exists(filename):
                         os.remove(filename)
 
@@ -92,7 +93,7 @@ def starfit(folder, multiplicities=['single'], models='mist',
 
                     N = nstars[mult] if 'N' not in c else None
                     mod = Mod.from_ini(ichrone, folder, use_emcee=use_emcee, N=N,
-                                        ini_file=ini_file, name=name)
+                                       ini_file=ini_file, name=name)
                     try:
                         mod.obs.print_ascii()
                     except:
