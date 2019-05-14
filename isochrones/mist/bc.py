@@ -74,6 +74,18 @@ class MISTBolometricCorrectionGrid(BolometricCorrectionGrid):
             if 'version' in kwargs:
                 if kwargs['version'] in ('1.1', '1.2'):
                     band += '_DR2Rev'
+        elif b == 'Bp':
+            phot = 'UBVRIplus'
+            band = 'Gaia_BP_DR2Rev'
+            if 'version' in kwargs:
+                if kwargs['version'] in ('1.1', '1.2'):
+                    band += '_DR2Rev'
+        elif b == 'Rp':
+            phot = 'UBVRIplus'
+            band = 'Gaia_RP_DR2Rev'
+            if 'version' in kwargs:
+                if kwargs['version'] in ('1.1', '1.2'):
+                    band += '_DR2Rev'
         else:
             m = re.match('([a-zA-Z]+)_([a-zA-Z_]+)', b)
             if m:

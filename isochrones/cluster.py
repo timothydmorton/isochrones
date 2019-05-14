@@ -9,6 +9,7 @@ except ImportError:
     hv = None
 
 from . import StarModel, get_ichrone
+from .starmodel import SingleStarModel, BinaryStarModel, TripleStarModel
 from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
 from .utils import addmags, band_pairs
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
@@ -138,6 +139,27 @@ class StarCatalog(object):
             self._hr = hv.Layout(layout)
         return self._hr
 
+    def iter_models(self, ic=None, N=1):
+        if ic is None:
+            ic = get_ichrone('mist', bands=self.bands)
+
+        mod_type = {1: SingleStarModel,
+                    2: BinaryStarModel,
+                    3: TripleStarModel}
+
+        for i in range(len(self.df)):
+            row = self.df.iloc[i]
+            mags = {b: (row['{}_mag'.format(b)], row['{}_mag_unc'.format(b)]) for b in self.bands}
+            props = {p: (row[p], row['{}_unc'.format(p)]) for p in self.props}
+            yield mod_type[N](ic, **mags, **props, name=row.name)
+            i += 1
+
+    def write_ini(self, ic=None, N=1, root='.'):
+        if ic is None:
+            ic = get_ichrone('mist', bands=self.bands)
+
+        for mod in self.iter_models(ic, N=N):
+            mod.write_ini(root)
 
 class SimulatedCluster(StarCatalog):
     def __init__(self, N, age, feh, distance, AV, alpha, gamma, fB,

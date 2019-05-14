@@ -395,9 +395,8 @@ class StarModel(object):
 
         logging.debug('Obs is {}'.format(obs))
 
-        if 'name' not in kwargs:
-            kwargs['name'] = os.path.basename(folder)
-        new = StarModel(ic, obs=obs, **kwargs)
+        name = kwargs.pop('name', os.path.basename(folder))
+        new = cls(ic, obs=obs, **kwargs, name=name)
         new._directory = os.path.abspath(folder)
 
         return new
@@ -1319,11 +1318,17 @@ class BasicStarModel(StarModel):
     use_emcee = False
 
     def __init__(self, ic, eep_bounds=None, name='', directory='.', N=1,
-                 maxAV=None, max_distance=None, halo_fraction=None, **kwargs):
+                 maxAV=None, max_distance=None, halo_fraction=None,
+                 ra=None, dec=None, obs=None,
+                 **kwargs):
         self._ic = ic
 
         self.eep_bounds = eep_bounds if eep_bounds is not None else self.ic.eep_bounds
         self.name = str(name)
+
+        self.ra = ra
+        self.dec = dec
+        self.obs = None
 
         if N > 1 and ic.eep_replaces == 'age':
             raise ValueError('Can only fit mulitple stars with IsochroneInterpolator!')
@@ -1350,7 +1355,11 @@ class BasicStarModel(StarModel):
             self.AV_index = 6
 
         self.N = N
-        self.kwargs = kwargs
+
+        # remove kwargs for backward compatibility
+        if 'use_emcee' in kwargs:
+            del kwargs['use_emcee']
+        self.kwargs = {k: (v, u) for k, (v, u) in kwargs.items() if not (np.isnan(v) or np.isnan(u))}
 
         self._bands = None
         self._spec_props = None
@@ -1385,6 +1394,23 @@ class BasicStarModel(StarModel):
         self._directory = str(directory)
         self._samples = None
         self._derived_samples = None
+
+    def write_ini(self, root='.'):
+        path = os.path.join(root, self.name)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        c = configobj.ConfigObj(os.path.join(path, 'star.ini'))
+        # c['name'] = self.name
+        c['N'] = self.N
+        if self.ra is not None and self.dec is not None:
+            c['ra'] = self.ra
+            c['dec'] = self.dec
+
+        for k, v in self.kwargs.items():
+            c[k] = v
+
+        c.write()
 
     @property
     def labelstring(self):
