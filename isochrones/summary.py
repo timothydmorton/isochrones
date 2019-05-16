@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 from multiprocessing import Pool
 
-from .starmodel import StarModel
+from .starmodel import StarModel, BasicStarModel
 
 
 def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh','distance','AV'],
@@ -15,7 +15,7 @@ def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh',
 
     modfile = os.path.join(rootdir, name,'{}.h5'.format(modelname))
     try:
-        mod = StarModel.load_hdf(modfile)
+        mod = BasicStarModel.load_hdf(modfile)
     except:
         if verbose:
             print('cannnot load starmodel! ({})'.format(modfile))
