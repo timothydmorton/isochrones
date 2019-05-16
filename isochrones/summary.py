@@ -25,25 +25,15 @@ def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh',
 
     # Get actual column names
     true_cols = []
-    for c1 in mod.samples.columns:
+    for c1 in mod.derived_samples.columns:
         for c2 in columns:
             if re.search(c2, c1):
                 true_cols.append(c1)
 
-    q_df = mod.samples[true_cols].quantile(qs)
-
-    true_derived_cols = []
-    for c1 in mod.derived_samples.columns:
-        for c2 in columns:
-            if re.search(c2, c1):
-                true_derived_cols.append(c1)
-
-    import pdb
-    pdb.set_trace()
-    q_df = pd.concat([q_df, mod.derived_samples[true_derived_cols].quantile(qs)], axis=1)
+    q_df = mod.derived_samples[true_cols].quantile(qs)
 
     df = pd.DataFrame(index=[name])
-    for c in true_cols + true_derived_cols:
+    for c in true_cols:
         for q in qs:
             col = c + '_{:02.0f}'.format(q*100)
             df.loc[name, col] = q_df.loc[q, c]
