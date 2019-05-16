@@ -38,6 +38,8 @@ def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh',
             if re.search(c2, c1):
                 true_derived_cols.append(c1)
 
+    import pdb
+    pdb.set_trace()
     q_df = pd.concat([q_df, mod.derived_samples[true_derived_cols].quantile(qs)], axis=1)
 
     df = pd.DataFrame(index=[name])
