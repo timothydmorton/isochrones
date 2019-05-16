@@ -1359,7 +1359,14 @@ class BasicStarModel(StarModel):
         # remove kwargs for backward compatibility
         if 'use_emcee' in kwargs:
             del kwargs['use_emcee']
-        self.kwargs = {k: (v, u) for k, (v, u) in kwargs.items() if not (np.isnan(v) or np.isnan(u))}
+        self.kwargs = {}
+        for k, v in kwargs.items():
+            try:
+                val, unc = v
+                if not (np.isnan(val) or np.isnan(unc)):
+                    self.kwargs[k] = v
+            except TypeError:
+                logging.warning('kwarg {}={} ignored!'.format(k, v))
 
         self._bands = None
         self._spec_props = None
