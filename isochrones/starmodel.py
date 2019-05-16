@@ -1319,12 +1319,13 @@ class BasicStarModel(StarModel):
 
     def __init__(self, ic, eep_bounds=None, name='', directory='.', N=1,
                  maxAV=None, max_distance=None, halo_fraction=None,
-                 ra=None, dec=None, obs=None,
+                 ra=None, dec=None, obs=None, use_emcee=False,
                  **kwargs):
         self._ic = ic
 
         self.eep_bounds = eep_bounds if eep_bounds is not None else self.ic.eep_bounds
         self.name = str(name)
+        self.use_emcee = use_emcee
 
         self.ra = ra
         self.dec = dec
