@@ -14,7 +14,7 @@ and running ``python setup.py install``.
 Depends on normal scientific libraries (e.g. ``numpy``, ``pandas``, etc.),
 as can easily be installed trouble-free via, e.g., the anaconda python distribution.
 
-For usage details, `read the documentation <http://isochrones.readthedocs.io>`_.
+For usage details, `read the documentation <http://isochrones.readthedocs.io/>`_.
 
 Stellar fits will want to use ``MultiNest``/``pymultinest`` if those packages are installed (recommended); otherwise the fits will default to MCMC fitting using ``emcee``.
 
