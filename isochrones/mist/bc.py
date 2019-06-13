@@ -11,7 +11,7 @@ class MISTBolometricCorrectionGrid(BolometricCorrectionGrid):
                                  'Kepler_Kp', 'Kepler_D51', 'Hipparcos_Hp',
                                  'Tycho_B', 'Tycho_V', 'Gaia_G_DR2Rev', 'Gaia_BP_DR2Rev',
                                  'Gaia_RP_DR2Rev',
-                                 'Gaia_G_MAW', 'Gaia_BP_MAWf','Gaia_RP_MAW',
+                                 'Gaia_G_MAW', 'Gaia_BP_MAWf', 'Gaia_BP_MAWb', 'Gaia_RP_MAW',
                                  'TESS'],
                       WISE=['WISE_W1', 'WISE_W2', 'WISE_W3', 'WISE_W4'],
                       CFHT=['CFHT_u', 'CFHT_g', 'CFHT_r',
