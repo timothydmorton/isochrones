@@ -41,6 +41,11 @@ def test_get_ichrone(models=['mist'], bands='JHK'):
     for m in models:
         get_ichrone(m, bands=bands)
 
+def test_get_ichrone_gaia(models=['mist'], bands=['Gaia_G_MAW', 'Gaia_BP_MAWf',
+                                                  'Gaia_RP_MAW', 'Gaia_BP_MAWb']):
+    for m in models:
+        get_ichrone(m, bands=bands)
+
 
 ##########
 
