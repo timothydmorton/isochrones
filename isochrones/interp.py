@@ -520,6 +520,9 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
 
     (i0, i1), (d0, d1), oob = find_indices_2d(x0, x1, ii0, ii1)
 
+    if oob:
+        return np.nan
+
     ind_00 = i0 * n1 + i1
     ind_01 = i0 * n1 + (i1 + 1)
     ind_10 = (i0 + 1) * n1 + i1
@@ -530,6 +533,13 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     i_eep_01, _ = searchsorted(arrays[ind_01, :], x, N=lengths[ind_01])
     i_eep_10, _ = searchsorted(arrays[ind_10, :], x, N=lengths[ind_10])
     i_eep_11, _ = searchsorted(arrays[ind_11, :], x, N=lengths[ind_11])
+
+    max_i_eep = weight_arrays.shape[1] - 1
+    if ((i_eep_00 > max_i_eep) or
+            (i_eep_01 > max_i_eep) or
+            (i_eep_10 > max_i_eep) or
+            (i_eep_11 > max_i_eep)):
+        return np.nan
 
     eep_00 = i_eep_00 + 1
     eep_01 = i_eep_01 + 1
