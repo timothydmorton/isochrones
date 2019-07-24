@@ -283,6 +283,7 @@ class FlatPrior(BoundedPrior):
         lo, hi = self.bounds
         return np.random.random(n)*(hi - lo) + lo
 
+
 class FlatLogPrior(BoundedPrior):
     def __init__(self, bounds):
         super(FlatLogPrior, self).__init__(bounds=bounds)
@@ -294,6 +295,7 @@ class FlatLogPrior(BoundedPrior):
     def sample(self, n):
         lo, hi = self.bounds
         return np.log10(np.random.random(n)*(10**hi - 10**lo) + 10**lo)
+
 
 class PowerLawPrior(BoundedPrior):
     def __init__(self, alpha, bounds=None):
@@ -445,12 +447,14 @@ class EEP_prior(BoundedPrior):
     def test_integral(self):
         pass
 
+
 # Utility numba PDFs for speed!
 @nb.jit(nopython=True)
 def powerlaw_pdf(x, alpha, lo, hi):
     alpha_plus_one = alpha + 1
     C = alpha_plus_one/(hi**alpha_plus_one - lo**alpha_plus_one)
     return C * x**alpha
+
 
 @nb.jit(nopython=True)
 def powerlaw_lnpdf(x, alpha, lo, hi):
@@ -465,23 +469,32 @@ class AgePrior(FlatLogPrior):
     def __init__(self, **kwargs):
         super().__init__(bounds=(5, 10.15), **kwargs)
 
+
 class DistancePrior(PowerLawPrior):
     def __init__(self, max_distance=10000, **kwargs):
         super().__init__(alpha=2., bounds=(0, max_distance), **kwargs)
 
+
 class AVPrior(FlatPrior):
     def __init__(self, **kwargs):
-        super().__init__(bounds=(0., 1.))
+        bounds = kwargs.pop('bounds', (0, 1.))
+        super().__init__(bounds=bounds)
+
 
 class QPrior(PowerLawPrior):
     def __init__(self, **kwargs):
-        super().__init__(alpha=0.3, bounds=(0.1, 1), **kwargs)
+        bounds = kwargs.pop('bounds', (0.1, 1))
+        super().__init__(alpha=0.3, bounds=bounds, **kwargs)
+
 
 class SalpeterPrior(PowerLawPrior):
     def __init__(self, **kwargs):
-        super().__init__(alpha=-2.35, bounds=(0.1, 10), **kwargs)
+        bounds = kwargs.pop('bounds', (0.1, 10))
+        super().__init__(alpha=-2.35, bounds=bounds, **kwargs)
+
 
 class ChabrierPrior(BrokenPrior):
     def __init__(self, **kwargs):
+        bounds = kwargs.pop('bounds', (0.1, 100.))
         super().__init__([LogNormalPrior(0.079, 0.69), PowerLawPrior(-2.35, (1., 100.))],
-                             [1.], bounds=(0.1, 100.), **kwargs)
+                             [1.], bounds=bounds, **kwargs)
