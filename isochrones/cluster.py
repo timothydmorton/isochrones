@@ -65,7 +65,7 @@ class StarCatalog(object):
 
     """
 
-    def __init__(self, df, bands=None, props=None):
+    def __init__(self, df, bands=None, props=None, no_uncs=False):
         self._df = df
 
         if bands is None:
@@ -79,11 +79,12 @@ class StarCatalog(object):
 
         self.props = tuple() if props is None else tuple(props)
 
-        for c in self.band_cols + self.props:
-            if c not in self.df.columns:
-                raise ValueError('{} not in DataFrame!'.format(c))
-            if not '{}_unc'.format(c) in self.df.columns:
-                raise ValueError('{0} uncertainty ({0}_unc) not in DataFrame!'.format(c))
+        if not no_uncs:
+            for c in self.band_cols + self.props:
+                if c not in self.df.columns:
+                    raise ValueError('{} not in DataFrame!'.format(c))
+                if not '{}_unc'.format(c) in self.df.columns:
+                    raise ValueError('{0} uncertainty ({0}_unc) not in DataFrame!'.format(c))
 
         self._ds = None
         self._hr = None
