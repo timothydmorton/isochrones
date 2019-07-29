@@ -47,14 +47,14 @@ class StarPopulation(object):
                  imf=ChabrierPrior(),
                  feh=FehPrior(),
                  distance=10.,
-                 av=0.):
+                 AV=0.):
 
         self._ic = ic
         self.sfh = sfh
         self.imf = imf
         self.feh = feh
         self.distance = distance
-        self.av = av
+        self.AV = AV
 
     @property
     def ic(self):
@@ -73,13 +73,13 @@ class StarPopulation(object):
         else:
             distances = self.distance
 
-        if hasattr(self.av, 'sample'):
-            avs = self.av.sample(N)
+        if hasattr(self.AV, 'sample'):
+            AVs = self.AV.sample(N)
         else:
-            avs = self.av
+            AVs = self.AV
 
         population = self.ic.generate(masses, ages, fehs,
-                                      distance=distances, AV=avs)
+                                      distance=distances, AV=AVs)
 
         if exact_N:
             # Indices of null values
@@ -96,10 +96,10 @@ class StarPopulation(object):
                 else:
                     distances = self.distance
 
-                if hasattr(self.av, 'sample'):
-                    avs = self.av.sample(N)
+                if hasattr(self.AV, 'sample'):
+                    AVs = self.AV.sample(N)
                 else:
-                    avs = self.av
+                    AVs = self.AV
 
                 if Nbad == 1:
                     masses = masses[0]
@@ -112,12 +112,12 @@ class StarPopulation(object):
                         pass
 
                     try:
-                        avs = avs[0]
+                        AVs = AVs[0]
                     except:
                         pass
 
                 new_pop = self.ic.generate(masses, ages, fehs,
-                                           distance=distances, AV=avs)
+                                           distance=distances, AV=AVs)
                 population.loc[bad_inds, :] = new_pop.values
 
                 bad_inds = population.isnull().sum(axis=1) > 0
