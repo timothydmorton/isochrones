@@ -2,20 +2,19 @@ import os, glob
 import numpy as np
 import tempfile
 import tables as tb
-import logging
 
 from pandas.util.testing import assert_frame_equal
 
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel
 from isochrones.starfit import starfit
+from isochrones.logger import getLogger
 
 mnest = True
 try:
     import pymultinest
 except:
-    import logging
-    logging.warning('No PyMultiNest; fits will use emcee')
+    getLogger().warning('No PyMultiNest; fits will use emcee')
     mnest = False
 
 chainsdir = tempfile.gettempdir()

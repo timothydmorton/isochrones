@@ -1,10 +1,10 @@
 import pandas as pd
 import os
-import logging
 import tarfile
 
 from .utils import download_file
 from .interp import DFInterpolator
+from .logger import getLogger
 
 
 class Grid(object):
@@ -82,7 +82,7 @@ class Grid(object):
         tarball = self.get_tarball_file(**kwargs)
         if not os.path.exists(tarball):
             url = self.get_tarball_url(**kwargs)
-            logging.info('Downloading {}...'.format(url))
+            getLogger().info('Downloading {}...'.format(url))
             download_file(url, tarball)
 
     def extract_tarball(self, **kwargs):
@@ -92,10 +92,10 @@ class Grid(object):
 
         try:
             with tarfile.open(tarball) as tar:
-                logging.info('Extracting {}...'.format(tarball))
+                getLogger().info('Extracting {}...'.format(tarball))
                 tar.extractall(self.datadir)
         except EOFError:
-            logging.error('{} corrupted; deleting and re-downloading.'.format(tarball))
+            getLogger().error('{} corrupted; deleting and re-downloading.'.format(tarball))
             os.remove(tarball)
             self.extract_tarball(**kwargs)
 
@@ -113,7 +113,7 @@ class Grid(object):
         h5file = self.hdf_filename
         path = 'orig' if orig else 'df'
         df.to_hdf(h5file, path)
-        logging.info('{} written to {}.'.format(path, h5file))
+        getLogger().info('{} written to {}.'.format(path, h5file))
         return df
 
     @property
