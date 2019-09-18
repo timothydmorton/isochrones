@@ -13,8 +13,8 @@ from .starmodel import StarModel, BasicStarModel
 from .isochrone import get_ichrone
 
 def initLogging(filename, logger):
-    if logger == None:
-        logger = logging.getLogger()
+    if logger is None:
+        logger = logging.getLogger("isochrones")
     else:  # wish there was a logger.close()
         for handler in logger.handlers[:]:  # make a copy of the list
             logger.removeHandler(handler)
