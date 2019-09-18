@@ -1,10 +1,10 @@
 import os, sys
 import pandas as pd
 import numpy as np
-import logging
 
 import emcee3
 from emcee3.backends import Backend, HDFBackend
+
 
 class Emcee3Model(emcee3.Model):
     def __init__(self, mod, *args, **kwargs):
@@ -29,7 +29,7 @@ class Emcee3PriorModel(emcee3.Model):
         return state
 
     def compute_log_likelihood(self, state):
-        state.log_likelihood = 0 
+        state.log_likelihood = 0
         return state
 
 def write_samples(mod, df, resultsdir='results'):
@@ -146,6 +146,6 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
 
     df = pd.DataFrame(samples, columns=mod.param_names)
     write_samples(mod, df, resultsdir=resultsdir)
-    
+
     return df
-    # return sampler    
+    # return sampler

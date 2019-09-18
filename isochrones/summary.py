@@ -1,7 +1,6 @@
 import os, sys, re
 import numpy as np
 import pandas as pd
-import logging
 from multiprocessing import Pool
 
 from .starmodel import StarModel, BasicStarModel

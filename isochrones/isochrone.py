@@ -2,14 +2,15 @@ from .config import on_rtd
 
 import os, re, sys
 import warnings
-import logging
 import itertools
 import pickle
+
+from .logger import getLogger
 
 try:
     import holoviews as hv
 except ImportError:
-    logging.warning('Holoviews not imported. Some visualizations will not be available.')
+    getLogger().warning('Holoviews not imported. Some visualizations will not be available.')
     pass
 
 if not on_rtd:
@@ -66,7 +67,7 @@ def get_ichrone(models, bands=None, default=False, tracks=False, basic=False, **
                 ichrone = MISTBasic_Isochrone(bands=bands, **kwargs)
             else:
                 from isochrones.mist import MIST_Isochrone
-                ichrone = MIST_Isochrone(bands=bands, **kwargs)           
+                ichrone = MIST_Isochrone(bands=bands, **kwargs)
     else:
         raise ValueError('Unknown stellar models: {}'.format(models))
     return ichrone

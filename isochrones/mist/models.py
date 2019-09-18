@@ -2,7 +2,6 @@ import os
 import re
 import glob
 import itertools
-import logging
 from functools import partial
 
 import numpy as np
@@ -18,7 +17,7 @@ from .eep import max_eep
 from ..interp import DFInterpolator, searchsorted
 from ..utils import polyval
 from .eep import max_eep
-
+from ..logger import getLogger
 
 class MISTModelGrid(StellarModelGrid):
     name = 'mist'
@@ -290,7 +289,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
         if os.path.exists(hdf_filename):
             df_interp = pd.read_hdf(hdf_filename, 'df')
         else:
-            logging.info('Interpolating incomplete tracks for feh = {}'.format(feh))
+            getLogger().info('Interpolating incomplete tracks for feh = {}'.format(feh))
             df = self.df_all_feh(feh)
             df_interp = df.copy()
             df_interp['interpolated'] = False
@@ -327,7 +326,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                         if ihi > len(masses):
                             raise ValueError('Did not find mhi for ({}, {})'.format(m, feh))
 
-                    logging.info('{}: {} (expected {}).  Interpolating between {} and {}'.format(m, n_eep, eep_max, mlo, mhi))
+                    getLogger().info('{}: {} (expected {}).  Interpolating between {} and {}'.format(m, n_eep, eep_max, mlo, mhi))
                     new_eeps = np.arange(n_eep + 1, eep_max + 1)
                     new_index = pd.MultiIndex.from_product([[feh], [m], new_eeps])
                     new_data = pd.DataFrame(index=new_index, columns=df_interp.columns, dtype=float)
@@ -499,7 +498,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                 if age > eep_fn_pars[-2]:
                     return polyval(self.eep_interps[-1]([feh, mass], 'all'), age)  # assume you're in last bit
                 else:
-                    logging.warning('EEP conversion failed for mass={}, age={}, feh={} (approx eep = {}).  Returning nan.'.format(mass, age, feh, eep))
+                    getLogger().warning('EEP conversion failed for mass={}, age={}, feh={} (approx eep = {}).  Returning nan.'.format(mass, age, feh, eep))
                     return np.nan
 
     def view_eep_fit(self, mass, feh, plot_fit=True, order=5, p0=None, plot_p0=False):
