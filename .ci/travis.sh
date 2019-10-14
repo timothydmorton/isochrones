@@ -21,4 +21,4 @@ conda install -c conda-forge multinest pymultinest
 # conda install -c pyviz pyviz
 # conda install -c conda-forge nbsphinx
 # pip install sphinx_rtd_theme
-python setup.py develop
+python setup.py install
