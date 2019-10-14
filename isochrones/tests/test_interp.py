@@ -1,12 +1,11 @@
 import itertools
-import logging
 
 import numpy as np
 import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 
 from isochrones.interp import DFInterpolator
-
+from isochrones.logger import getLogger
 
 def test_interp():
     xx, yy, zz = [np.arange(10 + np.log10(n))*n for n in [1, 10, 100]]
@@ -32,7 +31,7 @@ def test_interp():
     try:
         assert np.isclose(df_interp(pars, ['val']), interp(pars)[0], atol=1e-11)
     except AssertionError:
-        logging.debug('mine: {}, scipy: {}'.format(df_interp(pars, ['val']), interp(pars)[0]))
+        getLogger().debug('mine: {}, scipy: {}'.format(df_interp(pars, ['val']), interp(pars)[0]))
         raise
 
     pts = np.random.random(size=(10, 3)) * 9

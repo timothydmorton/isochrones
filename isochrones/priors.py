@@ -1,5 +1,4 @@
 from __future__ import print_function, division
-import logging
 
 import numpy as np
 import pandas as pd
@@ -12,6 +11,8 @@ import matplotlib.pyplot as plt
 import numba as nb
 from math import log, log10
 
+
+from .logger import getLogger
 
 _norm_pdf_C = np.sqrt(2*np.pi)
 ONE_OVER_ROOT_2PI = 1./_norm_pdf_C
@@ -79,15 +80,16 @@ class Prior(object):
             rng = None
         hn, _ = np.histogram(x, range=rng)
         h, b = np.histogram(x, density=True, range=rng)
-        logging.debug('bins: {}'.format(b))
-        logging.debug('raw: {}'.format(hn))
+        logger = getLogger()
+        logger.debug('bins: {}'.format(b))
+        logger.debug('raw: {}'.format(hn))
         pdf = np.array([quad(self.pdf, lo, hi)[0]/(hi-lo) for lo, hi in zip(b[:-1], b[1:])])
         sigma = 1./np.sqrt(hn)
         resid = np.absolute(pdf - h) / pdf
-        logging.debug('pdf: {}'.format(pdf))
-        logging.debug('hist: {}'.format(h))
-        logging.debug('sigma: {}'.format(sigma))
-        logging.debug('{}'.format(resid/sigma))
+        logger.debug('pdf: {}'.format(pdf))
+        logger.debug('hist: {}'.format(h))
+        logger.debug('sigma: {}'.format(sigma))
+        logger.debug('{}'.format(resid/sigma))
 
         c = (b[:-1] + b[1:])/2
         if plot:
