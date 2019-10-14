@@ -13,7 +13,7 @@ conda config --set always_yes yes --set changeps1 no
 conda update -q conda
 conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
-source activate test
+conda activate test
 
 # pip install pandoc=2.0.0
 conda install -c conda-forge numpy numba cython nose pytables pandas
@@ -21,5 +21,4 @@ conda install -c conda-forge multinest pymultinest
 # conda install -c pyviz pyviz
 # conda install -c conda-forge nbsphinx
 # pip install sphinx_rtd_theme
-# python setup.py install
-pip install -e .
+python setup.py install
