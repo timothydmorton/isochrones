@@ -34,8 +34,10 @@ def test_starfit():
         basename = '{}/{}-'.format(chainsdir,np.random.randint(1000000))
         kwargs = dict(n_live_points=20, max_iter=100,basename=basename,
                       verbose=False)
+        getLogger().info('Testing starfit function with multinest...')
     else:
         kwargs = dict(nburn=20, niter=20, ninitial=10)
+        getLogger().info('Testing starfit function with emcee...')
 
     mod, _ = starfit(testdir, overwrite=True, use_emcee=not mnest,
                      no_plots=True, **kwargs)
