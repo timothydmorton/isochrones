@@ -1367,7 +1367,7 @@ class BasicStarModel(StarModel):
             try:
                 val, unc = v
                 if not (np.isnan(val) or np.isnan(unc)):
-                    self.kwargs[k] = v
+                    self.kwargs[k] = (np.float64(val), np.float64(unc))
             except TypeError:
                 logger.warning('kwarg {}={} ignored!'.format(k, v))
 
@@ -1391,6 +1391,10 @@ class BasicStarModel(StarModel):
                         'distance': DistancePrior().bounds,
                         'AV': AVPrior().bounds,
                         'eep': self._priors['eep'].bounds}
+
+        # Reset bounds to match IC bounds.  Likely different from default priors.
+        for par in ['mass', 'feh', 'age']:
+            self.bounds(par)
 
         if maxAV is not None:
             self.set_bounds(AV=(0, maxAV))
