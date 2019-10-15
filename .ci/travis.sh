@@ -16,7 +16,7 @@ conda create --yes -n test python=$PYTHON_VERSION
 conda activate test
 
 # pip install pandoc=2.0.0
-conda install -c conda-forge numpy numba cython nose pytables pandas
+conda install -c conda-forge numpy=1.15 numba cython nose pytables pandas
 conda install -c conda-forge multinest pymultinest
 # conda install -c pyviz pyviz
 # conda install -c conda-forge nbsphinx
