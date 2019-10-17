@@ -1,5 +1,4 @@
 import re
-import logging
 
 import numpy as np
 import pandas as pd
@@ -13,6 +12,7 @@ from .starmodel import SingleStarModel, BinaryStarModel, TripleStarModel
 from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
 from .utils import addmags, band_pairs
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
+from .logger import getLogger
 
 
 def clusterfit(starfile, bands=None, props=None, models='mist', max_distance=10000,
@@ -53,7 +53,7 @@ class StarCatalog(object):
     Parameters
     ----------
     df : `pandas.DataFrame`
-        Table containing stellar measurements.  Names of uncertainty columns are 
+        Table containing stellar measurements.  Names of uncertainty columns are
         tagged with `_unc`.  If `bands` is not provided, then names of photometric
         bandpasses will be determined by looking for columns tagged with `_mag`.
 
@@ -463,7 +463,7 @@ class StarClusterModel(StarModel):
                     lnprob = np.array([chain[-1]])
                     chain = np.array([chain[:-1]])
             except:
-                logging.error('Error loading chains from {}'.format(filename))
+                getLogger().error('Error loading chains from {}'.format(filename))
                 raise
         else:
             chain = self.sampler.flatchain

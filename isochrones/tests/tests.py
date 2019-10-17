@@ -1,7 +1,6 @@
 
 import tempfile
 import os, shutil, glob
-import logging
 
 import numpy as np
 from numba import TypingError
@@ -54,7 +53,7 @@ def _check_closest_eep(ic, n=3000, resid_tol=0.02):
     masses = np.random.random(n) * 2.5 + 0.1
     fehs = np.random.random(n) * (ic.maxfeh - ic.minfeh) + ic.minfeh
     ages = np.random.random(n) * (10.0 - ic.minage) + ic.minage
-    eeps = [ic.get_eep(m, a, f, return_nan=True, 
+    eeps = [ic.get_eep(m, a, f, return_nan=True,
                        resid_tol=resid_tol, accurate=True) for m, a, f in zip(masses, ages, fehs)]
     for e, a, f, m in zip(eeps, ages, fehs, masses):
         if not np.isnan(e):
@@ -68,7 +67,7 @@ def _check_closest_eep(ic, n=3000, resid_tol=0.02):
     # make sure the minmass edge case works.
     for feh in ic.fehs[1: -1]:  # first and last feh of mist doesn't work.
         try:
-            assert np.isfinite(ic.get_eep(ic.minmass+0.01, 9.0, feh, return_nan=True, 
+            assert np.isfinite(ic.get_eep(ic.minmass+0.01, 9.0, feh, return_nan=True,
                                           resid_tol=resid_tol, accurate=True))
         except AssertionError:
             ic.get_eep(ic.minmass+0.01, 9.0, feh, debug=True)

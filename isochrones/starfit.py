@@ -1,5 +1,4 @@
 import os, os.path, re, sys
-import logging
 import time
 
 from .config import on_rtd
@@ -12,23 +11,7 @@ from configobj import ConfigObj
 from .starmodel import StarModel, BasicStarModel
 from .isochrone import get_ichrone
 
-def initLogging(filename, logger):
-    if logger == None:
-        logger = logging.getLogger()
-    else:  # wish there was a logger.close()
-        for handler in logger.handlers[:]:  # make a copy of the list
-            logger.removeHandler(handler)
-
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s')
-
-    fh = logging.FileHandler(filename)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    sh = logging.StreamHandler(sys.stdout)
-    logger.addHandler(sh)
-    return logger
+from .logger import initLogging
 
 
 def starfit(folder, multiplicities=['single'], models='mist',

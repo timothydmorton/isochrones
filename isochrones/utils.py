@@ -2,12 +2,12 @@ from __future__ import print_function, division
 
 import requests
 import os
-import logging
 
 import numpy as np
 import numba as nb
 from math import log10
 
+from .logger import getLogger
 
 def band_pairs(bands):
     return [(bands[i], bands[-1]) for i in range(len(bands)-1)]
@@ -25,7 +25,7 @@ def download_file(url, path=None, clobber=False):
         local_filename = path
 
     if os.path.exists(local_filename) and not clobber:
-        logging.info('{} exists; not downloading.'.format(local_filename))
+        getLogger().info('{} exists; not downloading.'.format(local_filename))
         return local_filename
 
     # NOTE the stream=True parameter
@@ -76,12 +76,12 @@ def distance(pos0, pos1):
     """distance between two positions defined by (separation, PA)
     """
     r0, pa0 = pos0
-    #logging.debug('r0={}, pa0={} (from {})'.format(r0, pa0, self))
+    #getLogger().debug('r0={}, pa0={} (from {})'.format(r0, pa0, self))
     ra0 = r0*np.sin(pa0*np.pi/180)
     dec0 = r0*np.cos(pa0*np.pi/180)
 
     r1, pa1 = pos1
-    #logging.debug('r1={}, pa1={} (from {})'.format(r0, pa0, other))
+    #getLogger().debug('r1={}, pa1={} (from {})'.format(r0, pa0, other))
     ra1 = r1*np.sin(pa1*np.pi/180)
     dec1 = r1*np.cos(pa1*np.pi/180)
 

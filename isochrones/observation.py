@@ -1,8 +1,8 @@
 from __future__ import print_function, division
 import os, re, sys
-import logging
 
 from .config import on_rtd
+from .logger import getLogger
 
 if not on_rtd:
     import numpy as np
@@ -195,7 +195,7 @@ class Node(object):
                 ind = i
 
         if ind is None:
-            logging.warning('No child labeled {}.'.format(label))
+            getLogger().warning('No child labeled {}.'.format(label))
             return
         self.children.pop(ind)
         self._clear_all_leaves()
@@ -486,7 +486,7 @@ class ObsNode(Node):
         lnl = -0.5*(mag - mod)**2 / dmag**2 + LOG_ONE_OVER_ROOT_2PI + np.log(dmag)
 
 
-        # logging.debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
+        # getLogger().debug('{} {}: mag={}, mod={}, lnlike={}'.format(self.instrument,
         #                                                         self.band,
         #                                                         mag,mod,lnl))
         return lnl

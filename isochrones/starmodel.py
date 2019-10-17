@@ -3,10 +3,12 @@ from __future__ import print_function, division
 import os, os.path, sys, re, glob
 import itertools
 from copy import deepcopy
-import logging
 import json
 
 from .config import on_rtd
+
+from .logger import getLogger
+logger = getLogger()
 
 if not on_rtd:
     import numpy as np
@@ -21,7 +23,7 @@ if not on_rtd:
     try:
         import pymultinest
     except ImportError:
-        logging.warning('PyMultiNest not imported.  MultiNest fits will not work.')
+        logger.warning('PyMultiNest not imported.  MultiNest fits will not work.')
 
     import configobj
     from astropy.coordinates import SkyCoord
@@ -42,7 +44,7 @@ from .likelihood import star_lnlike, gauss_lnprob
 try:
     from .fit import fit_emcee3
 except ImportError:
-    logging.warning('Emcee3 not imported; be advised.')
+    logger.warning('Emcee3 not imported; be advised.')
 
 def _parse_config_value(v):
     try:
@@ -287,7 +289,7 @@ class StarModel(object):
         if not isinstance(ic, ModelGridInterpolator):
             ic = get_ichrone(ic, bands)
 
-        logging.debug('Initializing StarModel from {}'.format(ini_file))
+        logger.debug('Initializing StarModel from {}'.format(ini_file))
 
         c = configobj.ConfigObj(ini_file)
 
@@ -393,7 +395,7 @@ class StarModel(object):
         if 'obsfile' in c:
             obs = c['obsfile']
 
-        logging.debug('Obs is {}'.format(obs))
+        logger.debug('Obs is {}'.format(obs))
 
         name = kwargs.pop('name', os.path.basename(folder))
         new = cls(ic, obs=obs, **kwargs, name=name)
@@ -453,18 +455,18 @@ class StarModel(object):
 
         Creates self.obs
         """
-        logging.debug('Building ObservationTree...')
+        logger.debug('Building ObservationTree...')
         tree = ObservationTree()
         for k,v in kwargs.items():
             if k in self.ic.bands:
                 if np.size(v) != 2:
-                    logging.warning('{}={} ignored (no uncertainty).'.format(k,v))
+                    logger.warning('{}={} ignored (no uncertainty).'.format(k,v))
                     # continue
                     v = [v, np.nan]
                 o = Observation('', k, 99) #bogus resolution=99
                 s = Source(v[0], v[1])
                 o.add_source(s)
-                logging.debug('Adding {} ({})'.format(s,o))
+                logger.debug('Adding {} ({})'.format(s,o))
                 tree.add_observation(o)
 
 
@@ -537,7 +539,7 @@ class StarModel(object):
                         return -np.inf
                     lnp += self._priors[prop].lnpdf(val)
                     if not np.isfinite(lnp):
-                        logging.debug('lnp=-inf for {}={} (system {})'.format(prop, val, s))
+                        logger.debug('lnp=-inf for {}={} (system {})'.format(prop, val, s))
                         return -np.inf
 
                 # Note: this all is just assuming proper order for multiple stars.
@@ -573,7 +575,7 @@ class StarModel(object):
 
                 #     lnp += np.log(self.prior('q', q))
                 #     if not np.isfinite(lnp):
-                #         logging.debug('lnp=-inf for q={} (system {})'.format(q, s))
+                #         logger.debug('lnp=-inf for q={} (system {})'.format(q, s))
                 #         return -np.inf
 
                 i += N[s] + 4
@@ -731,7 +733,7 @@ class StarModel(object):
 
         basename = self.mnest_basename
         if verbose:
-            logging.info('MultiNest basename: {}'.format(basename))
+            logger.info('MultiNest basename: {}'.format(basename))
 
         folder = os.path.abspath(os.path.dirname(basename))
         if rank == 0 or force_no_MPI:
@@ -905,7 +907,7 @@ class StarModel(object):
         npars = self.n_params
 
         if p0 is None:
-            logging.debug('Generating initial p0 for {} walkers...'.format(nwalkers))
+            logger.debug('Generating initial p0 for {} walkers...'.format(nwalkers))
             p0 = self.emcee_p0(nwalkers)
             if initial_burn:
                 sampler = emcee.EnsembleSampler(nwalkers, npars, self.lnpost,
@@ -917,9 +919,9 @@ class StarModel(object):
                 i, j = np.unravel_index(sampler.lnprobability.argmax(),
                                         sampler.shape)
                 p0_best = sampler.chain[i, j, :]
-                logging.debug("After initial burn, p0={}".format(p0_best))
+                logger.debug("After initial burn, p0={}".format(p0_best))
                 p0 = p0_best * (1 + rand.normal(size=p0.shape) * 0.001)
-                logging.debug(p0)
+                logger.debug(p0)
         else:
             p0 = np.array(p0)
             p0 = rand.normal(size=(nwalkers, npars))*0.01 + p0.T[None, :]
@@ -955,7 +957,7 @@ class StarModel(object):
                     lnprob = np.array([chain[-1]])
                     chain = np.array([chain[:-1]])
             except:
-                logging.error('Error loading chains from {}'.format(filename))
+                logger.error('Error loading chains from {}'.format(filename))
                 raise
         else:
             chain = self.sampler.flatchain
@@ -1058,7 +1060,7 @@ class StarModel(object):
         try:
             fig = corner.corner(df[params], labels=params, priors=priors, **kwargs)
         except:
-            logging.warning("Use Tim's version of corner to plot priors.")
+            logger.warning("Use Tim's version of corner to plot priors.")
             fig = corner.corner(df[params], labels=params, **kwargs)
         fig.suptitle(self.name, fontsize=22)
         return fig
@@ -1365,9 +1367,9 @@ class BasicStarModel(StarModel):
             try:
                 val, unc = v
                 if not (np.isnan(val) or np.isnan(unc)):
-                    self.kwargs[k] = v
+                    self.kwargs[k] = (np.float64(val), np.float64(unc))
             except TypeError:
-                logging.warning('kwarg {}={} ignored!'.format(k, v))
+                logger.warning('kwarg {}={} ignored!'.format(k, v))
 
         self._bands = None
         self._spec_props = None
@@ -1389,6 +1391,10 @@ class BasicStarModel(StarModel):
                         'distance': DistancePrior().bounds,
                         'AV': AVPrior().bounds,
                         'eep': self._priors['eep'].bounds}
+
+        # Reset bounds to match IC bounds.  Likely different from default priors.
+        for par in ['mass', 'feh', 'age']:
+            self.bounds(par)
 
         if maxAV is not None:
             self.set_bounds(AV=(0, maxAV))
@@ -1571,7 +1577,7 @@ class BasicStarModel(StarModel):
         try:
             df = pd.read_csv(filename, names=self.param_names + ('lnprob',), delim_whitespace=True)
         except OSError:
-            logging.error('Error loading chains from {}'.format(filename))
+            logger.error('Error loading chains from {}'.format(filename))
             raise
 
         self._samples = df
