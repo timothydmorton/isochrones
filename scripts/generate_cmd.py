@@ -50,6 +50,8 @@ def sample_stars(ic, N, mass_range=(1, 10)):
 
     # sample masses from PowerLaw
     masses = np.array([PowerLawPrior(a, bounds=mass_range).sample(1)[0] for a in params['alpha']])
+
+    # Generate secondary stars
     is_binary = np.array([np.random.random() < fB for fB in params['fB']])
     qs = np.array([PowerLawPrior(gam, bounds=(0.1, 1)).sample(1)[0] for gam in params['gamma']])
     secondary_masses = masses * qs * is_binary
