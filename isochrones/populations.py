@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import uniform
 
 from .priors import ChabrierPrior, FehPrior, DistancePrior, PowerLawPrior
+from .utils import addmags
 from . import get_ichrone
 
 
@@ -41,16 +42,18 @@ class StarFormationHistoryGrid(StarFormationHistory):
 
 
 class BinaryDistribution(object):
-    def __init__(self, fB=0.4, mass_ratio_distribution=None):
+    def __init__(self, fB=0.4, gamma=0.3, mass_ratio_distribution=None):
         self.fB = fB
+        self.gamma = gamma
         if mass_ratio_distribution is None:
-            mass_ratio_distribution = PowerLawPrior(0.3, bounds=(0.2, 1))
+            mass_ratio_distribution = PowerLawPrior(self.gamma, bounds=(0.2, 1))
         self.mass_ratio_distribution = mass_ratio_distribution
 
     def sample(self, primary_masses):
+        primary_masses = np.array(primary_masses)
         N = len(primary_masses)
-        u = np.random.uniform(N)
-        is_binary = u < fB
+        u = np.random.random(N)
+        is_binary = u < self.fB
         q = self.mass_ratio_distribution.sample(N)
         secondary_mass = q * primary_masses * is_binary
         return secondary_mass
@@ -62,7 +65,7 @@ class StarPopulation(object):
                  sfh=StarFormationHistory(),
                  imf=ChabrierPrior(),
                  feh=FehPrior(),
-                 # binary_distribution=BinaryDistribution(),
+                 binary_distribution=BinaryDistribution(),
                  distance=10.,
                  AV=0.):
 
@@ -70,7 +73,7 @@ class StarPopulation(object):
         self.sfh = sfh
         self.imf = imf
         self.feh = feh
-        # self.binary_distribution = binary_distribution
+        self.binary_distribution = binary_distribution
         self.distance = distance
         self.AV = AV
 
@@ -141,7 +144,24 @@ class StarPopulation(object):
                 bad_inds = population.isnull().sum(axis=1) > 0
                 Nbad = bad_inds.sum()
 
-        # secondary_mass = self.binary_distribution(population['mass'])
-        
+        population['distance'] = distances
+        population['AV'] = AVs
+
+        secondary_mass = self.binary_distribution.sample(population['mass'])
+        secondary_population = self.ic.generate(secondary_mass,
+                                                population['age'],
+                                                population['feh'],
+                                                distance=population['distance'],
+                                                AV=population['AV'])
+
+        population['mass_B'] = secondary_population['mass']
+        for b in self.ic.bands:
+            population[f'{b}_mag_A'] = population[f'{b}_mag'].copy()
+            population[f'{b}_mag_B'] = secondary_population[f'{b}_mag']
+            population.loc[population['mass_B'].isnull(), f'{b}_mag_B'] = np.inf
+            population.loc[:, f'{b}_mag'] = addmags(population[f'{b}_mag_A'],
+                                                    population[f'{b}_mag_B'])
+
+
 
         return population
