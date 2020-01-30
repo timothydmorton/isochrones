@@ -420,7 +420,7 @@ class ModelGridInterpolator(object):
                 *self.model_grid.interp.index_columns,
                 self.bc_grid.interp.grid,
                 i_bands,
-                *self.bc_grid.interp.index_columns
+                *self.bc_grid.interp.index_columns,
             )
         except (TypeError, ValueError):
             # Broadcast appropriately.
@@ -437,7 +437,7 @@ class ModelGridInterpolator(object):
                 *self.model_grid.interp.index_columns,
                 self.bc_grid.interp.grid,
                 i_bands,
-                *self.bc_grid.interp.index_columns
+                *self.bc_grid.interp.index_columns,
             )
 
     def model_value(self, mass, age, feh, props, approx=False):
@@ -532,7 +532,7 @@ class ModelGridInterpolator(object):
                         grid.n_masses,
                         grid.age_grid,
                         grid.dt_deep_grid,
-                        grid.array_lengths
+                        grid.array_lengths,
                     )
                 elif grid.eep_replaces == "mass":
                     raise NotImplementedError
@@ -547,7 +547,7 @@ class ModelGridInterpolator(object):
         method="nelder-mead",
         return_object=False,
         return_nan=False,
-        **kwargs
+        **kwargs,
     ):
 
         eeps_to_try = [min(self.max_eep(mass, feh) - 20, 600), 100, 200]
@@ -582,6 +582,7 @@ class ModelGridInterpolator(object):
         distance=10,
         AV=0,
         accurate=False,
+        all_As=False,
     ):
         if bands is None:
             bands = self.bands
@@ -603,6 +604,14 @@ class ModelGridInterpolator(object):
 
         values["distance"] = distance
         values["AV"] = AV
+
+        if all_As:
+            _, _, _, true_mags = self.interp_mag([mass, eeps, feh, distance, 0], bands=bands)
+            mBol = values["Mbol"]
+            for b, true_mag in zip(bands, true_mags.T):
+                bc = mBol - true_mag
+                values[f"A_{b}"] = mBol - true_mag - bc
+
         return values
 
     def generate_binary(self, mass_A, mass_B, age, feh, **kwargs):

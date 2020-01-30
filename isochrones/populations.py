@@ -102,7 +102,9 @@ class StarPopulation(object):
         else:
             AVs = self.AV
 
-        population = self.ic.generate(masses, ages, fehs, distance=distances, AV=AVs)
+        population = self.ic.generate(
+            masses, ages, fehs, distance=distances, AV=AVs, all_As=True, accurate=accurate
+        )
 
         if exact_N:
             # Indices of null values
@@ -139,7 +141,9 @@ class StarPopulation(object):
                     except:
                         pass
 
-                new_pop = self.ic.generate(masses, ages, fehs, distance=new_distances, AV=new_AVs)
+                new_pop = self.ic.generate(
+                    masses, ages, fehs, distance=new_distances, AV=new_AVs, all_As=True, accurate=accurate
+                )
                 population.loc[bad_inds, :] = new_pop.values
 
                 bad_inds = population.isnull().sum(axis=1) > 0
@@ -152,6 +156,7 @@ class StarPopulation(object):
             population["feh"],
             distance=population["distance"],
             AV=population["AV"],
+            accurate=accurate,
         )
 
         return combine_binaries(population, secondary_population, self.ic.bands)
@@ -185,10 +190,22 @@ def deredden(ic, pop):
         All the same stars as input, but with AV=0
     """
     primary = ic.generate(
-        pop["mass"].values, pop["age"].values, pop["feh"].values, distance=pop["distance"].values, AV=0
+        pop["mass"].values,
+        pop["age"].values,
+        pop["feh"].values,
+        distance=pop["distance"].values,
+        AV=0,
+        all_As=True,
+        accurate=accurate,
     )
     secondary = ic.generate(
-        pop["mass_B"].values, pop["age"].values, pop["feh"].values, distance=pop["distance"].values, AV=0
+        pop["mass_B"].values,
+        pop["age"].values,
+        pop["feh"].values,
+        distance=pop["distance"].values,
+        AV=0,
+        all_As=True,
+        accurate=accurate,
     )
 
     return combine_binaries(primary, secondary, ic.bands)
