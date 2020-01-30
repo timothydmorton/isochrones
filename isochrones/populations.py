@@ -200,7 +200,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
     primary = ic.generate(
         pop["mass"].values,
         pop["age"].values,
-        pop["feh"].values,
+        pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
         all_As=True,
@@ -210,7 +210,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
     secondary = ic.generate(
         pop["mass_B"].values,
         pop["age"].values,
-        pop["feh"].values,
+        pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
         all_As=True,
