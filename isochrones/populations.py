@@ -173,6 +173,7 @@ class StarPopulation(object):
 def combine_binaries(primary, secondary, bands):
     combined = primary.copy()
     combined["mass_B"] = secondary["mass"]
+    combined["initial_mass_B"] = secondary["initial_mass"]
 
     for b in bands:
         combined[f"{b}_mag_A"] = combined[f"{b}_mag"].copy()
@@ -198,7 +199,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         All the same stars as input, but with AV=0
     """
     primary = ic.generate(
-        pop["mass"].values,
+        pop["initial_mass"].values,
         pop["age"].values,
         pop["initial_feh"].values,
         distance=pop["distance"].values,
@@ -208,7 +209,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         **kwargs,
     )
     secondary = ic.generate(
-        pop["mass_B"].values,
+        pop["initial_mass_B"].values,
         pop["age"].values,
         pop["initial_feh"].values,
         distance=pop["distance"].values,
