@@ -555,7 +555,10 @@ class ModelGridInterpolator(object):
             try:
                 eep0 = eeps_to_try.pop()
             except IndexError:
-                raise ValueError("eep0 gives nan for all initial guesses! {}".format((mass, age, feh)))
+                if return_nan:
+                    return np.nan
+                else:
+                    raise ValueError("eep0 gives nan for all initial guesses! {}".format((mass, age, feh)))
 
         result = minimize(self.mass_age_resid, eep0, args=(mass, age, feh), method=method, options=kwargs)
 
