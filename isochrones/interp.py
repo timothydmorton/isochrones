@@ -15,10 +15,10 @@ def searchsorted(arr, x, N=-1):
         N = len(arr)
 
     L = 0
-    R = N-1
+    R = N - 1
     done = False
     eq = False
-    m = (L+R)//2
+    m = (L + R) // 2
     while not done:
         xm = arr[m]
         if xm < x:
@@ -29,7 +29,7 @@ def searchsorted(arr, x, N=-1):
             L = m
             eq = True
             done = True
-        m = (L + R)//2
+        m = (L + R) // 2
         if L > R:
             done = True
     return L, eq
@@ -53,15 +53,15 @@ def find_indices(point, iis):
         else:
             ix = ix - 1
             indices[i] = ix
-            dx = (ii[ix + 1] - ii[ix])
+            dx = ii[ix + 1] - ii[ix]
             norm_distances[i] = (x - ii[ix]) / dx
         out_of_bounds &= x < ii[0] or x > ii[n - 1]
 
     return indices, norm_distances, out_of_bounds
 
+
 @nb.jit(nopython=True)
-def find_indices_2d(x0, x1,
-                    ii0, ii1):
+def find_indices_2d(x0, x1, ii0, ii1):
 
     n0 = len(ii0)
     n1 = len(ii1)
@@ -69,8 +69,7 @@ def find_indices_2d(x0, x1,
     indices = np.empty(2, dtype=nb.uint32)
     norm_distances = np.empty(2, dtype=nb.float64)
 
-    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
-            (x1 < ii1[0]) or (x1 > ii1[n1 - 1])):
+    if (x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or (x1 < ii1[0]) or (x1 > ii1[n1 - 1]):
         return indices, norm_distances, True  # Out of bounds
 
     ix, eq = searchsorted(ii0, x0)
@@ -95,8 +94,7 @@ def find_indices_2d(x0, x1,
 
 
 @nb.jit(nopython=True)
-def find_indices_3d(x0, x1, x2,
-                    ii0, ii1, ii2):
+def find_indices_3d(x0, x1, x2, ii0, ii1, ii2):
 
     n0 = len(ii0)
     n1 = len(ii1)
@@ -105,9 +103,14 @@ def find_indices_3d(x0, x1, x2,
     indices = np.empty(3, dtype=nb.uint32)
     norm_distances = np.empty(3, dtype=nb.float64)
 
-    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
-            (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
-            (x2 < ii2[0]) or (x2 > ii2[n2 - 1])):
+    if (
+        (x0 < ii0[0])
+        or (x0 > ii0[n0 - 1])
+        or (x1 < ii1[0])
+        or (x1 > ii1[n1 - 1])
+        or (x2 < ii2[0])
+        or (x2 > ii2[n2 - 1])
+    ):
         return indices, norm_distances, True  # Out of bounds
 
     ix, eq = searchsorted(ii0, x0)
@@ -141,8 +144,7 @@ def find_indices_3d(x0, x1, x2,
 
 
 @nb.jit(nopython=True)
-def find_indices_4d(x0, x1, x2, x3,
-                    ii0, ii1, ii2, ii3):
+def find_indices_4d(x0, x1, x2, x3, ii0, ii1, ii2, ii3):
 
     n0 = len(ii0)
     n1 = len(ii1)
@@ -152,10 +154,16 @@ def find_indices_4d(x0, x1, x2, x3,
     indices = np.empty(4, dtype=nb.uint32)
     norm_distances = np.empty(4, dtype=nb.float64)
 
-    if ((x0 < ii0[0]) or (x0 > ii0[n0 - 1]) or
-            (x1 < ii1[0]) or (x1 > ii1[n1 - 1]) or
-            (x2 < ii2[0]) or (x2 > ii2[n2 - 1]) or
-            (x3 < ii3[0]) or (x3 > ii3[n3 - 1])):
+    if (
+        (x0 < ii0[0])
+        or (x0 > ii0[n0 - 1])
+        or (x1 < ii1[0])
+        or (x1 > ii1[n1 - 1])
+        or (x2 < ii2[0])
+        or (x2 > ii2[n2 - 1])
+        or (x3 < ii3[0])
+        or (x3 > ii3[n3 - 1])
+    ):
         return indices, norm_distances, True  # Out of bounds
 
     ix, eq = searchsorted(ii0, x0)
@@ -196,10 +204,9 @@ def find_indices_4d(x0, x1, x2, x3,
 
     return indices, norm_distances, False
 
+
 @nb.jit(nopython=True)
-def interp_value_2d(x0, x1,
-                    grid, icols,
-                    ii0, ii1):
+def interp_value_2d(x0, x1, grid, icols, ii0, ii1):
     if x0 != x0 or x1 != x1:
         return np.array([np.nan for i in icols])
 
@@ -211,7 +218,7 @@ def interp_value_2d(x0, x1,
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
 
     ndim = 2
-    n_edges = 2**ndim
+    n_edges = 2 ** ndim
     edges = np.zeros((n_edges, ndim))
     for i in range(n_edges):
         for j in range(ndim):
@@ -225,7 +232,7 @@ def interp_value_2d(x0, x1,
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
-        weight = 1.
+        weight = 1.0
         for ei, i, yi in zip(edge_indices, indices, norm_distances):
             if ei == i:
                 weight *= 1 - yi
@@ -241,10 +248,9 @@ def interp_value_2d(x0, x1,
 
     return values
 
+
 @nb.jit(nopython=True)
-def interp_value_3d(x0, x1, x2,
-                    grid, icols,
-                    ii0, ii1, ii2):
+def interp_value_3d(x0, x1, x2, grid, icols, ii0, ii1, ii2):
     if x0 != x0 or x1 != x1 or x2 != x2:
         return np.array([np.nan for i in icols])
 
@@ -256,7 +262,7 @@ def interp_value_3d(x0, x1, x2,
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
 
     ndim = 3
-    n_edges = 2**ndim
+    n_edges = 2 ** ndim
     edges = np.zeros((n_edges, ndim))
     for i in range(n_edges):
         for j in range(ndim):
@@ -270,7 +276,7 @@ def interp_value_3d(x0, x1, x2,
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
-        weight = 1.
+        weight = 1.0
         for ei, i, yi in zip(edge_indices, indices, norm_distances):
             if ei == i:
                 weight *= 1 - yi
@@ -288,14 +294,11 @@ def interp_value_3d(x0, x1, x2,
 
 
 @nb.jit(nopython=True)
-def interp_value_4d(x0, x1, x2, x3,
-                    grid, icols,
-                    ii0, ii1, ii2, ii3):
+def interp_value_4d(x0, x1, x2, x3, grid, icols, ii0, ii1, ii2, ii3):
     if x0 != x0 or x1 != x1 or x2 != x2 or x3 != x3:
         return np.array([np.nan for i in icols])
 
-    indices, norm_distances, out_of_bounds = find_indices_4d(x0, x1, x2, x3,
-                                                             ii0, ii1, ii2, ii3)
+    indices, norm_distances, out_of_bounds = find_indices_4d(x0, x1, x2, x3, ii0, ii1, ii2, ii3)
 
     if out_of_bounds:
         return np.array([np.nan for i in icols])
@@ -304,7 +307,7 @@ def interp_value_4d(x0, x1, x2, x3,
     #  edges = np.array(list(itertools.product(*[[i, i+1] for i in indices])))
 
     ndim = 4
-    n_edges = 2**ndim
+    n_edges = 2 ** ndim
     edges = np.zeros((n_edges, ndim))
     for i in range(n_edges):
         for j in range(ndim):
@@ -318,7 +321,7 @@ def interp_value_4d(x0, x1, x2, x3,
         for k in range(ndim):
             edge_indices[k] = edges[j, k]
 
-        weight = 1.
+        weight = 1.0
         for ei, i, yi in zip(edge_indices, indices, norm_distances):
             if ei == i:
                 weight *= 1 - yi
@@ -329,17 +332,14 @@ def interp_value_4d(x0, x1, x2, x3,
             icol = icols[i_icol]
 
             # Now, get the value; this is why general ND doesn't work
-            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2],
-                            edge_indices[3], icol)
+            grid_indices = (edge_indices[0], edge_indices[1], edge_indices[2], edge_indices[3], icol)
             values[i_icol] += grid[grid_indices] * weight
 
     return values
 
 
 @nb.jit(nopython=True)
-def interp_values_2d(xx0, xx1,
-                     grid, icols,
-                     ii0, ii1):
+def interp_values_2d(xx0, xx1, grid, icols, ii0, ii1):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
@@ -349,9 +349,7 @@ def interp_values_2d(xx0, xx1,
     ncols = len(icols)
     results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
-        res = interp_value_2d(xx0[i], xx1[i],
-                              grid, icols,
-                              ii0, ii1)
+        res = interp_value_2d(xx0[i], xx1[i], grid, icols, ii0, ii1)
         for j in range(ncols):
             results[i, j] = res[j]
 
@@ -359,9 +357,7 @@ def interp_values_2d(xx0, xx1,
 
 
 @nb.jit(nopython=True)
-def interp_values_3d(xx0, xx1, xx2,
-                     grid, icols,
-                     ii0, ii1, ii2):
+def interp_values_3d(xx0, xx1, xx2, grid, icols, ii0, ii1, ii2):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
@@ -371,9 +367,7 @@ def interp_values_3d(xx0, xx1, xx2,
     ncols = len(icols)
     results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
-        res = interp_value_3d(xx0[i], xx1[i], xx2[i],
-                              grid, icols,
-                              ii0, ii1, ii2)
+        res = interp_value_3d(xx0[i], xx1[i], xx2[i], grid, icols, ii0, ii1, ii2)
         for j in range(ncols):
             results[i, j] = res[j]
 
@@ -381,9 +375,7 @@ def interp_values_3d(xx0, xx1, xx2,
 
 
 @nb.jit(nopython=True)
-def interp_values_4d(xx0, xx1, xx2, xx3,
-                     grid, icols,
-                     ii0, ii1, ii2, ii3):
+def interp_values_4d(xx0, xx1, xx2, xx3, grid, icols, ii0, ii1, ii2, ii3):
     """xx1, xx2, xx3 are all arrays at which values are desired
 
 
@@ -393,9 +385,7 @@ def interp_values_4d(xx0, xx1, xx2, xx3,
     ncols = len(icols)
     results = np.empty((N, ncols), dtype=nb.float64)
     for i in range(N):
-        res = interp_value_4d(xx0[i], xx1[i], xx2[i], xx3[i],
-                              grid, icols,
-                              ii0, ii1, ii2, ii3)
+        res = interp_value_4d(xx0[i], xx1[i], xx2[i], xx3[i], grid, icols, ii0, ii1, ii2, ii3)
         for j in range(ncols):
             results[i, j] = res[j]
 
@@ -409,13 +399,11 @@ def sign(x):
     else:
         return 1
 
+
 # @jit(nopython=True)
-def find_closest3(val, a, b,
-                  v1, v2,
-                  grid, icol,
-                  ii1, ii2, ii3,
-                  bisect_tol=0.5, newton_tol=0.01,
-                  max_iter=100, debug=False):
+def find_closest3(
+    val, a, b, v1, v2, grid, icol, ii1, ii2, ii3, bisect_tol=0.5, newton_tol=0.01, max_iter=100, debug=False
+):
     """Find value of 3rd index array where interp_value is closest to val
 
     val : value to match
@@ -431,7 +419,7 @@ def find_closest3(val, a, b,
     ya = interp_value_3d(v1, v2, a, grid, icol, ii1, ii2, ii3) - val
     yb = interp_value_3d(v1, v2, b, grid, icol, ii1, ii2, ii3) - val
     if debug:
-        print('Initial values: {}: {}'.format((a, b), (ya, yb)))
+        print("Initial values: {}: {}".format((a, b), (ya, yb)))
 
     if yb != yb or ya != ya:
         # bounds are nan, return nan.
@@ -447,24 +435,24 @@ def find_closest3(val, a, b,
 
     else:
         if debug:
-            print('doing bisect search...')
+            print("doing bisect search...")
 
         while not done:
             c = (a + b) / 2
             yc = interp_value_3d(v1, v2, c, grid, icol, ii1, ii2, ii3) - val
             if yc == 0 or (b - a) / 2 < bisect_tol:
                 done = True
-            if sign(yc) == sign(ya): # (yc >= 0 and ya >= 0) or (yc < 0 and ya < 0):
+            if sign(yc) == sign(ya):  # (yc >= 0 and ya >= 0) or (yc < 0 and ya < 0):
                 a = c
                 ya = yc
             else:
                 b = c
                 yb = yc
             if debug:
-                print('{0} {1}'.format((a,b,c), (ya,yb,yc)))
+                print("{0} {1}".format((a, b, c), (ya, yb, yc)))
 
     # Now, use the value at index c to seed Newton-secant algorithm
-    tol = 1000.
+    tol = 1000.0
     i = 0
     x0 = c
     y0 = yc
@@ -472,7 +460,7 @@ def find_closest3(val, a, b,
     y1 = interp_value_3d(v1, v2, x1, grid, icol, ii1, ii2, ii3) - val
 
     if debug:
-        print('Newton-secant method...')
+        print("Newton-secant method...")
     while tol > newton_tol and i < max_iter:
         newx = (x0 * y1 - x1 * y0) / (y1 - y0)
         x0 = x1
@@ -483,9 +471,8 @@ def find_closest3(val, a, b,
         # Boo!
         while not y1 == y1:
             if debug:
-                print('{0} {1}'.format(x1, y1))
-            raise RuntimeError('ran into nan.' +
-                               'run {} with debug=True to see why.'.format((val, v2, v1)))
+                print("{0} {1}".format(x1, y1))
+            raise RuntimeError("ran into nan." + "run {} with debug=True to see why.".format((val, v2, v1)))
 
         if y1 >= 0:
             tol = y1
@@ -493,7 +480,7 @@ def find_closest3(val, a, b,
             tol = -y1
         i += 1
         if debug:
-            print('{0} {1}'.format(x1, y1))
+            print("{0} {1}".format(x1, y1))
 
     return x1
 
@@ -517,6 +504,9 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     """
     """
 
+    if x != x or x0 != x0 or x1 != x1:
+        return np.nan
+
     (i0, i1), (d0, d1), oob = find_indices_2d(x0, x1, ii0, ii1)
 
     if oob:
@@ -534,10 +524,7 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     i_eep_11, _ = searchsorted(arrays[ind_11, :], x, N=lengths[ind_11])
 
     max_i_eep = weight_arrays.shape[1] - 1
-    if ((i_eep_00 > max_i_eep) or
-            (i_eep_01 > max_i_eep) or
-            (i_eep_10 > max_i_eep) or
-            (i_eep_11 > max_i_eep)):
+    if (i_eep_00 > max_i_eep) or (i_eep_01 > max_i_eep) or (i_eep_10 > max_i_eep) or (i_eep_11 > max_i_eep):
         return np.nan
 
     eep_00 = i_eep_00 + 1
@@ -568,12 +555,10 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     eep_0 = (1 - d1) * eep_00 + d1 * eep_01
     eep_1 = (1 - d1) * eep_10 + d1 * eep_11
 
-    return ((1 - d0) * eep_0 + d0 * eep_1) #,
-            # (eep_00, eep_01, eep_10, eep_11),
-            # (w_00, w_01, w_10, w_11),
-            # (d0, d1))
-
-
+    return (1 - d0) * eep_0 + d0 * eep_1  # ,
+    # (eep_00, eep_01, eep_10, eep_11),
+    # (w_00, w_01, w_10, w_11),
+    # (d0, d1))
 
     # a_00 = eep_00
     # a_10 = eep_10 - eep_00
@@ -605,10 +590,10 @@ class DFInterpolator(object):
     def _make_grid(self, df, recalc=False):
         if self.filename is not None and os.path.exists(self.filename) and not recalc:
             d = np.load(self.filename)
-            grid = d['grid']
-            columns = d['columns']
+            grid = d["grid"]
+            columns = d["columns"]
             if not all(columns == self.columns):
-                raise ValueError('DataFrame columns do not match columns loaded from full grid!')
+                raise ValueError("DataFrame columns do not match columns loaded from full grid!")
         else:
             if not self.is_full:  # Need to make a full grid and pad with nans
                 idx = pd.MultiIndex.from_tuples([ixs for ixs in itertools.product(*df.index.levels)])
@@ -637,27 +622,24 @@ class DFInterpolator(object):
         self.columns += [name]
         self.grid = newgrid
 
-    def find_closest(self, val, lo, hi, v1, v2,
-                     col='initial_mass', debug=False):
+    def find_closest(self, val, lo, hi, v1, v2, col="initial_mass", debug=False):
         icol = self.column_index[col]
 
         if self.ndim == 3:
-            return find_closest3(val, lo, hi, v1, v2,
-                                 self.grid, icol,
-                                 *self.index_columns, debug=debug)
+            return find_closest3(val, lo, hi, v1, v2, self.grid, icol, *self.index_columns, debug=debug)
 
-    def __call__(self, p, cols='all'):
-        if cols is 'all':
+    def __call__(self, p, cols="all"):
+        if cols is "all":
             icols = np.arange(self.n_columns)
         else:
             icols = np.array([self.column_index[col] for col in cols])
         args = (p, self.grid, icols, self.index_columns)
 
         if self.ndim == 2:
-            args = (p[0], p[1], self.grid, icols,
-                    self.index_columns[0], self.index_columns[1])
-            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
-                    (isinstance(p[1], float) or isinstance(p[1], int))):
+            args = (p[0], p[1], self.grid, icols, self.index_columns[0], self.index_columns[1])
+            if (isinstance(p[0], float) or isinstance(p[0], int)) and (
+                isinstance(p[1], float) or isinstance(p[1], int)
+            ):
                 values = interp_value_2d(*args)
             else:
                 b = np.broadcast(*p)
@@ -666,12 +648,21 @@ class DFInterpolator(object):
                 # print([(a, type(a)) for a in args])
                 values = interp_values_2d(*args)
         if self.ndim == 3:
-            args = (p[0], p[1], p[2], self.grid, icols,
-                    self.index_columns[0], self.index_columns[1],
-                    self.index_columns[2])
-            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
-                    (isinstance(p[1], float) or isinstance(p[1], int)) and
-                    (isinstance(p[2], float) or isinstance(p[2], int))):
+            args = (
+                p[0],
+                p[1],
+                p[2],
+                self.grid,
+                icols,
+                self.index_columns[0],
+                self.index_columns[1],
+                self.index_columns[2],
+            )
+            if (
+                (isinstance(p[0], float) or isinstance(p[0], int))
+                and (isinstance(p[1], float) or isinstance(p[1], int))
+                and (isinstance(p[2], float) or isinstance(p[2], int))
+            ):
                 values = interp_value_3d(*args)
             else:
                 b = np.broadcast(*p)
@@ -680,13 +671,24 @@ class DFInterpolator(object):
                 # print([(a, type(a)) for a in args])
                 values = interp_values_3d(*args)
         elif self.ndim == 4:
-            args = (p[0], p[1], p[2], p[3], self.grid, icols,
-                    self.index_columns[0], self.index_columns[1],
-                    self.index_columns[2], self.index_columns[3])
-            if ((isinstance(p[0], float) or isinstance(p[0], int)) and
-                    (isinstance(p[1], float) or isinstance(p[1], int)) and
-                    (isinstance(p[2], float) or isinstance(p[2], int)) and
-                    (isinstance(p[3], float) or isinstance(p[3], int))):
+            args = (
+                p[0],
+                p[1],
+                p[2],
+                p[3],
+                self.grid,
+                icols,
+                self.index_columns[0],
+                self.index_columns[1],
+                self.index_columns[2],
+                self.index_columns[3],
+            )
+            if (
+                (isinstance(p[0], float) or isinstance(p[0], int))
+                and (isinstance(p[1], float) or isinstance(p[1], int))
+                and (isinstance(p[2], float) or isinstance(p[2], int))
+                and (isinstance(p[3], float) or isinstance(p[3], int))
+            ):
                 values = interp_value_4d(*args)
             else:
                 b = np.broadcast(*p)
