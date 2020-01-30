@@ -205,7 +205,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
-        eeps=pop['eep'],
+        eeps=pop["eep"],
         all_As=True,
         accurate=accurate,
         **kwargs,
@@ -216,7 +216,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
-        eep=pop['eep_B']
+        eep=pop["eep_B"],
         all_As=True,
         accurate=accurate,
         **kwargs,
