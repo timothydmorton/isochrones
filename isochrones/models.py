@@ -607,6 +607,7 @@ class ModelGridInterpolator(object):
 
         values["distance"] = distance
         values["AV"] = AV
+        values["initial_feh"] = feh
 
         if all_As:
             _, _, _, true_mags = self.interp_mag([mass, eeps, feh, distance, 0], bands=bands)
