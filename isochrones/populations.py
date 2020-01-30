@@ -28,6 +28,7 @@ class StarFormationHistory(object):
 class StarFormationHistoryGrid(StarFormationHistory):
     """ SFH defined in arbitrary time bins
     """
+
     def __init__(self, t_grid, sfh_grid):
         self.t_grid = t_grid
         self.sfh_grid = sfh_grid
@@ -35,7 +36,7 @@ class StarFormationHistoryGrid(StarFormationHistory):
     def sample_ages(self, N):
         """Sample N stellar ages from SFH
         """
-        cdf = self.sfh_grid.cumsum()/self.sfh_grid.sum()
+        cdf = self.sfh_grid.cumsum() / self.sfh_grid.sum()
         u = np.random.random(N)
         i_bin = np.digitize(u, cdf)
         return np.log10(1e9 * self.t_grid[i_bin])
@@ -60,14 +61,16 @@ class BinaryDistribution(object):
 
 
 class StarPopulation(object):
-
-    def __init__(self, ic,
-                 sfh=StarFormationHistory(),
-                 imf=ChabrierPrior(),
-                 feh=FehPrior(),
-                 binary_distribution=BinaryDistribution(),
-                 distance=10.,
-                 AV=0.):
+    def __init__(
+        self,
+        ic,
+        sfh=StarFormationHistory(),
+        imf=ChabrierPrior(),
+        feh=FehPrior(),
+        binary_distribution=BinaryDistribution(),
+        distance=10.0,
+        AV=0.0,
+    ):
 
         self._ic = ic
         self.sfh = sfh
@@ -79,7 +82,7 @@ class StarPopulation(object):
 
     @property
     def ic(self):
-        if type(self._ic)==type:
+        if type(self._ic) == type:
             self._ic = self._ic()
         return self._ic
 
@@ -89,18 +92,17 @@ class StarPopulation(object):
         ages = self.sfh.sample_ages(N)
         fehs = self.feh.sample(N)
 
-        if hasattr(self.distance, 'sample'):
+        if hasattr(self.distance, "sample"):
             distances = self.distance.sample(N)
         else:
             distances = self.distance
 
-        if hasattr(self.AV, 'sample'):
+        if hasattr(self.AV, "sample"):
             AVs = self.AV.sample(N)
         else:
             AVs = self.AV
 
-        population = self.ic.generate(masses, ages, fehs,
-                                      distance=distances, AV=AVs)
+        population = self.ic.generate(masses, ages, fehs, distance=distances, AV=AVs)
 
         if exact_N:
             # Indices of null values
@@ -112,15 +114,15 @@ class StarPopulation(object):
                 ages = self.sfh.sample_ages(Nbad)
                 fehs = self.feh.sample(Nbad)
 
-                if hasattr(self.distance, 'sample'):
-                    distances = self.distance.sample(N)
+                if hasattr(self.distance, "sample"):
+                    new_distances = self.distance.sample(Nbad)
                 else:
-                    distances = self.distance
+                    new_distances = self.distance
 
-                if hasattr(self.AV, 'sample'):
-                    AVs = self.AV.sample(N)
+                if hasattr(self.AV, "sample"):
+                    new_AVs = self.AV.sample(Nbad)
                 else:
-                    AVs = self.AV
+                    new_AVs = self.AV
 
                 if Nbad == 1:
                     masses = masses[0]
@@ -128,40 +130,65 @@ class StarPopulation(object):
                     fehs = fehs[0]
 
                     try:
-                        distances = distances[0]
+                        new_distances = new_distances[0]
                     except:
                         pass
 
                     try:
-                        AVs = AVs[0]
+                        new_AVs = new_AVs[0]
                     except:
                         pass
 
-                new_pop = self.ic.generate(masses, ages, fehs,
-                                           distance=distances, AV=AVs)
+                new_pop = self.ic.generate(masses, ages, fehs, distance=new_distances, AV=new_AVs)
                 population.loc[bad_inds, :] = new_pop.values
 
                 bad_inds = population.isnull().sum(axis=1) > 0
                 Nbad = bad_inds.sum()
 
-        population['distance'] = distances
-        population['AV'] = AVs
+        secondary_mass = self.binary_distribution.sample(population["mass"])
+        secondary_population = self.ic.generate(
+            secondary_mass,
+            population["age"],
+            population["feh"],
+            distance=population["distance"],
+            AV=population["AV"],
+        )
 
-        secondary_mass = self.binary_distribution.sample(population['mass'])
-        secondary_population = self.ic.generate(secondary_mass,
-                                                population['age'],
-                                                population['feh'],
-                                                distance=population['distance'],
-                                                AV=population['AV'])
-
-        population['mass_B'] = secondary_population['mass']
-        for b in self.ic.bands:
-            population[f'{b}_mag_A'] = population[f'{b}_mag'].copy()
-            population[f'{b}_mag_B'] = secondary_population[f'{b}_mag']
-            population.loc[population['mass_B'].isnull(), f'{b}_mag_B'] = np.inf
-            population.loc[:, f'{b}_mag'] = addmags(population[f'{b}_mag_A'],
-                                                    population[f'{b}_mag_B'])
+        return combine_binaries(population, secondary_population, self.ic.bands)
 
 
+def combine_binaries(primary, secondary, bands):
+    combined = primary.copy()
+    combined["mass_B"] = secondary["mass"]
 
-        return population
+    for b in bands:
+        combined[f"{b}_mag_A"] = combined[f"{b}_mag"].copy()
+        combined[f"{b}_mag_B"] = secondary[f"{b}_mag"]
+        combined.loc[combined["mass_B"].isnull(), f"{b}_mag_B"] = np.inf
+        combined.loc[:, f"{b}_mag"] = addmags(combined[f"{b}_mag_A"], combined[f"{b}_mag_B"])
+
+    return combined
+
+
+def deredden(ic, pop):
+    """Returns the dereddened version of the population (AV=0)
+
+    Parameters
+    ----------
+    pop : pandas.DataFrame
+        DataFrame of stars, including (at least) mass
+
+
+    Returns
+    -------
+    new_pop : pandas.DataFrame
+        All the same stars as input, but with AV=0
+    """
+    primary = ic.generate(
+        pop["mass"].values, pop["age"].values, pop["feh"].values, distance=pop["distance"].values, AV=0
+    )
+    secondary = ic.generate(
+        pop["mass_B"].values, pop["age"].values, pop["feh"].values, distance=pop["distance"].values, AV=0
+    )
+
+    return combine_binaries(primary, secondary, ic.bands)
