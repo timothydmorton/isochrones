@@ -174,6 +174,7 @@ def combine_binaries(primary, secondary, bands):
     combined = primary.copy()
     combined["mass_B"] = secondary["mass"]
     combined["initial_mass_B"] = secondary["initial_mass"]
+    combined["eep_B"] = secondary["eep"]
 
     for b in bands:
         combined[f"{b}_mag_A"] = combined[f"{b}_mag"].copy()
@@ -204,6 +205,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
+        eeps=pop['eep'],
         all_As=True,
         accurate=accurate,
         **kwargs,
@@ -214,6 +216,7 @@ def deredden(ic, pop, accurate=False, **kwargs):
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
+        eep=pop['eep_B']
         all_As=True,
         accurate=accurate,
         **kwargs,

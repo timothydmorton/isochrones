@@ -580,6 +580,7 @@ class ModelGridInterpolator(object):
         feh,
         props="all",
         bands=None,
+        eeps=None,
         return_df=True,
         return_dict=False,
         distance=10,
@@ -589,7 +590,8 @@ class ModelGridInterpolator(object):
     ):
         if bands is None:
             bands = self.bands
-        eeps = self.get_eep(mass, age, feh, **kwargs)
+        if eeps is None:
+            eeps = self.get_eep(mass, age, feh, **kwargs)
         values = self.interp_value([mass, eeps, feh], props)
         if bands:
             _, _, _, mags = self.interp_mag([mass, eeps, feh, distance, AV], bands=bands)
