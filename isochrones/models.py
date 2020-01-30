@@ -581,12 +581,12 @@ class ModelGridInterpolator(object):
         return_dict=False,
         distance=10,
         AV=0,
-        accurate=False,
         all_As=False,
+        **kwargs,
     ):
         if bands is None:
             bands = self.bands
-        eeps = self.get_eep(mass, age, feh, accurate=accurate)
+        eeps = self.get_eep(mass, age, feh, **kwargs)
         values = self.interp_value([mass, eeps, feh], props)
         if bands:
             _, _, _, mags = self.interp_mag([mass, eeps, feh, distance, AV], bands=bands)

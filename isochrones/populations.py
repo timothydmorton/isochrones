@@ -86,7 +86,7 @@ class StarPopulation(object):
             self._ic = self._ic()
         return self._ic
 
-    def generate(self, N, accurate=False, exact_N=True):
+    def generate(self, N, accurate=False, exact_N=True, **kwargs):
         N = int(N)
         masses = self.imf.sample(N)
         ages = self.sfh.sample_ages(N)
@@ -103,7 +103,7 @@ class StarPopulation(object):
             AVs = self.AV
 
         population = self.ic.generate(
-            masses, ages, fehs, distance=distances, AV=AVs, all_As=True, accurate=accurate
+            masses, ages, fehs, distance=distances, AV=AVs, all_As=True, accurate=accurate, **kwargs
         )
 
         if exact_N:
@@ -142,7 +142,14 @@ class StarPopulation(object):
                         pass
 
                 new_pop = self.ic.generate(
-                    masses, ages, fehs, distance=new_distances, AV=new_AVs, all_As=True, accurate=accurate
+                    masses,
+                    ages,
+                    fehs,
+                    distance=new_distances,
+                    AV=new_AVs,
+                    all_As=True,
+                    accurate=accurate,
+                    **kwargs,
                 )
                 population.loc[bad_inds, :] = new_pop.values
 
@@ -157,6 +164,7 @@ class StarPopulation(object):
             distance=population["distance"],
             AV=population["AV"],
             accurate=accurate,
+            **kwargs,
         )
 
         return combine_binaries(population, secondary_population, self.ic.bands)
@@ -175,7 +183,7 @@ def combine_binaries(primary, secondary, bands):
     return combined
 
 
-def deredden(ic, pop):
+def deredden(ic, pop, accurate=False, **kwargs):
     """Returns the dereddened version of the population (AV=0)
 
     Parameters
@@ -197,6 +205,7 @@ def deredden(ic, pop):
         AV=0,
         all_As=True,
         accurate=accurate,
+        **kwargs,
     )
     secondary = ic.generate(
         pop["mass_B"].values,
@@ -206,6 +215,7 @@ def deredden(ic, pop):
         AV=0,
         all_As=True,
         accurate=accurate,
+        **kwargs,
     )
 
     return combine_binaries(primary, secondary, ic.bands)
