@@ -610,13 +610,13 @@ class ModelGridInterpolator(object):
         values["distance"] = distance
         values["AV"] = AV
         values["initial_feh"] = feh
+        values["requested_age"] = age
 
         if all_As:
             _, _, _, true_mags = self.interp_mag([mass, eeps, feh, distance, 0], bands=bands)
             mBol = values["Mbol"]
             for b, true_mag in zip(bands, true_mags.T):
-                bc = mBol - true_mag
-                values[f"A_{b}"] = mBol - true_mag - bc
+                values[f"A_{b}"] = values[f"{b}_mag"] - true_mag
 
         return values
 

@@ -112,9 +112,9 @@ class StarPopulation(object):
             Nbad = bad_inds.sum()
 
             while Nbad > 0:
-                masses = self.imf.sample(Nbad)
-                ages = self.sfh.sample_ages(Nbad)
-                fehs = self.feh.sample(Nbad)
+                new_masses = self.imf.sample(Nbad)
+                new_ages = self.sfh.sample_ages(Nbad)
+                new_fehs = self.feh.sample(Nbad)
 
                 if hasattr(self.distance, "sample"):
                     new_distances = self.distance.sample(Nbad)
@@ -127,9 +127,9 @@ class StarPopulation(object):
                     new_AVs = self.AV
 
                 if Nbad == 1:
-                    masses = masses[0]
-                    ages = ages[0]
-                    fehs = fehs[0]
+                    new_masses = new_masses[0]
+                    new_ages = new_ages[0]
+                    new_fehs = new_fehs[0]
 
                     try:
                         new_distances = new_distances[0]
@@ -142,9 +142,9 @@ class StarPopulation(object):
                         pass
 
                 new_pop = self.ic.generate(
-                    masses,
-                    ages,
-                    fehs,
+                    new_masses,
+                    new_ages,
+                    new_fehs,
                     distance=new_distances,
                     AV=new_AVs,
                     all_As=True,
@@ -152,15 +152,16 @@ class StarPopulation(object):
                     **kwargs,
                 )
                 population.loc[bad_inds, :] = new_pop.values
+                ages[bad_inds] = new_ages
 
                 bad_inds = population.isnull().sum(axis=1) > 0
                 Nbad = bad_inds.sum()
 
-        secondary_mass = self.binary_distribution.sample(population["mass"])
+        secondary_mass = self.binary_distribution.sample(population["initial_mass"])
         secondary_population = self.ic.generate(
             secondary_mass,
-            population["age"],
-            population["feh"],
+            ages,
+            population["initial_feh"],
             distance=population["distance"],
             AV=population["AV"],
             accurate=accurate,
@@ -201,22 +202,20 @@ def deredden(ic, pop, accurate=False, **kwargs):
     """
     primary = ic.generate(
         pop["initial_mass"].values,
-        pop["age"].values,
+        pop["requested_age"].values,
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
-        eeps=pop["eep"],
         all_As=True,
         accurate=accurate,
         **kwargs,
     )
     secondary = ic.generate(
         pop["initial_mass_B"].values,
-        pop["age"].values,
+        pop["requested_age"].values,
         pop["initial_feh"].values,
         distance=pop["distance"].values,
         AV=0,
-        eep=pop["eep_B"],
         all_As=True,
         accurate=accurate,
         **kwargs,
