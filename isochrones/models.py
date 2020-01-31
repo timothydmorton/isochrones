@@ -8,15 +8,15 @@ from astropy import constants as const
 from tqdm import tqdm
 from scipy.optimize import minimize
 
-G = const.G.cgs.value
-MSUN = const.M_sun.cgs.value
-RSUN = const.R_sun.cgs.value
-
 from .config import ISOCHRONES
 from .interp import DFInterpolator, interp_eep, interp_eeps
 from .mags import interp_mag, interp_mags
 from .utils import addmags
 from .grid import Grid
+
+G = const.G.cgs.value
+MSUN = const.M_sun.cgs.value
+RSUN = const.R_sun.cgs.value
 
 
 class StellarModelGrid(Grid):
