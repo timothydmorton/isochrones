@@ -9,16 +9,18 @@ FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
 MIST = MIST_Isochrone()
 
+
 def test_ini():
     _check_ini(MIST)
 
 
 #################
 
+
 def _check_ini(ic):
-    single_dirs = ['star1']
-    binary_dirs = ['star2']
-    triple_dirs = ['star3', 'star4']
+    single_dirs = ["star1"]
+    binary_dirs = ["star2"]
+    triple_dirs = ["star3", "star4"]
 
     for d in single_dirs:
         SingleCheck().check(ic, os.path.join(FOLDER, d))
@@ -35,6 +37,7 @@ def _check_ini(ic):
     # _ini3(ic)
     # _ini3_2(ic)
     # _ini4(ic)
+
 
 class IniCheck(object):
     index = 0
@@ -54,14 +57,14 @@ class IniCheck(object):
     def check_p0(self, mod):
         p0 = mod.emcee_p0(10)
         nbad = 0
-        for i,p in enumerate(p0):
+        for i, p in enumerate(p0):
             if not np.isfinite(mod.lnpost(p)):
                 print(p)
                 nbad += 1
-        assert nbad==0
+        assert nbad == 0
 
     def check(self, ic, folder):
-        print('checking {}'.format(folder))
+        print("checking {}".format(folder))
         mod = self.get_mod(ic, folder)
         mod.print_ascii()
         self.check_asserts(mod)
@@ -71,51 +74,53 @@ class IniCheck(object):
         #     mod = self.get_mod_special(ic, folder)
         #     self.check_asserts(mod)
 
+
 class SingleCheck(IniCheck):
     pars = [1.0, 9.4, 0.0, 100, 0.2]
     n_params = 5
     systems = [0]
-    Nstars = {0:1}
+    Nstars = {0: 1}
+
 
 class BinaryCheck(IniCheck):
     pars = [1.0, 0.5, 9.4, 0.0, 100, 0.2]
     n_params = 6
     systems = [0]
-    Nstars = {0:2}
+    Nstars = {0: 2}
 
     def get_mod_special(self, ic, folder):
         return BinaryStarModel(ic, folder=folder)
 
+
 class BinaryCheck_Unassoc(IniCheck):
-    pars = [1.0, 9.4, 0.0, 100, 0.2,
-             0.8, 9.7, 0.1, 300, 0.3]
+    pars = [1.0, 9.4, 0.0, 100, 0.2, 0.8, 9.7, 0.1, 300, 0.3]
     n_params = 10
     index = [0, 1]
     systems = [0, 1]
-    Nstars = {0:1, 1:1}
+    Nstars = {0: 1, 1: 1}
+
 
 class TripleCheck(IniCheck):
     pars = [1.0, 0.8, 0.5, 9.4, 0.0, 100, 0.2]
     n_params = 7
     systems = [0]
-    Nstars = {0:3}
+    Nstars = {0: 3}
 
     def get_mod_special(self, ic, folder):
         return TripleStarModel(ic, folder=folder)
 
 
 class TripleCheck_Unassoc1(IniCheck):
-    pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2,
-            1.0, 9.7, 0.0, 200, 0.5]
+    pars = [1.0, 0.8, 9.4, 0.0, 100, 0.2, 1.0, 9.7, 0.0, 200, 0.5]
     n_params = 11
     index = [0, 0, 1]
     systems = [0, 1]
-    Nstars = {0:2, 1:1}
+    Nstars = {0: 2, 1: 1}
+
 
 class TripleCheck_Unassoc2(IniCheck):
-    pars = [1.0, 9.4, 0.0, 100, 0.2,
-            1.0, 0.8, 9.7, 0.0, 200, 0.5]
+    pars = [1.0, 9.4, 0.0, 100, 0.2, 1.0, 0.8, 9.7, 0.0, 200, 0.5]
     n_params = 11
     index = [0, 1, 1]
     systems = [0, 1]
-    Nstars = {0:1, 1:2}
+    Nstars = {0: 1, 1: 2}

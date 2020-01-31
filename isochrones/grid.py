@@ -36,13 +36,14 @@ class Grid(object):
     as examples for the various methods that need to be implemented.
 
     """
+
     index_cols = None
     is_full = False
     bounds = tuple()
 
     def __init__(self, **kwargs):
 
-        if hasattr(self, 'default_kwargs'):
+        if hasattr(self, "default_kwargs"):
             self.kwargs = self.default_kwargs.copy()
         else:
             self.kwargs = {}
@@ -82,7 +83,7 @@ class Grid(object):
         tarball = self.get_tarball_file(**kwargs)
         if not os.path.exists(tarball):
             url = self.get_tarball_url(**kwargs)
-            getLogger().info('Downloading {}...'.format(url))
+            getLogger().info("Downloading {}...".format(url))
             download_file(url, tarball)
 
     def extract_tarball(self, **kwargs):
@@ -92,17 +93,17 @@ class Grid(object):
 
         try:
             with tarfile.open(tarball) as tar:
-                getLogger().info('Extracting {}...'.format(tarball))
+                getLogger().info("Extracting {}...".format(tarball))
                 tar.extractall(self.datadir)
         except EOFError:
-            getLogger().error('{} corrupted; deleting and re-downloading.'.format(tarball))
+            getLogger().error("{} corrupted; deleting and re-downloading.".format(tarball))
             os.remove(tarball)
             self.extract_tarball(**kwargs)
 
     def read_hdf(self, orig=False):
         h5file = self.hdf_filename
         try:
-            path = 'orig' if orig else 'df'
+            path = "orig" if orig else "df"
             df = pd.read_hdf(h5file, path)
         except (FileNotFoundError, KeyError):
             df = self.write_hdf(orig=orig)
@@ -111,9 +112,9 @@ class Grid(object):
     def write_hdf(self, orig=False):
         df = self.get_df(orig=orig)
         h5file = self.hdf_filename
-        path = 'orig' if orig else 'df'
+        path = "orig" if orig else "df"
         df.to_hdf(h5file, path)
-        getLogger().info('{} written to {}.'.format(path, h5file))
+        getLogger().info("{} written to {}.".format(path, h5file))
         return df
 
     @property
@@ -131,14 +132,13 @@ class Grid(object):
     @property
     def interp(self):
         if self._interp is None:
-            filename = getattr(self, 'interp_grid_npz_filename', None)
+            filename = getattr(self, "interp_grid_npz_filename", None)
             self._interp = DFInterpolator(self.df, filename=filename, is_full=self.is_full)
         return self._interp
 
     @property
     def interp_orig(self):
         if self._interp_orig is None:
-            filename = getattr(self, 'interp_grid_orig_npz_filename', None)
+            filename = getattr(self, "interp_grid_orig_npz_filename", None)
             self._interp_orig = DFInterpolator(self.df_orig, filename=filename, is_full=self.is_full)
         return self._interp_orig
-

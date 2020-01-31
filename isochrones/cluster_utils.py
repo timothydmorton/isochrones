@@ -28,12 +28,22 @@ def logsumexp(xx):
 
 
 @nb.jit(nopython=True, parallel=True, nogil=True, fastmath=True)
-def calc_lnlike_grid(lnlike_prop,
-                     model_mags, Nbands,
-                     masses, ln_dm_deeps, eeps,
-                     mag_values, mag_uncs,
-                     alpha, gamma, fB,
-                     mass_lo, mass_hi, q_lo):
+def calc_lnlike_grid(
+    lnlike_prop,
+    model_mags,
+    Nbands,
+    masses,
+    ln_dm_deeps,
+    eeps,
+    mag_values,
+    mag_uncs,
+    alpha,
+    gamma,
+    fB,
+    mass_lo,
+    mass_hi,
+    q_lo,
+):
     """Returns half-filled NxN array of lnlike(phot) + lnlike(mass), as function of E1, E2
 
     Lots of different shaped arrays here.
@@ -56,7 +66,7 @@ def calc_lnlike_grid(lnlike_prop,
 
     for i in nb.prange(n_stars):
         for j in range(n):
-            for k in range(j+1):
+            for k in range(j + 1):
                 if masses[k] / masses[j] < q_lo:
                     lnlikes[i, j, k] = -np.inf
                 else:
@@ -64,8 +74,8 @@ def calc_lnlike_grid(lnlike_prop,
 
                     for b in range(Nbands):
                         # ln(likelihood) for photometry for binary model
-                        f1 = 10**(-0.4 * model_mags[j, b])
-                        f2 = 10**(-0.4 * model_mags[k, b])
+                        f1 = 10 ** (-0.4 * model_mags[j, b])
+                        f2 = 10 ** (-0.4 * model_mags[k, b])
                         mag_value = mag_values[i, b]
                         mag_unc = mag_uncs[i, b]
                         tot_mag_binary = -2.5 * log10(f1 + f2)
@@ -78,8 +88,9 @@ def calc_lnlike_grid(lnlike_prop,
                         # like_phot = fB * exp(lnlike_phot_binary) + (1 - fB) * exp(lnlike_phot_single)
                         # lnlike_phot += log(like_phot)
 
-                        lnlike_phot += logaddexp(log(fB) + lnlike_phot_binary,
-                                                 log(1 - fB) + lnlike_phot_single)
+                        lnlike_phot += logaddexp(
+                            log(fB) + lnlike_phot_binary, log(1 - fB) + lnlike_phot_single
+                        )
 
                     # ln(likelihood) for mass
                     # lnlike_mass = powerlaw_lnpdf(masses[j] + masses[k], alpha, mass_lo, mass_hi)
@@ -87,7 +98,7 @@ def calc_lnlike_grid(lnlike_prop,
                     lnlike_mass += ln_dm_deeps[j]
 
                     # ln(likelihood) for mass ratio
-                    lnlike_mass_ratio = powerlaw_lnpdf(masses[k] / masses[j], gamma, q_lo, 1.)
+                    lnlike_mass_ratio = powerlaw_lnpdf(masses[k] / masses[j], gamma, q_lo, 1.0)
 
                     lnlikes[i, j, k] = lnlike_phot + lnlike_mass + lnlike_mass_ratio + lnlike_prop[i, j]
 

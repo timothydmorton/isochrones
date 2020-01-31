@@ -6,18 +6,24 @@ from multiprocessing import Pool
 from .starmodel import StarModel, BasicStarModel
 
 
-def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh','distance','AV'],
-                 qs=[0.05,0.16,0.5,0.84,0.95], modelname='mist_starmodel_single',
-                 verbose=False, raise_exceptions=False):
+def get_quantiles(
+    name,
+    rootdir=".",
+    columns=["eep", "mass", "radius", "age", "feh", "distance", "AV"],
+    qs=[0.05, 0.16, 0.5, 0.84, 0.95],
+    modelname="mist_starmodel_single",
+    verbose=False,
+    raise_exceptions=False,
+):
     """Returns parameter quantiles for starmodel
     """
 
-    modfile = os.path.join(rootdir, name,'{}.h5'.format(modelname))
+    modfile = os.path.join(rootdir, name, "{}.h5".format(modelname))
     try:
         mod = BasicStarModel.load_hdf(modfile)
     except:
         if verbose:
-            print('cannnot load starmodel! ({})'.format(modfile))
+            print("cannnot load starmodel! ({})".format(modfile))
         if raise_exceptions:
             raise
         return pd.DataFrame()
@@ -34,10 +40,11 @@ def get_quantiles(name, rootdir='.', columns=['eep','mass','radius','age','feh',
     df = pd.DataFrame(index=[name])
     for c in true_cols:
         for q in qs:
-            col = c + '_{:02.0f}'.format(q*100)
+            col = c + "_{:02.0f}".format(q * 100)
             df.loc[name, col] = q_df.loc[q, c]
 
     return df
+
 
 class quantile_worker(object):
     def __init__(self, **kwargs):
@@ -45,6 +52,7 @@ class quantile_worker(object):
 
     def __call__(self, name):
         return get_quantiles(name, **self.kwargs)
+
 
 def get_summary_df(names=None, pool=None, **kwargs):
 
@@ -60,9 +68,9 @@ def get_summary_df(names=None, pool=None, **kwargs):
     return df
 
     if filename is None:
-        filename = 'summary.h5'
-    df.to_hdf(filename, 'df')
+        filename = "summary.h5"
+    df.to_hdf(filename, "df")
     pool.close()
 
-    print('Summary dataframe written to {}'.format(filename))
+    print("Summary dataframe written to {}".format(filename))
     return df

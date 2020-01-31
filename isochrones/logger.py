@@ -16,7 +16,7 @@ def initLogging(filename, logger):
             logger.removeHandler(handler)
 
     logger.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s')
+    formatter = logging.Formatter(fmt="%(asctime)s: %(message)s")
 
     fh = logging.FileHandler(filename)
     fh.setFormatter(formatter)

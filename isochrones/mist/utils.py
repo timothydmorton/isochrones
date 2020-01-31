@@ -57,4 +57,3 @@ def max_eep(mass, feh):
         return default_max_eep(mass)
     else:
         return eep
-

@@ -2,6 +2,7 @@ from ..models import EvolutionTrackInterpolator, IsochroneInterpolator
 from .models import MISTIsochroneGrid, MISTBasicIsochroneGrid, MISTEvolutionTrackGrid
 from .bc import MISTBolometricCorrectionGrid
 
+
 class MIST_Isochrone(IsochroneInterpolator):
     grid_type = MISTIsochroneGrid
     bc_type = MISTBolometricCorrectionGrid

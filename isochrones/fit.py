@@ -19,6 +19,7 @@ class Emcee3Model(emcee3.Model):
         state.log_likelihood = self.mod.lnlike(state.coords)
         return state
 
+
 class Emcee3PriorModel(emcee3.Model):
     def __init__(self, mod, *args, **kwargs):
         self.mod = mod
@@ -32,20 +33,34 @@ class Emcee3PriorModel(emcee3.Model):
         state.log_likelihood = 0
         return state
 
-def write_samples(mod, df, resultsdir='results'):
+
+def write_samples(mod, df, resultsdir="results"):
     """df is dataframe of samples, mod is model
     """
 
     if not os.path.exists(resultsdir):
         os.makedirs(resultsdir)
-    samplefile = os.path.join(resultsdir, '{}.h5'.format(mod.name))
-    df.to_hdf(samplefile, 'samples')
+    samplefile = os.path.join(resultsdir, "{}.h5".format(mod.name))
+    df.to_hdf(samplefile, "samples")
 
-def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
-                iter_chunksize=200, pool=None, overwrite=False,
-                maxiter=10, sample_directory='mcmc_chains',
-                nburn=2, mixedmoves=True, resultsdir='mcmc_results',
-                prior_only=False, **kwargs):
+
+def fit_emcee3(
+    mod,
+    nwalkers=500,
+    verbose=False,
+    nsamples=5000,
+    targetn=4,
+    iter_chunksize=200,
+    pool=None,
+    overwrite=False,
+    maxiter=10,
+    sample_directory="mcmc_chains",
+    nburn=2,
+    mixedmoves=True,
+    resultsdir="mcmc_results",
+    prior_only=False,
+    **kwargs
+):
     """fit model using Emcee3
 
     modeled after https://github.com/dfm/gaia-kepler/blob/master/fit.py
@@ -61,7 +76,7 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
     ndim = mod.n_params
 
     if sample_directory is not None:
-        sample_file = os.path.join(sample_directory, '{}.h5'.format(mod.name))
+        sample_file = os.path.join(sample_directory, "{}.h5".format(mod.name))
         if not os.path.exists(sample_directory):
             os.makedirs(sample_directory)
         backend = HDFBackend(sample_file)
@@ -74,9 +89,11 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
         coords_init = mod.sample_from_prior(nwalkers, require_valid=True, values=True)
 
     if mixedmoves:
-        moves = [(emcee3.moves.KDEMove(), 0.4),
-                 (emcee3.moves.DEMove(1.0), 0.4),
-                 (emcee3.moves.DESnookerMove(), 0.2)]
+        moves = [
+            (emcee3.moves.KDEMove(), 0.4),
+            (emcee3.moves.DEMove(1.0), 0.4),
+            (emcee3.moves.DESnookerMove(), 0.2),
+        ]
     else:
         moves = emcee3.moves.KDEMove()
 
@@ -87,12 +104,14 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
 
     if pool is None:
         from emcee3.pools import DefaultPool
+
         pool = DefaultPool()
 
     try:
         ensemble = emcee3.Ensemble(walker, coords_init, pool=pool)
     except ValueError:
         import pdb
+
         pdb.set_trace()
 
     def calc_stats(s):
@@ -103,14 +122,14 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
         neff = s.backend.niter / tau_max - nburn
         if verbose:
             print("Maximum autocorrelation time: {0}".format(tau_max))
-            print("N_eff: {0} ({1})\n".format(neff * nwalkers, neff-nburn))
+            print("N_eff: {0} ({1})\n".format(neff * nwalkers, neff - nburn))
         return tau_max, neff
 
     done = False
     if not overwrite:
         try:
             if verbose:
-                print('Status from previous run:')
+                print("Status from previous run:")
             tau_max, neff = calc_stats(sampler)
             if neff > targetn:
                 done = True
@@ -132,7 +151,7 @@ def fit_emcee3(mod, nwalkers=500, verbose=False, nsamples=5000, targetn=4,
         if neff > targetn:
             done = True
 
-    burnin = int(nburn*tau_max)
+    burnin = int(nburn * tau_max)
     ntot = nsamples
     samples = sampler.get_coords(flat=True, discard=burnin)
     total_samples = len(samples)

@@ -3,8 +3,9 @@ import os, sys
 
 
 def readme():
-    with open('README.rst') as f:
+    with open("README.rst") as f:
         return f.read()
+
 
 # Hackishly inject a constant into builtins to enable importing of the
 # package before the library is built.
@@ -14,6 +15,7 @@ else:
     import builtins
 builtins.__ISOCHRONES_SETUP__ = True
 import isochrones
+
 version = isochrones.__version__
 
 # Publish the library to PyPI.
@@ -27,30 +29,42 @@ if "tag" in sys.argv:
     os.system("git push --tags")
     sys.exit()
 
-setup(name = "isochrones",
-    version = version,
-    description = "Defines objects for interpolating stellar model grids.",
-    long_description = readme(),
-    author = "Timothy D. Morton",
-    author_email = "tim.morton@gmail.com",
-    url = "https://github.com/timothydmorton/isochrones",
-    packages = find_packages(),
-    package_data = {'isochrones':['data/*', 'tests/star*/*.ini']},
-    scripts = ['scripts/starfit',
-               'scripts/batch_starfit',
-               'scripts/starmodel-select',
-               'scripts/starfit-summarize',
-               'scripts/isochrones-dartmouth_write_tri'],
+setup(
+    name="isochrones",
+    version=version,
+    description="Defines objects for interpolating stellar model grids.",
+    long_description=readme(),
+    author="Timothy D. Morton",
+    author_email="tim.morton@gmail.com",
+    url="https://github.com/timothydmorton/isochrones",
+    packages=find_packages(),
+    package_data={"isochrones": ["data/*", "tests/star*/*.ini"]},
+    scripts=[
+        "scripts/starfit",
+        "scripts/batch_starfit",
+        "scripts/starmodel-select",
+        "scripts/starfit-summarize",
+        "scripts/isochrones-dartmouth_write_tri",
+    ],
     classifiers=[
-      'Development Status :: 3 - Alpha',
-      'Intended Audience :: Science/Research',
-      'Operating System :: OS Independent',
-      'Programming Language :: Python',
-      'Topic :: Scientific/Engineering :: Astronomy'
-      ],
-    install_requires=['pandas>=0.14','astropy>=0.3','emcee>=2.0',
-                      'numpy>=1.9', 'tables>=3.0', 'scipy>=0.19',
-                      'asciitree', 'corner', 'astroquery',
-                      'configobj', 'tqdm'],
-    zip_safe=False
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Science/Research",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Topic :: Scientific/Engineering :: Astronomy",
+    ],
+    install_requires=[
+        "pandas>=0.14",
+        "astropy>=0.3",
+        "emcee>=2.0",
+        "numpy>=1.9",
+        "tables>=3.0",
+        "scipy>=0.19",
+        "asciitree",
+        "corner",
+        "astroquery",
+        "configobj",
+        "tqdm",
+    ],
+    zip_safe=False,
 )

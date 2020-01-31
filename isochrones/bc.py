@@ -22,7 +22,7 @@ class BolometricCorrectionGrid(Grid):
         Tables are downloaded when requested.
     """
 
-    index_cols = ('Teff', 'logg', '[Fe/H]', 'Av', 'Rv')
+    index_cols = ("Teff", "logg", "[Fe/H]", "Av", "Rv")
     name = None
     is_full = True
 
@@ -63,12 +63,12 @@ class BolometricCorrectionGrid(Grid):
 
     @property
     def datadir(self):
-        return os.path.join(ISOCHRONES, 'BC', self.name)
+        return os.path.join(ISOCHRONES, "BC", self.name)
 
     def get_filename(self, phot, feh):
         rootdir = self.datadir
-        sign_str = 'm' if feh < 0 else 'p'
-        filename = 'feh{0}{1:03.0f}.{2}'.format(sign_str, abs(feh)*100, phot)
+        sign_str = "m" if feh < 0 else "p"
+        filename = "feh{0}{1:03.0f}.{2}".format(sign_str, abs(feh) * 100, phot)
         return os.path.join(rootdir, filename)
 
     def parse_table(self, filename):
@@ -79,33 +79,34 @@ class BolometricCorrectionGrid(Grid):
                 if i == 5:
                     names = line[1:].split()
                     break
-        return pd.read_csv(filename, names=names, delim_whitespace=True, comment='#',
-                           index_col=self.index_cols)
+        return pd.read_csv(
+            filename, names=names, delim_whitespace=True, comment="#", index_col=self.index_cols
+        )
 
     def get_table(self, phot, feh):
         return self.parse_table(self.get_filename(phot, feh))
 
     def get_hdf_filename(self, phot):
-        return os.path.join(self.datadir, '{}.h5'.format(phot))
+        return os.path.join(self.datadir, "{}.h5".format(phot))
 
     def get_tarball_url(self, phot):
-        url = 'http://waps.cfa.harvard.edu/MIST/BC_tables/{}.txz'.format(phot)
+        url = "http://waps.cfa.harvard.edu/MIST/BC_tables/{}.txz".format(phot)
         return url
 
     def get_tarball_file(self, phot):
-        return os.path.join(self.datadir, '{}.txz'.format(phot))
+        return os.path.join(self.datadir, "{}.txz".format(phot))
 
     def get_df(self):
         df_all = pd.DataFrame()
         for phot in self.phot_systems:
             hdf_filename = self.get_hdf_filename(phot=phot)
             if not os.path.exists(hdf_filename):
-                filenames = glob.glob(os.path.join(self.datadir, '*.{}'.format(phot)))
+                filenames = glob.glob(os.path.join(self.datadir, "*.{}".format(phot)))
                 if not filenames:
                     self.extract_tarball(phot=phot)
-                    filenames = glob.glob(os.path.join(self.datadir, '*.{}'.format(phot)))
+                    filenames = glob.glob(os.path.join(self.datadir, "*.{}".format(phot)))
                 df = pd.concat([self.parse_table(f) for f in filenames]).sort_index()
-                df.to_hdf(hdf_filename, 'df')
+                df.to_hdf(hdf_filename, "df")
             df = pd.read_hdf(hdf_filename)
             df_all = pd.concat([df_all, df], axis=1)
 

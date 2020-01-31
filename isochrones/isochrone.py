@@ -10,7 +10,7 @@ from .logger import getLogger
 try:
     import holoviews as hv
 except ImportError:
-    getLogger().warning('Holoviews not imported. Some visualizations will not be available.')
+    getLogger().warning("Holoviews not imported. Some visualizations will not be available.")
     pass
 
 if not on_rtd:
@@ -41,7 +41,9 @@ else:
     RSUN = 6.96e10
 
 from .config import ISOCHRONES
+
 # from .grid import ModelGrid
+
 
 def get_ichrone(models, bands=None, default=False, tracks=False, basic=False, **kwargs):
     """Gets Isochrone Object by name, or type, with the right bands
@@ -57,19 +59,20 @@ def get_ichrone(models, bands=None, default=False, tracks=False, basic=False, **
 
     if type(models) is type(type):
         ichrone = models(bands)
-    elif models=='mist':
+    elif models == "mist":
         if tracks:
             from isochrones.mist import MIST_EvolutionTrack
+
             ichrone = MIST_EvolutionTrack(bands=bands, **kwargs)
         else:
             if basic:
                 from isochrones.mist import MISTBasic_Isochrone
+
                 ichrone = MISTBasic_Isochrone(bands=bands, **kwargs)
             else:
                 from isochrones.mist import MIST_Isochrone
+
                 ichrone = MIST_Isochrone(bands=bands, **kwargs)
     else:
-        raise ValueError('Unknown stellar models: {}'.format(models))
+        raise ValueError("Unknown stellar models: {}".format(models))
     return ichrone
-
-
