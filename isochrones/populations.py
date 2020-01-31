@@ -165,6 +165,7 @@ class StarPopulation(object):
             distance=population["distance"],
             AV=population["AV"],
             accurate=accurate,
+            all_As=True,
             **kwargs,
         )
 
@@ -180,6 +181,7 @@ def combine_binaries(primary, secondary, bands):
     for b in bands:
         combined[f"{b}_mag_A"] = combined[f"{b}_mag"].copy()
         combined[f"{b}_mag_B"] = secondary[f"{b}_mag"]
+        combined[f"A_{b}_B"] = secondary[f"A_{b}"]
         combined.loc[combined["mass_B"].isnull(), f"{b}_mag_B"] = np.inf
         combined.loc[:, f"{b}_mag"] = addmags(combined[f"{b}_mag_A"], combined[f"{b}_mag_B"])
 
