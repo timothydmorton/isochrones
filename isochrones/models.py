@@ -7,7 +7,6 @@ import pandas as pd
 from astropy import constants as const
 from tqdm import tqdm
 from scipy.optimize import minimize
-from numba.typed import List
 
 from .config import ISOCHRONES
 from .interp import DFInterpolator, interp_eep, interp_eeps
