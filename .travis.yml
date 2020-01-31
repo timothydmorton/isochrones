@@ -27,8 +27,11 @@ install:
     - source .ci/travis.sh
 
 script:
-    - nosetests -v isochrones
+    - pytest -v
     # - set -e
     # - python3 -m sphinx docs docs/_build
     # - pip install doctr
     # - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
+
+after_success:
+  - codecov # submit coverage
