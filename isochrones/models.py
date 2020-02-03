@@ -112,9 +112,6 @@ class StellarModelGrid(Grid):
             df.rename(columns=self.column_map, inplace=True)
             df = self.compute_additional_columns(df)
             # Select only the columns we want,
-            #  avoiding copying, trying not to kill Travis build
-            cols_to_drop = [c for c in df.columns if c not in self.default_columns]
-            df.drop(cols_to_drop, axis=1, inplace=True)
             df = df[list(self.default_columns)]
         return df
 
