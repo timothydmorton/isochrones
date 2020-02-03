@@ -35,5 +35,5 @@ script:
     # - pip install doctr
     # - doctr deploy --built-docs docs/_build/html . --branch-whitelist bolo
 
-# after_success:
-#   - codecov # submit coverage
+after_success:
+  - codecov # submit coverage
