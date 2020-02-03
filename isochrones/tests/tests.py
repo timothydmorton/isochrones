@@ -29,6 +29,12 @@ def test_spec(bands="JHK"):
     _check_spec(mist)
 
 
+def test_tracks(bands="JHK"):
+    mist = get_ichrone("mist", bands=bands, tracks=True)
+    _basic_ic_checks(mist)
+    _check_spec(mist)
+
+
 def test_AV():
     from isochrones.extinction import get_AV_infinity
 

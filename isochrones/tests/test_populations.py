@@ -10,8 +10,6 @@ from isochrones.populations import StarFormationHistory, StarPopulation, BinaryD
 class PopulationTest(unittest.TestCase):
     def setUp(self):
         mist = get_ichrone("mist")
-        mist.initialize()
-        mist.track.initialize()
 
         sfh = StarFormationHistory()  # Constant SFR for 10 Gyr; or, e.g., dist=norm(3, 0.2)
         imf = SalpeterPrior(bounds=(0.4, 10))  # bounds on solar masses
