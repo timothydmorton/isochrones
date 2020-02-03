@@ -3,15 +3,15 @@ language: generic
 matrix:
     include:
 
-        # Linux
-        - os: linux
-          env: PYTHON_VERSION=3.6
+        # Linux (builds not working because of RAM)
+        # - os: linux
+        #   env: PYTHON_VERSION=3.6
 
-        - os: linux
-          env: PYTHON_VERSION=3.7
+        # - os: linux
+        #   env: PYTHON_VERSION=3.7
 
-        - os: linux
-          env: PYTHON_VERSION=3.8
+        # - os: linux
+        #   env: PYTHON_VERSION=3.8
 
         # OSX
         - os: osx
