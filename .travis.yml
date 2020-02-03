@@ -27,8 +27,9 @@ install:
     - source .ci/travis.sh
 
 script:
-    - df -h    
-    - travis_wait 20 pytest -v
+    - df -h
+    - mist-initialize.py  # sidestep long-running tests by running this first
+    - pytest -v
     # - set -e
     # - python3 -m sphinx docs docs/_build
     # - pip install doctr

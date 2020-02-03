@@ -45,6 +45,7 @@ setup(
         "scripts/starmodel-select",
         "scripts/starfit-summarize",
         "scripts/isochrones-dartmouth_write_tri",
+        "scripts/mist-initialize.py",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
