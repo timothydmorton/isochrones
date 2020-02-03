@@ -23,3 +23,5 @@ conda install -c conda-forge pytest codecov
 # conda install -c conda-forge nbsphinx
 # pip install sphinx_rtd_theme
 python setup.py install
+df -h
+

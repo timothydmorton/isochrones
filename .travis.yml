@@ -27,6 +27,7 @@ install:
     - source .ci/travis.sh
 
 script:
+    - df -h    
     - pytest -v
     # - set -e
     # - python3 -m sphinx docs docs/_build
