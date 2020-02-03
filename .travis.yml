@@ -28,7 +28,7 @@ install:
 
 script:
     - df -h    
-    - pytest -v
+    - travis_wait 20 pytest -v
     # - set -e
     # - python3 -m sphinx docs docs/_build
     # - pip install doctr
