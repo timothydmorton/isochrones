@@ -240,6 +240,13 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
     def get_tarball_url(self, feh):
         basename = self.get_file_basename(feh)
         version = self.kwargs["version"]
+        return "http://waps.cfa.harvard.edu/MIST/data/tarballs_v{version}/{basename}.txz".format(
+            version=version, basename=basename
+        )
+        return os.path.join(self.datadir, "{}.txz".format(basename))
+
+    def get_tarball_file(self, feh):
+        basename = self.get_file_basename(feh)
         return os.path.join(self.datadir, "{}.txz".format(basename))
 
     def download_and_extract_all(self):
