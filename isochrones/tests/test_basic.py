@@ -31,8 +31,8 @@ def test_spec(bands="JHK"):
 
 def test_tracks(bands="JHK"):
     mist = get_ichrone("mist", bands=bands, tracks=True)
-    _basic_ic_checks(mist)
-    _check_spec(mist)
+    _basic_ic_checks_tracks(mist)
+    _check_spec_tracks(mist)
 
 
 def test_AV():
@@ -123,6 +123,44 @@ def _check_spec(ic):
     mod = StarModel(ic, Teff=(5700, 100), logg=(4.5, 0.1), feh=(0.0, 0.2))
     eep = ic.get_eep(1.0, 9.6, 0.1, accurate=True)
     assert np.isfinite(mod.lnlike([eep, 9.6, 0.1, 200, 0.2]))
+
+
+def _basic_ic_checks_tracks(ic):
+    mass, feh = (1.0, -0.2)
+    eep = ic.get_eep(mass, 9.6, feh, accurate=True)
+    assert np.isfinite(ic.radius(mass, eep, feh))
+    assert np.isfinite(ic.radius(np.ones(100) * mass, eep, feh)).all()
+    assert np.isfinite(ic.radius(mass, np.ones(100) * eep, feh)).all()
+    assert np.isfinite(ic.radius(mass, eep, np.ones(100) * feh)).all()
+    assert np.isfinite(ic.radius(mass, np.ones(100) * eep, np.ones(100) * feh)).all()
+    assert np.isfinite(ic.radius(np.ones(100) * mass, eep, np.ones(100) * feh)).all()
+    assert np.isfinite(ic.radius(np.ones(100) * mass, np.ones(100) * eep, feh)).all()
+    assert np.isfinite(ic.radius(np.ones(100) * mass, np.ones(100) * eep, np.ones(100) * feh)).all()
+
+    assert np.isfinite(ic.Teff(mass, eep, feh))
+    assert np.isfinite(ic.Teff(mass, np.ones(100) * eep, feh)).all()
+
+    assert np.isfinite(ic.density(mass, eep, feh))
+    assert np.isfinite(ic.density(mass, eep, np.ones(100) * feh)).all()
+
+    assert np.isfinite(ic.nu_max(mass, eep, feh))
+    assert np.isfinite(ic.delta_nu(mass, eep, feh))
+
+    args = (mass, eep, feh, 500, 0.2)
+    _, _, _, mags = ic.interp_mag(args, ic.bands)
+    assert np.isfinite(mags).all()
+
+    # Make sure no ZeroDivisionError for on-the-grid calls (Github issue #64)
+    assert len(ic.isochrone(8.0, feh=0.0)) > 0
+
+    # Make sure that passing nan returns nan (Github issue #65)
+    assert np.isnan(ic.radius(1.0, np.nan, 0.1))
+
+
+def _check_spec_tracks(ic):
+    mod = StarModel(ic, Teff=(5700, 100), logg=(4.5, 0.1), feh=(0.0, 0.2))
+    eep = ic.get_eep(1.0, 9.6, 0.1, accurate=True)
+    assert np.isfinite(mod.lnlike([1.0, eep, 0.1, 200, 0.2]))
 
 
 if __name__ == "__main__":
