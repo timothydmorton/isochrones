@@ -109,7 +109,7 @@ class StellarModelGrid(Grid):
         """
         df = self.df_all()
         if not orig:
-            df = df.rename(columns=self.column_map)
+            df.rename(columns=self.column_map, inplace=True)
             df = self.compute_additional_columns(df)
             # Select only the columns we want
             df = df[list(self.default_columns)]
