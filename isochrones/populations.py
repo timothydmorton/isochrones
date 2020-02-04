@@ -177,22 +177,6 @@ class StarPopulation(object):
         return population
 
 
-def combine_binaries(primary, secondary, bands):
-    combined = primary.copy()
-    combined["mass_B"] = secondary["mass"]
-    combined["initial_mass_B"] = secondary["initial_mass"]
-    combined["eep_B"] = secondary["eep"]
-
-    for b in bands:
-        combined[f"{b}_mag_A"] = combined[f"{b}_mag"].copy()
-        combined[f"{b}_mag_B"] = secondary[f"{b}_mag"]
-        combined[f"A_{b}_B"] = secondary[f"A_{b}"]
-        combined.loc[combined["mass_B"].isnull(), f"{b}_mag_B"] = np.inf
-        combined.loc[:, f"{b}_mag"] = addmags(combined[f"{b}_mag_A"], combined[f"{b}_mag_B"])
-
-    return combined
-
-
 def deredden(ic, pop, accurate=False, **kwargs):
     """Returns the dereddened version of the population (AV=0)
 
