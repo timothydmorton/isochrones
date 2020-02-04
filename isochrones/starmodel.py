@@ -45,7 +45,7 @@ from .likelihood import star_lnlike, gauss_lnprob
 try:
     from .fit import fit_emcee3
 except ImportError:
-    logger.warning("Emcee3 not imported; be advised.")
+    pass
 
 
 def _parse_config_value(v):
