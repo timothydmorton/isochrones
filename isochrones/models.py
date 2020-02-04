@@ -1,12 +1,14 @@
 import os
 import re
 import itertools
+import warnings
 
 import numpy as np
 import pandas as pd
 from astropy import constants as const
 from tqdm import tqdm
 from scipy.optimize import minimize
+from numba import NumbaPendingDeprecationWarning
 
 from .config import ISOCHRONES
 from .interp import DFInterpolator, interp_eep, interp_eeps
@@ -17,6 +19,8 @@ from .grid import Grid
 G = const.G.cgs.value
 MSUN = const.M_sun.cgs.value
 RSUN = const.R_sun.cgs.value
+
+warnings.filterwarnings("ignore", category=NumbaPendingDeprecationWarning)
 
 
 class StellarModelGrid(Grid):
