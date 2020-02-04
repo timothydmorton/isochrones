@@ -637,9 +637,7 @@ class ModelGridInterpolator(object):
             )
 
             for b in bands:
-                values["{}_mag".format(b)] = addmags(
-                    values_A["{}_mag".format(b)], values_B["{}_mag".format(b)]
-                )
+                values[f"{b}_mag"] = addmags(values_A[f"{b}_mag"], values_B[f"{b}_mag"].fillna(np.inf))
 
         return values
 

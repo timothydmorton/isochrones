@@ -43,31 +43,33 @@ class StarFormationHistoryGrid(StarFormationHistory):
 
 
 class BinaryDistribution(object):
-    def __init__(self, fB=0.4, gamma=0.3, mass_ratio_distribution=None):
+    def __init__(self, imf, fB=0.4, gamma=0.3, mass_ratio_distribution=None):
+        self.imf = imf
         self.fB = fB
         self.gamma = gamma
         if mass_ratio_distribution is None:
             mass_ratio_distribution = PowerLawPrior(self.gamma, bounds=(0.2, 1))
         self.mass_ratio_distribution = mass_ratio_distribution
 
-    def sample(self, primary_masses):
-        primary_masses = np.array(primary_masses)
-        N = len(primary_masses)
+    def sample(self, N):
+        primary_mass = self.imf.sample(N)
         u = np.random.random(N)
         is_binary = u < self.fB
         q = self.mass_ratio_distribution.sample(N)
-        secondary_mass = q * primary_masses * is_binary
-        return secondary_mass
+        secondary_mass = q * primary_mass * is_binary
+        return primary_mass, secondary_mass
 
 
 class StarPopulation(object):
     def __init__(
         self,
         ic,
-        sfh=StarFormationHistory(),
         imf=ChabrierPrior(),
+        fB=0.4,
+        gamma=0.3,
+        sfh=StarFormationHistory(),
         feh=FehPrior(),
-        binary_distribution=BinaryDistribution(),
+        mass_ratio_distribution=None,
         distance=10.0,
         AV=0.0,
     ):
@@ -75,8 +77,12 @@ class StarPopulation(object):
         self._ic = ic
         self.sfh = sfh
         self.imf = imf
+        self.fB = fB
+        self.gamma = gamma
+        self.binary_distribution = BinaryDistribution(
+            imf, fB=fB, gamma=gamma, mass_ratio_distribution=mass_ratio_distribution
+        )
         self.feh = feh
-        self.binary_distribution = binary_distribution
         self.distance = distance
         self.AV = AV
 
@@ -88,7 +94,7 @@ class StarPopulation(object):
 
     def generate(self, N, accurate=False, exact_N=True, **kwargs):
         N = int(N)
-        masses = self.imf.sample(N)
+        masses, secondary_masses = self.binary_distribution.sample(N)
         ages = self.sfh.sample_ages(N)
         fehs = self.feh.sample(N)
 
@@ -102,17 +108,25 @@ class StarPopulation(object):
         else:
             AVs = self.AV
 
-        population = self.ic.generate(
-            masses, ages, fehs, distance=distances, AV=AVs, all_As=True, accurate=accurate, **kwargs
+        population = self.ic.generate_binary(
+            masses,
+            secondary_masses,
+            ages,
+            fehs,
+            distance=distances,
+            AV=AVs,
+            all_As=True,
+            accurate=accurate,
+            **kwargs,
         )
 
         if exact_N:
             # Indices of null values
-            bad_inds = population.isnull().sum(axis=1) > 0
+            bad_inds = population.mass_0.isnull()
             Nbad = bad_inds.sum()
 
             while Nbad > 0:
-                new_masses = self.imf.sample(Nbad)
+                new_masses, new_secondary_masses = self.binary_distribution.sample(Nbad)
                 new_ages = self.sfh.sample_ages(Nbad)
                 new_fehs = self.feh.sample(Nbad)
 
@@ -128,6 +142,7 @@ class StarPopulation(object):
 
                 if Nbad == 1:
                     new_masses = new_masses[0]
+                    new_secondary_masses = new_secondary_masses[0]
                     new_ages = new_ages[0]
                     new_fehs = new_fehs[0]
 
@@ -141,8 +156,9 @@ class StarPopulation(object):
                     except:
                         pass
 
-                new_pop = self.ic.generate(
+                new_pop = self.ic.generate_binary(
                     new_masses,
+                    new_secondary_masses,
                     new_ages,
                     new_fehs,
                     distance=new_distances,
@@ -151,25 +167,14 @@ class StarPopulation(object):
                     accurate=accurate,
                     **kwargs,
                 )
+
                 population.loc[bad_inds, :] = new_pop.values
                 ages[bad_inds] = new_ages
 
-                bad_inds = population.isnull().sum(axis=1) > 0
+                bad_inds = population.mass_0.isnull()
                 Nbad = bad_inds.sum()
 
-        secondary_mass = self.binary_distribution.sample(population["initial_mass"])
-        secondary_population = self.ic.generate(
-            secondary_mass,
-            ages,
-            population["initial_feh"],
-            distance=population["distance"],
-            AV=population["AV"],
-            accurate=accurate,
-            all_As=True,
-            **kwargs,
-        )
-
-        return combine_binaries(population, secondary_population, self.ic.bands)
+        return population
 
 
 def combine_binaries(primary, secondary, bands):
@@ -202,25 +207,14 @@ def deredden(ic, pop, accurate=False, **kwargs):
     new_pop : pandas.DataFrame
         All the same stars as input, but with AV=0
     """
-    primary = ic.generate(
-        pop["initial_mass"].values,
-        pop["requested_age"].values,
-        pop["initial_feh"].values,
-        distance=pop["distance"].values,
+    return ic.generate_binary(
+        pop["initial_mass_0"].values,
+        pop["initial_mass_1"].values,
+        pop["requested_age_0"].values,
+        pop["initial_feh_0"].values,
+        distance=pop["distance_0"].values,
         AV=0,
         all_As=True,
         accurate=accurate,
         **kwargs,
     )
-    secondary = ic.generate(
-        pop["initial_mass_B"].values,
-        pop["requested_age"].values,
-        pop["initial_feh"].values,
-        distance=pop["distance"].values,
-        AV=0,
-        all_As=True,
-        accurate=accurate,
-        **kwargs,
-    )
-
-    return combine_binaries(primary, secondary, ic.bands)

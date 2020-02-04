@@ -13,13 +13,12 @@ class PopulationTest(unittest.TestCase):
 
         sfh = StarFormationHistory()  # Constant SFR for 10 Gyr; or, e.g., dist=norm(3, 0.2)
         imf = SalpeterPrior(bounds=(0.4, 10))  # bounds on solar masses
-        binaries = BinaryDistribution(fB=0.4, gamma=0.3)
+        fB = 0.4
+        gamma = 0.3
         feh = GaussianPrior(-0.2, 0.2)
         distance = DistancePrior(max_distance=3000)  # pc
         AV = AVPrior(bounds=[0, 2])
-        pop = StarPopulation(
-            mist, sfh=sfh, imf=imf, feh=feh, distance=distance, binary_distribution=binaries, AV=AV
-        )
+        pop = StarPopulation(mist, imf=imf, fB=fB, gamma=gamma, sfh=sfh, feh=feh, distance=distance, AV=AV)
 
         self.pop = pop
         self.mist = mist
@@ -36,11 +35,11 @@ class PopulationTest(unittest.TestCase):
         """Check mass, age, feh the same when dereddened
         """
 
-        cols = ["initial_mass", "initial_feh", "requested_age"]
+        cols = ["initial_mass_0", "initial_feh_0", "requested_age_0"]
         assert_frame_equal(self.df[cols], self.dereddened_df[cols])
 
         # Check de-reddening vis-a-vis A_x
         for b in self.mist.bands:
-            diff = (self.dereddened_df[f"{b}_mag"] + self.df[f"A_{b}"]) - self.df[f"{b}_mag"]
-            is_binary = self.df.mass_B > 0
+            diff = (self.dereddened_df[f"{b}_mag"] + self.df[f"A_{b}_0"]) - self.df[f"{b}_mag"]
+            is_binary = self.df.mass_1 > 0
             assert diff.loc[~is_binary].std() < 0.0001
