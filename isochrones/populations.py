@@ -160,6 +160,9 @@ class StarPopulation(object):
                 bad_inds = population.mass_0.isnull()
                 Nbad = bad_inds.sum()
 
+        else:
+            population = population.dropna(subset=["mass_0"])
+
         return population
 
 
