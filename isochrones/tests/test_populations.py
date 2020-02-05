@@ -43,3 +43,17 @@ class PopulationTest(unittest.TestCase):
             diff = (self.dereddened_df[f"{b}_mag"] + self.df[f"A_{b}_0"]) - self.df[f"{b}_mag"]
             is_binary = self.df.mass_1 > 0
             assert diff.loc[~is_binary].std() < 0.0001
+
+    def test_extinction(self):
+        from numpy.testing import assert_array_almost_equal
+
+        from isochrones.utils import addmags
+        import numpy as np
+
+        assert_array_almost_equal(
+            self.df["G_mag"],
+            addmags(
+                self.dereddened_df["G_mag_0"] + self.df["A_G_0"],
+                (self.dereddened_df["G_mag_1"] + self.df["A_G_1"]).fillna(np.inf),
+            ),
+        )

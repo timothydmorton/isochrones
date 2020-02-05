@@ -641,7 +641,14 @@ class ModelGridInterpolator(object):
             )
 
             for b in bands:
+                # Compute total system magnitude
                 values[f"{b}_mag"] = addmags(values_A[f"{b}_mag"], values_B[f"{b}_mag"].fillna(np.inf))
+
+                # Compute total_system per-band extinctions, if requested
+                if kwargs.get("all_As", False):
+                    pri, sec = values[f"{b}_mag_0"], values[f"{b}_mag_1"].fillna(np.inf)
+                    A_pri, A_sec = values[f"A_{b}_0"], values[f"A_{b}_1"].fillna(0)
+                    values[f"A_{b}"] = values[f"{b}_mag"] - addmags(pri - A_pri, sec - A_sec)
 
         return values
 
