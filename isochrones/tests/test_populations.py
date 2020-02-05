@@ -81,3 +81,9 @@ class PopulationTest(unittest.TestCase):
                 (self.dereddened_df["G_mag_1"] + self.df["A_G_1"]).fillna(np.inf),
             ),
         )
+
+    def test_generate(self):
+        """Make sure corner case when regenerating 1 doesn't break.
+        """
+        for i in range(10):
+            self.pop.generate(10)

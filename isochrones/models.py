@@ -592,6 +592,12 @@ class ModelGridInterpolator(object):
         all_As=False,
         **kwargs,
     ):
+        # Pre-empt potential type/shape issues
+        mass, age, feh, distance, AV = [
+            np.atleast_1d(a) if np.size(a) > 1 else float(a)
+            for a in np.broadcast_arrays(mass, age, feh, distance, AV)
+        ]
+
         if bands is None:
             bands = self.bands
         if eeps is None:
@@ -628,6 +634,8 @@ class ModelGridInterpolator(object):
         bands = kwargs.get("bands", None)
         if bands is None:
             bands = self.bands
+
+        mass_A, mass_B = np.broadcast_arrays(mass_A, mass_B)
 
         values_A = self.generate(mass_A, age, feh, **kwargs)
         values_B = self.generate(mass_B, age, feh, **kwargs)
