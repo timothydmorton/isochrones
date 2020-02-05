@@ -142,22 +142,6 @@ class StarPopulation(object):
                 else:
                     new_AVs = self.AV
 
-                if Nbad == 1:
-                    new_masses = new_masses[0]
-                    new_secondary_masses = new_secondary_masses[0]
-                    new_ages = new_ages[0]
-                    new_fehs = new_fehs[0]
-
-                    try:
-                        new_distances = new_distances[0]
-                    except:
-                        pass
-
-                    try:
-                        new_AVs = new_AVs[0]
-                    except:
-                        pass
-
                 new_pop = self.ic.generate_binary(
                     new_masses,
                     new_secondary_masses,
@@ -211,18 +195,3 @@ def deredden(pop, accurate=False, **kwargs):
         new_pop[f"A_{b}_1"] = 0.0
 
     return new_pop
-
-
-def old_deredden(ic, pop, accurate=False, **kwargs):
-
-    return ic.generate_binary(
-        pop["initial_mass_0"].values,
-        pop["initial_mass_1"].values,
-        pop["requested_age_0"].values,
-        pop["initial_feh_0"].values,
-        distance=pop["distance_0"].values,
-        AV=0.0,
-        all_As=True,
-        accurate=accurate,
-        **kwargs,
-    )
