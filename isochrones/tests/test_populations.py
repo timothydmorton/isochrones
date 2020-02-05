@@ -7,6 +7,23 @@ from isochrones.priors import ChabrierPrior, FehPrior, GaussianPrior, SalpeterPr
 from isochrones.populations import StarFormationHistory, StarPopulation, BinaryDistribution, deredden
 
 
+def old_deredden(ic, pop, accurate=False, **kwargs):
+    """Old version of deredden that regenerates population from scratch with AV=0
+    """
+
+    return ic.generate_binary(
+        pop["initial_mass_0"].values,
+        pop["initial_mass_1"].values,
+        pop["requested_age_0"].values,
+        pop["initial_feh_0"].values,
+        distance=pop["distance_0"].values,
+        AV=0.0,
+        all_As=True,
+        accurate=accurate,
+        **kwargs,
+    )
+
+
 class PopulationTest(unittest.TestCase):
     def setUp(self):
         mist = get_ichrone("mist")
@@ -23,7 +40,14 @@ class PopulationTest(unittest.TestCase):
         self.pop = pop
         self.mist = mist
         self.df = pop.generate(1000)
-        self.dereddened_df = deredden(mist, self.df)
+        self.dereddened_df = deredden(self.df)
+
+    def test_old_deredden(self):
+        """Test dereddening against version that regenerates population
+        """
+        old_dereddened_df = old_deredden(self.mist, self.df)
+
+        assert_frame_equal(self.dereddened_df.fillna(0), old_dereddened_df.fillna(0))
 
     def test_mags(self):
         """Check no total mags are null

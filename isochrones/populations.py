@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 from scipy.stats import uniform
 
@@ -177,7 +179,7 @@ class StarPopulation(object):
         return population
 
 
-def deredden(ic, pop, accurate=False, **kwargs):
+def deredden(pop, accurate=False, **kwargs):
     """Returns the dereddened version of the population (AV=0)
 
     Parameters
@@ -191,13 +193,35 @@ def deredden(ic, pop, accurate=False, **kwargs):
     new_pop : pandas.DataFrame
         All the same stars as input, but with AV=0
     """
+    new_pop = pop.copy()
+
+    # All columns that end in _mag, with those last four chars removed
+    bands = [c[:-4] for c in pop.columns if re.search("(\w+)_mag$", c)]
+
+    new_pop["AV_0"] = 0.0
+    new_pop["AV_1"] = 0.0
+
+    for b in bands:
+        new_pop[f"{b}_mag"] -= new_pop[f"A_{b}"]
+        new_pop[f"{b}_mag_0"] -= new_pop[f"A_{b}_0"]
+        new_pop[f"{b}_mag_1"] -= new_pop[f"A_{b}_1"]
+
+        new_pop[f"A_{b}"] = 0.0
+        new_pop[f"A_{b}_0"] = 0.0
+        new_pop[f"A_{b}_1"] = 0.0
+
+    return new_pop
+
+
+def old_deredden(ic, pop, accurate=False, **kwargs):
+
     return ic.generate_binary(
         pop["initial_mass_0"].values,
         pop["initial_mass_1"].values,
         pop["requested_age_0"].values,
         pop["initial_feh_0"].values,
         distance=pop["distance_0"].values,
-        AV=0,
+        AV=0.0,
         all_As=True,
         accurate=accurate,
         **kwargs,
