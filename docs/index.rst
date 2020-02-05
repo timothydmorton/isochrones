@@ -26,3 +26,4 @@ YAPSI and PARSEC models as well.
    grid_interpolator.ipynb
    starmodel.ipynb
    multiple.ipynb
+   populations.ipynb
