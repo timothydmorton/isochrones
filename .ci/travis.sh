@@ -19,6 +19,7 @@ conda activate test
 conda install -c conda-forge numpy numba cython pytables pandas
 conda install -c conda-forge multinest pymultinest
 conda install -c conda-forge pytest codecov
+pip install flaky
 # conda install -c pyviz pyviz
 # conda install -c conda-forge nbsphinx
 # pip install sphinx_rtd_theme

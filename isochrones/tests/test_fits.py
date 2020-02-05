@@ -4,6 +4,7 @@ import tempfile
 import tables as tb
 
 from pandas.util.testing import assert_frame_equal
+from flaky import flaky
 
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel
@@ -28,6 +29,7 @@ def test_fitting():
     _check_saving(mod_mist)
 
 
+@flaky
 def test_starfit():
     rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
     testdir = os.path.join(rootdir, "star1")
