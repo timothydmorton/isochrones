@@ -10,6 +10,7 @@ if not on_rtd:
 from configobj import ConfigObj
 from .starmodel import StarModel, BasicStarModel
 from .isochrone import get_ichrone
+from .priors import FlatPrior
 
 from .logger import initLogging
 
@@ -18,6 +19,7 @@ def starfit(
     folder,
     multiplicities=["single"],
     models="mist",
+    feh_prior="local",
     use_emcee=False,
     plot_only=False,
     overwrite=False,
@@ -30,6 +32,8 @@ def starfit(
     **kwargs
 ):
     """ Runs starfit routine for a given folder.
+
+    feh_prior : 'flat' or 'local'
     """
     nstars = {"single": 1, "binary": 2, "triple": 3}
 
@@ -85,6 +89,11 @@ def starfit(
                     mod = Mod.from_ini(
                         ichrone, folder, use_emcee=use_emcee, N=N, ini_file=ini_file, name=name
                     )
+
+                    # Set feh prior
+                    if feh_prior == "flat":
+                        mod.set_prior(feh=FlatPrior((ichrone.minfeh, ichrone.maxfeh)))
+
                     try:
                         mod.obs.print_ascii()
                     except:
