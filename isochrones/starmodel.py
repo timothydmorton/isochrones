@@ -1464,6 +1464,14 @@ class BasicStarModel(StarModel):
 
         if max_distance is not None:
             self.set_bounds(distance=(0, max_distance))
+        else:
+            if "parallax" in kwargs:
+                value, unc = kwargs["parallax"]  # plax in mas
+                if value > 0:
+                    max_distance = 1.0 / value * 2000  # distance in pc
+                else:
+                    max_distance = 1.0 / (unc) * 2000  # Does this make any sense?
+                self.set_bounds(distance=(0, max_distance))
 
         if halo_fraction is not None:
             self._priors["feh"] = FehPrior(halo_fraction=halo_fraction)
