@@ -43,7 +43,10 @@ class Prior(object):
     def bounds(self, new):
         self._norm = quad(self._pdf, *new)[0]
         self._bounds = new
-        self.test_integral()
+        try:
+            self.test_integral()
+        except AssertionError:
+            raise ValueError(f"Problem setting bounds to {new}; integral test failed.")
 
     def _pdf(self, x, **kwargs):
         raise NotImplementedError
@@ -120,7 +123,10 @@ class BoundedPrior(Prior):
     @bounds.setter
     def bounds(self, new):
         self._bounds = new
-        self.test_integral()
+        try:
+            self.test_integral()
+        except AssertionError:
+            raise ValueError(f"Problem setting bounds to {new}; integral test failed.")
 
     def lnpdf(self, x, **kwargs):
         if self.bounds is not None:
