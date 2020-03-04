@@ -130,5 +130,10 @@ class StarCatalog(object):
             ic = get_ichrone("mist", bands=self.bands)
 
         n_pre = int(np.log10(len(self)) // 2)  # log_100
+        dirs = []
         for mod in self.iter_models(ic, N=N):
-            mod.write_ini(root=os.path.join(root, str(mod.name)[:n_pre]))
+            path = os.path.join(root, str(mod.name)[:n_pre])
+            mod.write_ini(root=path)
+            dirs.append(os.path.abspath(os.path.join(path, mod.name)))
+
+        return dirs
