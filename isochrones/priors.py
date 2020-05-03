@@ -515,5 +515,5 @@ class ChabrierPrior(BrokenPrior):
     def __init__(self, **kwargs):
         bounds = kwargs.pop("bounds", (0.1, 100.0))
         super().__init__(
-            [LogNormalPrior(0.079, 0.69), PowerLawPrior(-2.35, (1.0, 100.0))], [1.0], bounds=bounds, **kwargs
-        )
+            [LogNormalPrior(0.079, 0.69 * np.log(10)), PowerLawPrior(-2.35, (1.0, 100.0))], [1.0], bounds=bounds, **kwargs
+        )  # from Chabrier 2003, Eqn 17
