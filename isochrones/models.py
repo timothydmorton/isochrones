@@ -40,6 +40,8 @@ class StellarModelGrid(Grid):
         "Mbol",
     )
 
+    ndim = 3
+
     @property
     def prop_map(self):
         return dict(

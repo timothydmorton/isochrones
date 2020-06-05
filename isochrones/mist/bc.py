@@ -74,6 +74,8 @@ class MISTBolometricCorrectionGrid(BolometricCorrectionGrid):
     )
 
     default_bands = ("J", "H", "K", "G", "BP", "RP", "W1", "W2", "W3", "TESS", "Kepler")
+    index_cols = ("Teff", "logg", "[Fe/H]", "Av")
+    ndim = 4
 
     def get_df(self, *args, **kwargs):
         df = super().get_df(*args, **kwargs)

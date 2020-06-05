@@ -102,18 +102,25 @@ class Grid(object):
 
     def read_hdf(self, orig=False):
         h5file = self.hdf_filename
-        try:
-            path = "orig" if orig else "df"
-            df = pd.read_hdf(h5file, path)
-        except (FileNotFoundError, KeyError):
+        if not os.path.exists(h5file):
             df = self.write_hdf(orig=orig)
+        else:
+            try:
+                path = "orig" if orig else "df"
+                df = pd.read_hdf(h5file, path)
+            except (FileNotFoundError, KeyError):
+                df = self.write_hdf(orig=orig)  # Test this with orig=True
         return df
 
     def write_hdf(self, orig=False):
         df = self.get_df(orig=orig)
         h5file = self.hdf_filename
         path = "orig" if orig else "df"
-        df.to_hdf(h5file, path)
+        try:
+            df.to_hdf(h5file, path)
+        except OSError:
+            if not os.path.exists(self.datadir):
+                os.makedirs(self.datadir)
         getLogger().info("{} written to {}.".format(path, h5file))
         return df
 

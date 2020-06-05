@@ -23,6 +23,7 @@ class BolometricCorrectionGrid(Grid):
     """
 
     index_cols = ("Teff", "logg", "[Fe/H]", "Av", "Rv")
+    ndim = 5
     name = None
     is_full = True
 

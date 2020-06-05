@@ -62,10 +62,6 @@ class MISTModelGrid(StellarModelGrid):
     eep_labels_highmass = ("PMS", "ZAMS", "IAMS", "TAMS", "RGBTip", "ZACHeB", "TACHeB", "C-burn")
     n_eep = 1710
 
-    @property
-    def foo(self):
-        return self._foo
-
     def max_eep(self, mass, feh):
         return max_eep(mass, feh)
 
@@ -77,11 +73,14 @@ class MISTModelGrid(StellarModelGrid):
     def kwarg_tag(self):
         return "_v{version}_vvcrit{vvcrit}".format(**self.kwargs)
 
+    def compute_surf_feh(self, df):
+        return df["log_surf_z"] - np.log10(df["surface_h1"]) - np.log10(0.0181)  # Aaron Dotter says
+
     def compute_additional_columns(self, df):
         """
         """
         df = super().compute_additional_columns(df)
-        df["feh"] = df["log_surf_z"] - np.log10(df["surface_h1"]) - np.log10(0.0181)  # Aaron Dotter says
+        df["feh"] = self.compute_surf_feh(df)
         return df
 
 
@@ -419,15 +418,21 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
             df["dt_deep"] = np.nan
 
             # Compute derivative for each (feh, age) isochrone, and fill in
-            for f, m in tqdm(
-                itertools.product(*df.index.levels[:2]),
-                total=len(list(itertools.product(*df.index.levels[:2]))),
+            for idx in tqdm(
+                itertools.product(*df.index.levels[:-1]),
+                total=len(list(itertools.product(*df.index.levels[:-1]))),
                 desc="Computing dt/deep",
             ):
-                subdf = df.loc[f, m]
-                log_age = np.log10(subdf["star_age"])
+                try:
+                    subdf = df.loc[idx, :]
+                except KeyError:
+                    continue
+                if "star_age" in subdf:
+                    log_age = np.log10(subdf["star_age"])
+                else:
+                    log_age = subdf["age"]
                 deriv = np.gradient(log_age, subdf["eep"])
-                subdf.loc[:, "dt_deep"] = deriv
+                df.loc[idx, "dt_deep"] = deriv
 
             df.dt_deep.to_hdf(filename, "dt_deep")
             dt_deep = pd.read_hdf(filename, "dt_deep")
