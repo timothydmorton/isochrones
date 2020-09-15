@@ -25,6 +25,7 @@ matrix:
 
 install:
     - source .ci/travis.sh
+    - python -m pip install -U pandas
 
 script:
     - df -h
