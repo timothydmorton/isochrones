@@ -1,9 +1,10 @@
-import os, glob
+import os
+import glob
 import numpy as np
 import tempfile
 import tables as tb
 
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 from flaky import flaky
 
 from isochrones.mist import MIST_Isochrone
@@ -13,8 +14,8 @@ from isochrones.logger import getLogger
 
 mnest = True
 try:
-    import pymultinest
-except:
+    import pymultinest  # noqa
+except ImportError:
     getLogger().warning("No PyMultiNest; fits will use emcee")
     mnest = False
 
@@ -78,7 +79,7 @@ def _check_fitting(mod):
 def _fit_mnest(mod):
     basename = "{}/{}-".format(chainsdir, np.random.randint(1000000))
     mod.fit_multinest(n_live_points=5, max_iter=50, basename=basename, verbose=False)
-    foo = mod.mnest_analyzer
+    mod.mnest_analyzer
     files = glob.glob("{}*".format(basename))
     for f in files:
         os.remove(f)

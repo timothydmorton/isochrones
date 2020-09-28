@@ -1,7 +1,6 @@
 import re
 import os
 
-import pandas as pd
 import numpy as np
 
 try:
@@ -9,10 +8,9 @@ try:
 except ImportError:
     hv = None
 
-from . import StarModel, get_ichrone
+from . import get_ichrone
 from .starmodel import SingleStarModel, BinaryStarModel, TripleStarModel
-from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
-from .utils import addmags, band_pairs
+from .utils import band_pairs
 
 
 class StarCatalog(object):

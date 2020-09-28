@@ -8,3 +8,5 @@ except NameError:
 if not __ISOCHRONES_SETUP__:
     from .isochrone import get_ichrone
     from .starmodel import StarModel, SingleStarModel, BinaryStarModel, TripleStarModel
+
+__all__ = ["__version__", "get_ichrone", "StarModel", "SingleStarModel", "BinaryStarModel", "TripleStarModel"]

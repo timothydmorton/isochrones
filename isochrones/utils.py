@@ -22,7 +22,8 @@ def download_file(url, path=None, clobber=False):
         local path to download to.
     """
     if path is None:
-        local_filename = os.path.join(directory, url.split("/")[-1])
+        raise ValueError("'path' must be set")
+        # local_filename = os.path.join(directory, url.split("/")[-1])
     else:
         local_filename = path
 
@@ -49,7 +50,7 @@ def addmags(*mags):
     for mag in mags:
         try:
             tot += 10 ** (-0.4 * mag)
-        except:
+        except Exception:
             m, dm = mag
             f = 10 ** (-0.4 * m)
             tot += f

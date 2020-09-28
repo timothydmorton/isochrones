@@ -3,7 +3,6 @@ import numpy as np
 
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel, BinaryStarModel, TripleStarModel
-from isochrones.starmodel import BasicStarModel
 
 FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 

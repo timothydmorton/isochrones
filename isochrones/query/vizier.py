@@ -1,10 +1,7 @@
-import os
 from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
-import astropy.units as u
 import numpy as np
 import pandas as pd
-from configobj import ConfigObj, Section
 
 from .query import EmptyQueryError
 from .catalog import Catalog

@@ -16,7 +16,6 @@ from ..eep import fit_section_poly, eep_fn, eep_jac, eep_fn_p0
 from .eep import max_eep
 from ..interp import DFInterpolator, searchsorted
 from ..utils import polyval
-from .eep import max_eep
 from ..logger import getLogger
 
 
@@ -98,7 +97,7 @@ class MISTIsochroneGrid(MISTModelGrid):
     default_kwargs = {"version": "1.2", "vvcrit": 0.4, "kind": "full_isos"}
     index_cols = ("log10_isochrone_age_yr", "feh", "EEP")
 
-    filename_pattern = "\.iso"
+    filename_pattern = r"\.iso"
     eep_replaces = "mass"
 
     @property
@@ -255,7 +254,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
 
     @classmethod
     def get_mass(cls, filename):
-        m = re.search("(\d{5})M.track.eep", filename)
+        m = re.search(r"(\d{5})M.track.eep", filename)
         if m:
             return float(m.group(1)) / 100.0
         else:
@@ -270,7 +269,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                     line = line.split()
                     eep_first = int(line[2])
                     eep_last = int(line[-1])
-                elif re.match("#\s+ star_age", line):
+                elif re.match(r"#\s+ star_age", line):
                     column_names = line[1:].split()
                     break
         initial_mass = cls.get_mass(filename)

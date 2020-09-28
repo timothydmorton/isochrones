@@ -1,10 +1,9 @@
-import os, os.path, re, sys
+import os
 import time
 
 from .config import on_rtd
 
 if not on_rtd:
-    import tables
     import matplotlib.pyplot as plt
 
 from configobj import ConfigObj
@@ -60,7 +59,7 @@ def starfit(
             if plot_only:
                 try:
                     mod = Mod.load_hdf("{}/{}".format(folder, model_filename), name=name)
-                except:
+                except Exception:
                     pass
             else:
                 # Only try to fit model if it doesn't exist, unless overwrite is set
@@ -69,7 +68,7 @@ def starfit(
                 try:
                     mod = Mod.load_hdf("{}/{}".format(folder, model_filename), name=name)
                     fit_model = False
-                except:
+                except Exception:
                     filename = "{}/{}".format(folder, model_filename)
                     if os.path.exists(filename):
                         os.remove(filename)
@@ -96,7 +95,7 @@ def starfit(
 
                     try:
                         mod.obs.print_ascii()
-                    except:
+                    except Exception:
                         pass
 
                     # # Prime the jit call signature?
@@ -138,7 +137,7 @@ def starfit(
                     make_magplot = False
 
             if make_magplot:
-                fig = mod.mag_plot()
+                mod.mag_plot()
                 plt.savefig(os.path.join(folder, "{}_mags_{}.png".format(models, mult)))
 
             end = time.time()
@@ -155,7 +154,7 @@ def starfit(
         except KeyboardInterrupt:
             logger.error("{} starfit calculation interrupted for {}.".format(mult, folder))
             raise
-        except:
+        except Exception:
             logger.error("{} starfit calculation failed for {}.".format(mult, folder), exc_info=True)
 
     return mod, logger

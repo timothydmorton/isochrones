@@ -1,9 +1,8 @@
-import os, sys, re
-import numpy as np
+import os
+import re
 import pandas as pd
-from multiprocessing import Pool
 
-from .starmodel import StarModel, BasicStarModel
+from .starmodel import BasicStarModel
 
 
 def get_quantiles(
@@ -21,7 +20,7 @@ def get_quantiles(
     modfile = os.path.join(rootdir, name, "{}.h5".format(modelname))
     try:
         mod = BasicStarModel.load_hdf(modfile)
-    except:
+    except Exception:
         if verbose:
             print("cannnot load starmodel! ({})".format(modfile))
         if raise_exceptions:
@@ -67,10 +66,10 @@ def get_summary_df(names=None, pool=None, **kwargs):
     df = pd.concat(dfs)
     return df
 
-    if filename is None:
-        filename = "summary.h5"
-    df.to_hdf(filename, "df")
-    pool.close()
+    # if filename is None:
+    #     filename = "summary.h5"
+    # df.to_hdf(filename, "df")
+    # pool.close()
 
-    print("Summary dataframe written to {}".format(filename))
-    return df
+    # print("Summary dataframe written to {}".format(filename))
+    # return df
