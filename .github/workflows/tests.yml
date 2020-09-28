@@ -25,7 +25,7 @@ jobs:
         run: |
           conda install numba
           python -m pip install -U pip
-          python -m pip install -U -e .[test]
+          python -m pip install -U -e .
       - name: Initialize the MIST grids
         shell: bash -l {0}
         run: |
@@ -42,12 +42,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: ~/.isochrones
-          key: isochrones-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            isochrones-${{ runner.os }}-
+      - name: Download data files
+        run: |
+          wget -O ~/isochrones.zip "https://zenodo.org/record/4056544/files/isochrones.zip?download=1"
+          unzip isochrones.zip -d ~
+          ls ~/.isochrones
       - name: Set up Python ${{ matrix.python-version }}
         uses: goanpeca/setup-miniconda@v1
         with:
@@ -57,6 +56,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install "numba<0.53.0"
+          conda install -c conda-forge multinest pymultinest
           python -m pip install -U pip
           python -m pip install -U -e ".[test]"
       - name: Initialize the MIST grids
