@@ -37,10 +37,9 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda install "numba<0.53.0"
-          conda install -c conda-forge multinest pymultinest
+          conda install -c conda-forge multinest pymultinest "numba<0.53.0" "pandas<1.1" numpy
           python -m pip install -U pip
-          python -m pip install -U -e ".[test]"
+          python -m pip install -e ".[test]"
       - name: Initialize the MIST grids
         shell: bash -l {0}
         run: |
