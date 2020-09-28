@@ -45,7 +45,7 @@ jobs:
       - name: Download data files
         run: |
           wget -q -O ~/isochrones.zip "https://zenodo.org/record/4056544/files/isochrones.zip?download=1"
-          unzip isochrones.zip -d ~
+          unzip ~/isochrones.zip -d ~
           ls ~/.isochrones
       - name: Set up Python ${{ matrix.python-version }}
         uses: goanpeca/setup-miniconda@v1
@@ -59,10 +59,6 @@ jobs:
           conda install -c conda-forge multinest pymultinest
           python -m pip install -U pip
           python -m pip install -U -e ".[test]"
-      - name: Initialize the MIST grids
-        shell: bash -l {0}
-        run: |
-          mist-initialize.py
       - name: Run tests
         shell: bash -l {0}
         run: python -m pytest -v
