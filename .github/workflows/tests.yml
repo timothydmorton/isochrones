@@ -1,0 +1,68 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  script:
+    name: "Test that the init script works w/o cache"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: goanpeca/setup-miniconda@v1
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          conda install numba
+          python -m pip install -U pip
+          python -m pip install -U -e .[test]
+      - name: Initialize the MIST grids
+        shell: bash -l {0}
+        run: |
+          mist-initialize.py
+
+  tests:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.7", "3.8"]
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.isochrones
+          key: isochrones-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            isochrones-${{ runner.os }}-
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: goanpeca/setup-miniconda@v1
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          conda install "numba<0.53.0"
+          python -m pip install -U pip
+          python -m pip install -U -e ".[test]"
+      - name: Initialize the MIST grids
+        shell: bash -l {0}
+        run: |
+          mist-initialize.py
+      - name: Run tests
+        shell: bash -l {0}
+        run: python -m pytest -v

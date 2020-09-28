@@ -55,7 +55,7 @@ setup(
         "Topic :: Scientific/Engineering :: Astronomy",
     ],
     install_requires=[
-        "pandas>=0.14",
+        "pandas>=0.14,<1.1",
         "astropy>=0.3",
         "emcee>=2.0",
         "numpy>=1.9",
@@ -66,6 +66,13 @@ setup(
         "astroquery",
         "configobj",
         "tqdm",
+        "numba<0.53.0",
     ],
+    extras_require={
+        "test": [
+            "pytest",
+            "flaky",
+        ]
+    },
     zip_safe=False,
 )
