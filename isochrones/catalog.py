@@ -1,5 +1,6 @@
 import re
 import os
+import shutil
 
 import pandas as pd
 import numpy as np
@@ -57,6 +58,7 @@ class StarCatalog(object):
 
         self._ds = None
         self._hr = None
+        self._prior_settings = {}
 
     def __setstate__(self, odict):
         self.__dict__ = odict
@@ -112,6 +114,15 @@ class StarCatalog(object):
             self._hr = hv.Layout(layout)
         return self._hr
 
+    def _set_prior(self, mod):
+        mod.set_prior(**self._prior_settings)
+        return mod
+
+    def set_prior(self, **kwargs):
+        """Call this to change the prior settings for models.
+        """
+        self._prior_settings.update(kwargs)
+
     def iter_models(self, ic=None, N=1):
         if ic is None:
             ic = get_ichrone("mist", bands=self.bands)
@@ -122,18 +133,29 @@ class StarCatalog(object):
             row = self.df.iloc[i]
             mags = {b: (row["{}_mag".format(b)], row["{}_mag_unc".format(b)]) for b in self.bands}
             props = {p: (row[p], row["{}_unc".format(p)]) for p in self.props}
-            yield mod_type[N](ic, **mags, **props, name=row.name)
+            mod = mod_type[N](ic, **mags, **props, name=row.name)
+            mod = self._set_prior(mod)
+            yield mod
             i += 1
 
-    def write_ini(self, ic=None, root=".", N=1):
+    def write_ini(self, ic=None, root=".", N=1, nest_directories=True, clobber=True):
         if ic is None:
             ic = get_ichrone("mist", bands=self.bands)
 
         n_pre = int(np.log10(len(self)) // 2)  # log_100
         dirs = []
         for mod in self.iter_models(ic, N=N):
-            path = os.path.join(root, str(mod.name)[:n_pre])
+            if nest_directories:
+                path = os.path.join(root, str(mod.name)[:n_pre])
+            else:
+                path = root
+            mod_path = os.path.abspath(os.path.join(path, mod.name))
+            if os.path.exists(mod_path) and clobber:
+                shutil.rmtree(mod_path)
             mod.write_ini(root=path)
-            dirs.append(os.path.abspath(os.path.join(path, mod.name)))
+            dirs.append(mod_path)
 
         return dirs
+
+
+
