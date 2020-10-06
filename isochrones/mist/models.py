@@ -141,9 +141,7 @@ class MISTIsochroneGrid(MISTModelGrid):
                     column_names = line[1:].split()
                     break
         feh = cls.get_feh(filename)
-        df = pd.read_csv(
-            filename, comment="#", delim_whitespace=True, skip_blank_lines=True, names=column_names
-        )
+        df = pd.read_table(filename, comment="#", sep="\s+", skip_blank_lines=True, names=column_names)
         df["feh"] = feh
         return df
 
@@ -274,9 +272,7 @@ class MISTEvolutionTrackGrid(MISTModelGrid):
                     column_names = line[1:].split()
                     break
         initial_mass = cls.get_mass(filename)
-        df = pd.read_csv(
-            filename, comment="#", delim_whitespace=True, skip_blank_lines=True, names=column_names
-        )
+        df = pd.read_table(filename, comment="#", sep="\s+", skip_blank_lines=True, names=column_names)
         df["initial_mass"] = initial_mass
         try:
             df["EEP"] = np.arange(eep_first, eep_last + 1, dtype=int)
