@@ -219,7 +219,7 @@ class StarModel(object):
     def _parse_band(cls, kw):
         """Returns photometric band from inifile keyword
         """
-        m = re.search(r"([a-zA-Z0-9]+)(_\d+)?", kw)
+        m = re.search(r"[a-zA-Z0-9_]+", kw)
         if m:
             if m.group(1) in cls._not_a_band:
                 return None
