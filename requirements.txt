@@ -1,6 +1,6 @@
 numpy
 numba
 nose
-pytables
+tables
 pandas
 pyviz
