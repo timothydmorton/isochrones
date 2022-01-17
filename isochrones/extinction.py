@@ -42,7 +42,7 @@ def get_AV_infinity(ra, dec, frame="icrs"):
 
     AV = None
     for line in urllib.request.urlopen(url).readlines():
-        m = re.search(b"^Landolt V \(0.54\)\s+(\d+\.\d+)", line)
+        m = re.search(br"^Landolt V \(0.54\)\s+(\d+\.\d+)", line)
         if m:
             AV = float(m.group(1))
             break

@@ -1,5 +1,3 @@
-import re
-
 import numpy as np
 import pandas as pd
 
@@ -9,10 +7,9 @@ except ImportError:
     hv = None
 
 from . import StarModel, get_ichrone
-from .starmodel import SingleStarModel, BinaryStarModel, TripleStarModel
 from .catalog import StarCatalog
 from .priors import PowerLawPrior, FlatLogPrior, FehPrior, FlatPrior, GaussianPrior
-from .utils import addmags, band_pairs
+from .utils import addmags
 from .cluster_utils import calc_lnlike_grid, integrate_over_eeps
 from .logger import getLogger
 
@@ -263,13 +260,13 @@ class StarClusterModel(StarModel):
         return len(self.param_names)
 
     def lnprior(self, p):
-        age = p[0]
-        feh = p[1]
-        distance = p[2]
-        AV = p[3]
-        alpha = p[4]
-        gamma = p[5]
-        fB = p[6]
+        age = p[0]  # noqa
+        feh = p[1]  # noqa
+        distance = p[2]  # noqa
+        AV = p[3]  # noqa
+        alpha = p[4]  # noqa
+        gamma = p[5]  # noqa
+        fB = p[6]  # noqa
 
         lnp = 0
         for prop in ["age", "feh", "distance", "AV", "alpha", "gamma", "fB"]:
@@ -341,7 +338,6 @@ class StarClusterModel(StarModel):
 
         # This takes the lnlike_prop and adds likelihoods from photometry and mass
         mass_lo, mass_hi = self.bounds("mass")
-        Neep = len(eeps)
         Nbands = len(self.stars.bands)
         # model_mags_arr = np.empty((Neep, Nbands), dtype=float)
         vals_arr = np.empty((Nstars, Nbands), dtype=float)
@@ -398,7 +394,7 @@ class StarClusterModel(StarModel):
                 except IndexError:
                     lnprob = np.array([chain[-1]])
                     chain = np.array([chain[:-1]])
-            except:
+            except Exception:
                 getLogger().error("Error loading chains from {}".format(filename))
                 raise
         else:

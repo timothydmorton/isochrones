@@ -1,4 +1,4 @@
-import os, sys
+import os
 import pandas as pd
 import numpy as np
 
@@ -73,7 +73,6 @@ def fit_emcee3(
         walker = Emcee3PriorModel(mod)
     else:
         walker = Emcee3Model(mod)
-    ndim = mod.n_params
 
     if sample_directory is not None:
         sample_file = os.path.join(sample_directory, "{}.h5".format(mod.name))

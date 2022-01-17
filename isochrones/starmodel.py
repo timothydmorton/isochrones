@@ -1,22 +1,21 @@
 from __future__ import print_function, division
 
-import os, os.path, sys, re, glob
+import os
+import sys
+import re
+import glob
 import itertools
 from copy import deepcopy
-import json
 
 from .config import on_rtd
 
 from .logger import getLogger
-
-logger = getLogger()
 
 if not on_rtd:
     import numpy as np
     import pandas as pd
 
     import numpy.random as rand
-    from scipy.stats import gaussian_kde
     import scipy
     import emcee
     import corner
@@ -24,7 +23,7 @@ if not on_rtd:
     try:
         import pymultinest
     except ImportError:
-        logger.warning("PyMultiNest not imported.  MultiNest fits will not work.")
+        getLogger().warning("PyMultiNest not imported.  MultiNest fits will not work.")
 
     import configobj
     from astropy.coordinates import SkyCoord
@@ -36,25 +35,23 @@ if not on_rtd:
 
 from .utils import addmags
 from .observation import ObservationTree, Observation, Source
-from .priors import AgePrior, DistancePrior, AVPrior, QPrior, FlatPrior
-from .priors import SalpeterPrior, ChabrierPrior, FehPrior, EEP_prior, QPrior
+from .priors import AgePrior, DistancePrior, AVPrior
+from .priors import ChabrierPrior, FehPrior, EEP_prior, QPrior
 from .isochrone import get_ichrone
 from .models import ModelGridInterpolator
 from .likelihood import star_lnlike, gauss_lnprob
 
-try:
-    from .fit import fit_emcee3
-except ImportError:
-    pass
+
+logger = getLogger()
 
 
 def _parse_config_value(v):
     try:
         val = float(v)
-    except:
+    except Exception:
         try:
             val = [float(x) for x in v]
-        except:
+        except Exception:
             val = v
     # print('{} becomes {}, type={}'.format(v,val,type(val)))
     return val
@@ -139,7 +136,7 @@ class StarModel(object):
             if RA is not None and dec is not None:
                 try:
                     coords = SkyCoord(RA, dec)
-                except:
+                except Exception:
                     coords = SkyCoord(float(RA), float(dec), unit="deg")
         self.coords = coords
         self._ic = ic
@@ -323,9 +320,9 @@ class StarModel(object):
 
         c = configobj.ConfigObj(ini_file)
 
-        RA = c.get("RA")
-        dec = c.get("dec")
-        maxAV = c.get("maxAV")
+        # RA = c.get("RA")
+        # dec = c.get("dec")
+        # maxAV = c.get("maxAV")
 
         if len(c.sections) == 0:
             for k in c:
@@ -358,13 +355,13 @@ class StarModel(object):
                     # any separations are listed).
                     # While we're at it, keep track of tags if they exist,
                     #  and pull out the names of the bands.
-                    multiple = False
+                    # multiple = False
                     tags = []
                     bands = []
                     for label in c[k]:
                         m = re.search(r"separation(_\w+)?", label)
                         if m:
-                            multiple = True
+                            # multiple = True
                             if m.group(1) is not None:
                                 if m.group(1) not in tags:
                                     tags.append(m.group(1))
@@ -993,7 +990,7 @@ class StarModel(object):
                 except IndexError:
                     lnprob = np.array([chain[-1]])
                     chain = np.array([chain[:-1]])
-            except:
+            except Exception:
                 logger.error("Error loading chains from {}".format(filename))
                 raise
         else:
@@ -1094,7 +1091,7 @@ class StarModel(object):
 
         try:
             fig = corner.corner(df[params], labels=params, priors=priors, **kwargs)
-        except:
+        except Exception:
             logger.warning("Use Tim's version of corner to plot priors.")
             fig = corner.corner(df[params], labels=params, **kwargs)
         fig.suptitle(self.name, fontsize=22)
@@ -1145,7 +1142,7 @@ class StarModel(object):
             tot_mag = addmags(*mags)
 
             if n.relative:
-                name = "{} $\Delta${}".format(n.instrument, n.band)
+                name = r"{} $\Delta${}".format(n.instrument, n.band)
                 ref = n.reference
                 if ref is None:
                     continue
@@ -1278,7 +1275,7 @@ class StarModel(object):
         try:
             samples = store[path + "/samples"]
             attrs = store.get_storer(path + "/samples").attrs
-        except:
+        except Exception:
             store.close()
             raise
 
@@ -1299,7 +1296,7 @@ class StarModel(object):
         if name is None:
             try:
                 name = attrs.name
-            except:
+            except Exception:
                 name = ""
 
         store.close()
@@ -1919,7 +1916,7 @@ class BasicStarModel(StarModel):
                 samples = store[path + "/samples"]
                 derived_samples = store[path + "/derived_samples"]
                 attrs = store.get_storer(path + "/samples").attrs
-            except:
+            except Exception:
                 store.close()
                 raise
 
@@ -1928,7 +1925,7 @@ class BasicStarModel(StarModel):
             except AttributeError:
                 ic = attrs.ic_type
 
-            use_emcee = attrs.use_emcee
+            # use_emcee = attrs.use_emcee
             mnest = True
             try:
                 basename = attrs._mnest_basename
@@ -1943,7 +1940,7 @@ class BasicStarModel(StarModel):
             if name is None:
                 try:
                     name = attrs.name
-                except:
+                except Exception:
                     name = ""
 
         store.close()

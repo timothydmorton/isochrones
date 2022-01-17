@@ -3,13 +3,13 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 import scipy.stats
-from scipy.stats import uniform, lognorm
+from scipy.stats import lognorm
 from scipy.integrate import quad
-from scipy.stats._continuous_distns import _norm_pdf, _norm_cdf, _norm_logpdf
+from scipy.stats._continuous_distns import _norm_cdf
 
 import matplotlib.pyplot as plt
 import numba as nb
-from math import log, log10
+from math import log
 
 
 from .logger import getLogger
@@ -89,19 +89,19 @@ class Prior(object):
         logger.debug("bins: {}".format(b))
         logger.debug("raw: {}".format(hn))
         pdf = np.array([quad(self.pdf, lo, hi)[0] / (hi - lo) for lo, hi in zip(b[:-1], b[1:])])
-        sigma = 1.0 / np.sqrt(hn)
+        inv_sigma = np.sqrt(hn)
         resid = np.absolute(pdf - h) / pdf
         logger.debug("pdf: {}".format(pdf))
         logger.debug("hist: {}".format(h))
-        logger.debug("sigma: {}".format(sigma))
-        logger.debug("{}".format(resid / sigma))
+        logger.debug("inv_sigma: {}".format(inv_sigma))
+        logger.debug("{}".format(resid * inv_sigma))
 
         c = (b[:-1] + b[1:]) / 2
         if plot:
             plt.plot(c, h, "_")
             plt.plot(c, pdf, "x")
         else:
-            assert max((resid / sigma)[hn > 50]) < 6
+            assert max((resid * inv_sigma)[hn > 50]) < 6
 
 
 class BoundedPrior(Prior):
@@ -387,6 +387,8 @@ class FehPrior(Prior):
         else:
             w1, mu1, sig1 = 1.0, -0.3, 0.3
             w2, mu2, sig2 = 0.0, 0, 1
+
+        w1  # to make flake8 happy - w1 isn't used
 
         halo_mu, halo_sig = -1.5, 0.4
 

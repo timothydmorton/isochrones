@@ -1,5 +1,6 @@
 from __future__ import print_function, division
-import os, re, sys
+import os
+import re
 
 from .config import on_rtd
 from .logger import getLogger
@@ -7,12 +8,9 @@ from .logger import getLogger
 if not on_rtd:
     import numpy as np
     import pandas as pd
-    from configobj import ConfigObj
 
     from asciitree import LeftAligned, Traversal
-    from asciitree.drawing import BoxStyle, BOX_DOUBLE, BOX_BLANK
-
-    from collections import OrderedDict
+    from asciitree.drawing import BoxStyle, BOX_DOUBLE
 
     from itertools import chain, count
 
@@ -32,7 +30,7 @@ else:
 
 
 from .isochrone import get_ichrone
-from .utils import addmags, distance, fast_addmags
+from .utils import addmags, distance
 
 LOG_ONE_OVER_ROOT_2PI = np.log(1.0 / np.sqrt(2 * np.pi))
 
@@ -789,9 +787,9 @@ class ObservationTree(Node):
 
         return tree
 
-    @classmethod
-    def from_ini(cls, filename):
-        config = ConfigObj(filename)
+    # @classmethod
+    # def from_ini(cls, filename):
+    #     config = ConfigObj(filename)
 
     def to_df(self):
         """
@@ -800,7 +798,7 @@ class ObservationTree(Node):
         This DataFrame should be able to be read back in to
         reconstruct the observation.
         """
-        df = pd.DataFrame()
+        # df = pd.DataFrame()
         name = []
         band = []
         resolution = []
@@ -878,9 +876,9 @@ class ObservationTree(Node):
         """
         store = pd.HDFStore(filename)
         try:
-            samples = store[path + "/df"]
+            samples = store[path + "/df"]  # noqa
             attrs = store.get_storer(path + "/df").attrs
-        except:
+        except Exception:
             store.close()
             raise
         df = store[path + "/df"]
@@ -1019,7 +1017,7 @@ class ObservationTree(Node):
 
         if leaves is None:
             leaves = self._get_leaves()
-        elif type(leaves) == type(""):
+        elif isinstance(leaves, str):  # type(leaves) == type(""):
             leaves = self.select_leaves(leaves)
 
         # Sort leaves by distance, to ensure system 0 will be assigned
@@ -1121,7 +1119,7 @@ class ObservationTree(Node):
         N = self.Nstars
         i = 0
         for s in self.systems:
-            age, feh, dist, AV = p[i + N[s] : i + N[s] + 4]
+            age, feh, dist, AV = p[i + N[s]:i + N[s] + 4]
             for j in xrange(N[s]):
                 l = "{}_{}".format(s, j)
                 mass = p[i + j]
@@ -1237,8 +1235,8 @@ class ObservationTree(Node):
         """returns the node in the tree that is closest to n0, but not
           in the same observation
         """
-        dmin = np.inf
-        nclose = None
+        # dmin = np.inf
+        # nclose = None
 
         ds = []
         nodes = []

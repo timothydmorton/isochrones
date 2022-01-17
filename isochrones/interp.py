@@ -2,7 +2,6 @@ import os
 import itertools
 
 import numba as nb
-from math import sqrt
 import numpy as np
 import pandas as pd
 
@@ -532,25 +531,25 @@ def interp_eep(x, x0, x1, ii0, ii1, n1, arrays, weight_arrays, lengths):
     eep_10 = i_eep_10 + 1
     eep_11 = i_eep_11 + 1
 
-    w_00 = weight_arrays[ind_00, i_eep_00]
-    w_01 = weight_arrays[ind_01, i_eep_01]
-    w_10 = weight_arrays[ind_10, i_eep_10]
-    w_11 = weight_arrays[ind_11, i_eep_11]
+    # w_00 = weight_arrays[ind_00, i_eep_00]
+    # w_01 = weight_arrays[ind_01, i_eep_01]
+    # w_10 = weight_arrays[ind_10, i_eep_10]
+    # w_11 = weight_arrays[ind_11, i_eep_11]
 
-    if i_eep_00 >= lengths[ind_00]:
-        eep_00 = eep_01
-        w_00 = 0
-    if i_eep_01 >= lengths[ind_01]:
-        eep_01 = eep_00
-        w_01 = 0
-    if i_eep_10 >= lengths[ind_10]:
-        eep_10 = eep_11
-        w_10 = 0
-    if i_eep_11 >= lengths[ind_11]:
-        eep_11 = eep_10
-        w_11 = 0
+    # if i_eep_00 >= lengths[ind_00]:
+    #     eep_00 = eep_01
+    #     w_00 = 0
+    # if i_eep_01 >= lengths[ind_01]:
+    #     eep_01 = eep_00
+    #     w_01 = 0
+    # if i_eep_10 >= lengths[ind_10]:
+    #     eep_10 = eep_11
+    #     w_10 = 0
+    # if i_eep_11 >= lengths[ind_11]:
+    #     eep_11 = eep_10
+    #     w_11 = 0
 
-    w_tot = w_00 + w_01 + w_10 + w_11
+    # w_tot = w_00 + w_01 + w_10 + w_11
 
     eep_0 = (1 - d1) * eep_00 + d1 * eep_01
     eep_1 = (1 - d1) * eep_10 + d1 * eep_11
@@ -629,10 +628,18 @@ class DFInterpolator(object):
             return find_closest3(val, lo, hi, v1, v2, self.grid, icol, *self.index_columns, debug=debug)
 
     def __call__(self, p, cols="all"):
-        if cols is "all":
-            icols = np.arange(self.n_columns)
-        else:
+        try:
+            if cols == "all":
+                icols = np.arange(self.n_columns)
+                flag = True
+            else:
+                flag = False
+        except ValueError:
+            # cols is a numpy array
+            flag = False
+        if not flag:
             icols = np.array([self.column_index[col] for col in cols])
+
         args = (p, self.grid, icols, self.index_columns)
 
         if self.ndim == 2:

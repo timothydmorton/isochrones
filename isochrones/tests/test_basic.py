@@ -1,8 +1,4 @@
-import tempfile
-import os, shutil, glob
-
 import numpy as np
-from numba import TypingError
 
 from isochrones.mist import MIST_Isochrone
 from isochrones import StarModel, get_ichrone

@@ -11,7 +11,7 @@ from scipy.optimize import minimize
 from numba import NumbaPendingDeprecationWarning
 
 from .config import ISOCHRONES
-from .interp import DFInterpolator, interp_eep, interp_eeps
+from .interp import interp_eep, interp_eeps
 from .mags import interp_mag, interp_mags
 from .utils import addmags
 from .grid import Grid
@@ -226,7 +226,7 @@ class StellarModelGrid(Grid):
         except AttributeError:
             age_grid, dt_deep_grid, lengths = self.get_array_grid()
             self._age_grid = age_grid
-            self._dt_deep_grid = arrays
+            self._dt_deep_grid = dt_deep_grid
             self._array_lengths = lengths
             return self._dt_deep_grid
 
@@ -237,7 +237,7 @@ class StellarModelGrid(Grid):
         except AttributeError:
             age_grid, dt_deep_grid, lengths = self.get_array_grid()
             self._age_grid = age_grid
-            self._dt_deep_grid = arrays
+            self._dt_deep_grid = dt_deep_grid
             self._array_lengths = lengths
             return self._array_lengths
 
@@ -321,7 +321,7 @@ class ModelGridInterpolator(object):
     @property
     def masses(self):
         if not self.eep_replaces == "age":
-            raise AttributeError("Mass is not a dimension of this model grid!".format(self.grid_type))
+            raise AttributeError("Mass is not a dimension of model grid type {}!".format(self.grid_type))
         if self._masses is None:
             self._masses = self.model_grid.masses
         return self._masses
@@ -410,7 +410,9 @@ class ModelGridInterpolator(object):
             i_bands = [self.bc_grid.interp.columns.index(b) for b in bands]
 
         try:
-            pars = np.atleast_1d(pars).astype(float).squeeze()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pars = np.atleast_1d(pars).astype(float).squeeze()
             if pars.ndim > 1:
                 raise ValueError
             return interp_mag(
@@ -624,7 +626,6 @@ class ModelGridInterpolator(object):
 
         if all_As:
             _, _, _, true_mags = self.interp_mag([mass, eeps, feh, distance, 0], bands=bands)
-            mBol = values["Mbol"]
             for b, true_mag in zip(bands, true_mags.T):
                 values[f"A_{b}"] = values[f"{b}_mag"] - true_mag
 

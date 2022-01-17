@@ -22,15 +22,6 @@ def eep_fn(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
 def eep_jac(x, p5, p4, p3, p2, p1, p0, A, x0, tau, order=5):
     """Jacobian of eep_fn
     """
-    if order < 5:
-        p5 = 0
-        if order < 4:
-            p4 = 0
-            if order < 3:
-                p3 = 0
-                if order < 2:
-                    p2 = 0
-
     n = len(x)
 
     result = np.empty((n, 9), dtype=nb.float64)

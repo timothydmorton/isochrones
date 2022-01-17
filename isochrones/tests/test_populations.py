@@ -1,10 +1,9 @@
 import unittest
 
 from pandas.testing import assert_frame_equal
-from scipy.stats import uniform, norm
 from isochrones import get_ichrone
-from isochrones.priors import ChabrierPrior, FehPrior, GaussianPrior, SalpeterPrior, DistancePrior, AVPrior
-from isochrones.populations import StarFormationHistory, StarPopulation, BinaryDistribution, deredden
+from isochrones.priors import GaussianPrior, SalpeterPrior, DistancePrior, AVPrior
+from isochrones.populations import StarFormationHistory, StarPopulation, deredden
 
 
 def old_deredden(ic, pop, accurate=False, **kwargs):
