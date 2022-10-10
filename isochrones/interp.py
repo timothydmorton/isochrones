@@ -629,7 +629,7 @@ class DFInterpolator(object):
             return find_closest3(val, lo, hi, v1, v2, self.grid, icol, *self.index_columns, debug=debug)
 
     def __call__(self, p, cols="all"):
-        if cols is "all":
+        if cols == "all":
             icols = np.arange(self.n_columns)
         else:
             icols = np.array([self.column_index[col] for col in cols])
