@@ -22,6 +22,8 @@ if not on_rtd:
         imap = map
         izip = zip
         xrange = range
+
+    LOG_ONE_OVER_ROOT_2PI = np.log(1.0 / np.sqrt(2 * np.pi))
 else:
 
     class Traversal(object):
@@ -33,8 +35,6 @@ else:
 
 from .isochrone import get_ichrone
 from .utils import addmags, distance, fast_addmags
-
-LOG_ONE_OVER_ROOT_2PI = np.log(1.0 / np.sqrt(2 * np.pi))
 
 
 class NodeTraversal(Traversal):
